@@ -4,18 +4,14 @@ import { useQueryClient } from '@tanstack/react-query';
 import { createTaskSuper, deleteTaskSuper, fetchTaskSuper } from '../../service/taskSuper.service';
 import { createTaskGroup } from '../../service/taskgroup.service';
 import { createTaskTemplate } from '../../service/tasktemplate.service';
-
 export const useTaskSuperExcel = () => {
   const queryClient = useQueryClient();
-
   const exportToExcel = (taskSuper: any) => {
     try {
       const rows: any[] = [];
       const taskSuperName = taskSuper.name || '';
       const taskSuperDesc = taskSuper.description || '';
-
       let isFirstSuper = true;
-
       if (!taskSuper.taskGroup || taskSuper.taskGroup.length === 0) {
         rows.push({
           'Task Super Name': taskSuperName,
@@ -34,9 +30,7 @@ export const useTaskSuperExcel = () => {
           const groupName = group.name || '';
           const groupDesc = group.description || '';
           const groupRank = group.rank || '';
-          
           let isFirstGroup = true;
-
           if (!group.tasktemplate || group.tasktemplate.length === 0) {
             rows.push({
               'Task Super Name': isFirstSuper ? taskSuperName : '',
@@ -53,7 +47,6 @@ export const useTaskSuperExcel = () => {
             isFirstSuper = false;
           } else {
             const storyTemplates = group.tasktemplate.filter((t: any) => t.taskType === 'story');
-            
             if (storyTemplates.length === 0) {
               rows.push({
                 'Task Super Name': isFirstSuper ? taskSuperName : '',
@@ -69,15 +62,12 @@ export const useTaskSuperExcel = () => {
               });
               isFirstSuper = false;
             }
-
             storyTemplates.forEach((task: any) => {
               const taskName = task.name || '';
               const taskDesc = task.description || '';
               const taskHours = task.budgetedHours || '';
               const taskRank = task.rank || '';
-              
               let isFirstTask = true;
-
               if (!task.subTasks || task.subTasks.length === 0) {
                 rows.push({
                   'Task Super Name': isFirstSuper ? taskSuperName : '',
@@ -116,22 +106,18 @@ export const useTaskSuperExcel = () => {
           }
         });
       }
-
       const worksheet = XLSX.utils.json_to_sheet(rows);
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, 'Tasks');
       XLSX.writeFile(workbook, `${taskSuperName}_Tasks.xlsx`);
       message.success('Exported to Excel successfully');
     } catch (error) {
-      console.error(error);
       message.error('Failed to export to Excel');
     }
   };
-
   const downloadSampleExcel = () => {
     const sampleData: any[] = [];
     let isFirstSuper = true;
-
     for (let g = 1; g <= 5; g++) {
       let isFirstGroup = true;
       for (let t = 1; t <= 2; t++) {
@@ -155,13 +141,11 @@ export const useTaskSuperExcel = () => {
         }
       }
     }
-
     const worksheet = XLSX.utils.json_to_sheet(sampleData);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Sample');
     XLSX.writeFile(workbook, 'TaskSuper_Import_Template.xlsx');
   };
-
   const importExcel = async (file: File): Promise<void> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -172,42 +156,34 @@ export const useTaskSuperExcel = () => {
           const firstSheetName = workbook.SheetNames[0];
           const worksheet = workbook.Sheets[firstSheetName];
           const rows = XLSX.utils.sheet_to_json(worksheet);
-
           if (!rows || rows.length === 0) {
             message.error('Excel file is empty');
             return reject('Empty file');
           }
-
           // Group the rows hierarchically
           const hierarchy: any = {};
-          
           let targetTaskSuperName = '';
           let targetTaskSuperDesc = '';
-          
           let currentSuperName = '';
           let currentSuperDesc = '';
           let currentGroupName = '';
           let currentGroupDesc = '';
           let currentTaskName = '';
-
           rows.forEach((row: any) => {
             const tsName = row['Task Super Name']?.toString().trim();
             if (tsName) {
               currentSuperName = tsName;
               currentSuperDesc = row['Task Super Description']?.toString().trim() || '';
             }
-            
             if (!targetTaskSuperName && currentSuperName) {
               targetTaskSuperName = currentSuperName;
               targetTaskSuperDesc = currentSuperDesc;
             }
-
             const tgName = row['Task Group Name']?.toString().trim();
             if (tgName) {
               currentGroupName = tgName;
               currentGroupDesc = row['Task Group Description']?.toString().trim() || '';
             }
-
             if (currentGroupName && !hierarchy[currentGroupName]) {
               hierarchy[currentGroupName] = {
                 description: currentGroupDesc,
@@ -215,7 +191,6 @@ export const useTaskSuperExcel = () => {
                 tasks: {}
               };
             }
-
             const tName = row['Task Name']?.toString().trim();
             if (tName) {
               currentTaskName = tName;
@@ -228,7 +203,6 @@ export const useTaskSuperExcel = () => {
                 };
               }
             }
-
             const stName = row['Subtask Name']?.toString().trim();
             if (stName && currentGroupName && currentTaskName) {
               hierarchy[currentGroupName].tasks[currentTaskName].subtasks.push({
@@ -239,21 +213,17 @@ export const useTaskSuperExcel = () => {
               });
             }
           });
-
           if (!targetTaskSuperName) {
             message.error('No Task Super Name found in the Excel file');
             return reject('Missing Task Super Name');
           }
-
           // Check if Task Super exists
           const allTaskSupers = await fetchTaskSuper();
           let taskSuperId = null;
-          
           const tsArray = Array.isArray(allTaskSupers) ? allTaskSupers : (allTaskSupers?.tasksuper || []);
           const existingTaskSuper = tsArray.find(
             (ts: any) => ts.name.toLowerCase() === targetTaskSuperName.toLowerCase()
           );
-
           if (existingTaskSuper) {
             const confirmOverwrite = await new Promise((resolveConfirm) => {
               Modal.confirm({
@@ -266,23 +236,19 @@ export const useTaskSuperExcel = () => {
                 onCancel: () => resolveConfirm(false),
               });
             });
-
             if (!confirmOverwrite) {
               return reject('User cancelled overwrite');
             }
             // Delete existing
             await deleteTaskSuper({ id: existingTaskSuper.id });
           }
-
           message.loading({ content: 'Creating Task Super hierarchy...', key: 'excelUpload', duration: 0 });
-
           // 1. Create Task Super
           const createdTaskSuper = await createTaskSuper({
             name: targetTaskSuperName,
             description: targetTaskSuperDesc
           });
           taskSuperId = createdTaskSuper.id;
-
           // 2. Iterate groups
           for (const [groupName, groupData] of Object.entries(hierarchy)) {
             const groupDataTyped = groupData as any;
@@ -292,7 +258,6 @@ export const useTaskSuperExcel = () => {
               rank: groupDataTyped.rank,
               taskSuperId: taskSuperId
             });
-
             // 3. Iterate tasks
             for (const [taskName, taskData] of Object.entries(groupDataTyped.tasks)) {
               const taskDataTyped = taskData as any;
@@ -304,7 +269,6 @@ export const useTaskSuperExcel = () => {
                 taskType: 'story',
                 groupId: createdGroup.id
               });
-
               // 4. Iterate subtasks
               for (const subtask of taskDataTyped.subtasks) {
                 await createTaskTemplate({
@@ -319,12 +283,10 @@ export const useTaskSuperExcel = () => {
               }
             }
           }
-
           queryClient.invalidateQueries({ queryKey: ["taskSuper"] });
           message.success({ content: 'Excel imported successfully!', key: 'excelUpload', duration: 3 });
           resolve();
         } catch (err: any) {
-          console.error(err);
           message.error({ content: `Failed to import Excel: ${err.message || 'Unknown error'}`, key: 'excelUpload', duration: 5 });
           reject(err);
         }
@@ -336,7 +298,6 @@ export const useTaskSuperExcel = () => {
       reader.readAsArrayBuffer(file);
     });
   };
-
   return {
     exportToExcel,
     downloadSampleExcel,

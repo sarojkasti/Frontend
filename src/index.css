@@ -50,3 +50,30 @@
     white-space: normal;
     word-break: break-word;
 }
+
+/* Compact Sidebar Navigation Menu (Expanded & Collapsed) */
+.ant-layout-sider .ant-menu-inline .ant-menu-item,
+.ant-layout-sider .ant-menu-vertical .ant-menu-item {
+    height: 36px !important;
+    line-height: 36px !important;
+    margin-block: 2px !important;
+    border-radius: 6px !important;
+}
+
+/* Ensure title text is completely hidden in collapsed mode so no characters overflow */
+.ant-layout-sider-collapsed .ant-menu-title-content {
+    display: none !important;
+    opacity: 0 !important;
+}
+
+/* Smooth Custom Scrollbar for Sidebar */
+.ant-layout-sider::-webkit-scrollbar {
+    width: 4px;
+}
+.ant-layout-sider::-webkit-scrollbar-thumb {
+    background-color: #cbd5e1;
+    border-radius: 4px;
+}
+.ant-layout-sider::-webkit-scrollbar-track {
+    background: transparent;
+}

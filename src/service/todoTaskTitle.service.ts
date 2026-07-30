@@ -1,65 +1,1 @@
-import axios from "axios";
-import { TodoTaskTitle } from "@/types/todoTask";
-
-axios.defaults.withCredentials = true;
-const backendURI = import.meta.env.VITE_BACKEND_URI;
-
-// Helper function to handle API errors
-const handleApiError = (error: any) => {
-  console.error("TodoTaskTitle API Error:", error);
-  if (error.response) {
-    const errorMessage = error.response.data?.message || "Server error occurred";
-    throw new Error(errorMessage);
-  } else if (error.request) {
-    throw new Error("No response from server. Please check your connection.");
-  } else {
-    throw new Error("Error setting up request: " + error.message);
-  }
-};
-
-// TodoTaskTitle API Functions
-export const fetchTodoTaskTitles = async (activeOnly: boolean = false) => {
-  try {
-    const params = activeOnly ? '?activeOnly=true' : '';
-    const response = await axios.get(`${backendURI}/todo-task-title${params}`);
-    return response.data;
-  } catch (error) {
-    return handleApiError(error);
-  }
-};
-
-export const fetchTodoTaskTitleById = async (id: string) => {
-  try {
-    const response = await axios.get(`${backendURI}/todo-task-title/${id}`);
-    return response.data;
-  } catch (error) {
-    return handleApiError(error);
-  }
-};
-
-export const createTodoTaskTitle = async (payload: Partial<TodoTaskTitle>) => {
-  try {
-    const response = await axios.post(`${backendURI}/todo-task-title`, payload);
-    return response.data;
-  } catch (error) {
-    return handleApiError(error);
-  }
-};
-
-export const updateTodoTaskTitle = async ({ id, payload }: { id: string; payload: Partial<TodoTaskTitle> }) => {
-  try {
-    const response = await axios.patch(`${backendURI}/todo-task-title/${id}`, payload);
-    return response.data;
-  } catch (error) {
-    return handleApiError(error);
-  }
-};
-
-export const deleteTodoTaskTitle = async (id: string) => {
-  try {
-    const response = await axios.delete(`${backendURI}/todo-task-title/${id}`);
-    return response.data;
-  } catch (error) {
-    return handleApiError(error);
-  }
-};
+import axios from "axios";import { TodoTaskTitle } from "@/types/todoTask";axios.defaults.withCredentials = true;const backendURI = import.meta.env.VITE_BACKEND_URI;// Helper function to handle API errorsconst handleApiError = (error: any) => {  if (error.response) {    const errorMessage = error.response.data?.message || "Server error occurred";    throw new Error(errorMessage);  } else if (error.request) {    throw new Error("No response from server. Please check your connection.");  } else {    throw new Error("Error setting up request: " + error.message);  }};// TodoTaskTitle API Functionsexport const fetchTodoTaskTitles = async (activeOnly: boolean = false) => {  try {    const params = activeOnly ? '?activeOnly=true' : '';    const response = await axios.get(`${backendURI}/todo-task-title${params}`);    return response.data;  } catch (error) {    return handleApiError(error);  }};export const fetchTodoTaskTitleById = async (id: string) => {  try {    const response = await axios.get(`${backendURI}/todo-task-title/${id}`);    return response.data;  } catch (error) {    return handleApiError(error);  }};export const createTodoTaskTitle = async (payload: Partial<TodoTaskTitle>) => {  try {    const response = await axios.post(`${backendURI}/todo-task-title`, payload);    return response.data;  } catch (error) {    return handleApiError(error);  }};export const updateTodoTaskTitle = async ({ id, payload }: { id: string; payload: Partial<TodoTaskTitle> }) => {  try {    const response = await axios.patch(`${backendURI}/todo-task-title/${id}`, payload);    return response.data;  } catch (error) {    return handleApiError(error);  }};export const deleteTodoTaskTitle = async (id: string) => {  try {    const response = await axios.delete(`${backendURI}/todo-task-title/${id}`);    return response.data;  } catch (error) {    return handleApiError(error);  }};

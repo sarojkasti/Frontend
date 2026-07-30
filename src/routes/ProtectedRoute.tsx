@@ -2,8 +2,13 @@ import { useSession } from "@/context/SessionContext";
 import { Spin } from "antd";
 
 const ProtectedRoute = ({ component, method, resource, path }: any) => {
-    const { permissions, isProfilePending } = useSession();
-    
+    const { permissions, isProfilePending, profile } = useSession();
+
+    const isSuperOrAdmin =
+        profile?.role?.name === "superuser" ||
+        profile?.role?.name === "administrator" ||
+        (permissions || []).some((p: any) => typeof p === 'object' && p?.resource === 'admin');
+
     // Check if the user has the required permission
     const hasRequiredPermission = (permissions || []).some((permission: any) => {
         if (typeof permission === 'object' && permission.method && permission.resource) {
@@ -27,7 +32,9 @@ const ProtectedRoute = ({ component, method, resource, path }: any) => {
         return <div className="flex justify-center py-24"><Spin size="large" /></div> 
     }
 
-    return <>{hasRequiredPermission ? component : <>You don't have access to this resource</>}</>
+    const hasAccess = isSuperOrAdmin || hasRequiredPermission;
+
+    return <>{hasAccess ? component : <>You don't have access to this resource</>}</>
 };
 
 export default ProtectedRoute;

@@ -1,46 +1,1 @@
-import PersonalDetailForm from "@/components/user/PersonalDetailForm";
-import { useUserDetails } from "@/hooks/user/useUserDetails";
-import { Space, Spin } from "antd";
-import { useState, useEffect } from "react";
-import Title from "antd/es/typography/Title";
-import { useParams } from "react-router-dom";
-
-const PersonalDetails = () => {
-    const { id } = useParams();
-    const { data: user, isLoading } = useUserDetails(id);
-    const [processedData, setProcessedData] = useState<any>(null);
-    const [dataProcessed, setDataProcessed] = useState(false);
-    
-    // Process the profile data when it arrives
-    useEffect(() => {
-        if (user && user.profile) {
-            console.log('PersonalDetails - User profile data:', user.profile);
-            console.log('PersonalDetails - Date of birth:', user.profile.dateOfBirth);
-            
-            // Just pass the profile data as-is
-            // PersonalDetailForm will handle the date conversion
-            setProcessedData(user.profile);
-            setDataProcessed(true);
-        }
-    }, [user]);
-
-    return (
-        <>
-            <Space size="large" className="pb-4">
-                <Title level={4}>Personal Details</Title>
-            </Space>
-
-            {isLoading || !dataProcessed ? (
-                <div style={{ display: 'flex', justifyContent: 'center', padding: '40px' }}>
-                    <Spin size="large" tip="Loading personal details..." />
-                </div>
-            ) : (
-                <PersonalDetailForm 
-                    initialValues={processedData} 
-                    userData={user}
-                />
-            )}
-        </>
-    );
-};
-export default PersonalDetails;
+import PersonalDetailForm from "@/components/user/PersonalDetailForm";import { useUserDetails } from "@/hooks/user/useUserDetails";import { Space, Spin } from "antd";import { useState, useEffect } from "react";import Title from "antd/es/typography/Title";import { useParams } from "react-router-dom";const PersonalDetails = () => {    const { id } = useParams();    const { data: user, isLoading } = useUserDetails(id);    const [processedData, setProcessedData] = useState<any>(null);    const [dataProcessed, setDataProcessed] = useState(false);    // Process the profile data when it arrives    useEffect(() => {        if (user && user.profile) {            // Just pass the profile data as-is            // PersonalDetailForm will handle the date conversion            setProcessedData(user.profile);            setDataProcessed(true);        }    }, [user]);    return (        <>            <Space size="large" className="pb-4">                <Title level={4}>Personal Details</Title>            </Space>            {isLoading || !dataProcessed ? (                <div style={{ display: 'flex', justifyContent: 'center', padding: '40px' }}>                    <Spin size="large" tip="Loading personal details..." />                </div>            ) : (                <PersonalDetailForm                     initialValues={processedData}                     userData={user}                />            )}        </>    );};export default PersonalDetails;

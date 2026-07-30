@@ -1,920 +1,1 @@
-import { useState, useEffect, useMemo } from 'react';
-import { Card, Tag, Space, Button, Typography, Row, Col, Spin, Select, DatePicker, Tooltip, Modal, message, Dropdown, Menu } from 'antd';
-import { UserOutlined, ReloadOutlined, ZoomInOutlined, ZoomOutOutlined, CalendarOutlined, ClockCircleOutlined, DownOutlined } from '@ant-design/icons';
-import axios from 'axios';
-import dayjs, { Dayjs } from 'dayjs';
-import isBetween from 'dayjs/plugin/isBetween';
-import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
-import isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
-import PageTitle from '@/components/PageTitle';
-import { DualDateConverter } from '@/utils/dateConverter';
-
-dayjs.extend(isBetween);
-dayjs.extend(isSameOrBefore);
-dayjs.extend(isSameOrAfter);
-
-const { RangePicker } = DatePicker;
-const { Title, Text } = Typography;
-const backendURI = import.meta.env.VITE_BACKEND_URI;
-
-interface ProjectInfo {
-  projectId: string;
-  projectName: string;
-  assignedDate: string;
-  plannedReleaseDate: string | null;
-  isActive: boolean;
-}
-
-interface UserAvailability {
-  userId: string;
-  userName: string;
-  userEmail: string;
-  role: string;
-  isAvailable: boolean;
-  busyUntil: string | null;
-  currentProjects: ProjectInfo[];
-}
-
-const UserAvailabilityDashboard = () => {
-  const [loading, setLoading] = useState(false);
-  const [userAvailability, setUserAvailability] = useState<UserAvailability[]>([]);
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [dateRange, setDateRange] = useState<[Dayjs, Dayjs]>([
-    dayjs().startOf('month'),
-    dayjs().add(6, 'month').endOf('month')
-  ]);
-  const [zoomLevel, setZoomLevel] = useState<number>(7); // Days per column
-  
-  // Extension modal state
-  const [extendModalVisible, setExtendModalVisible] = useState(false);
-  const [selectedExtension, setSelectedExtension] = useState<{
-    userId: string;
-    userName: string;
-    projectId: string;
-    projectName: string;
-    currentDate: string | null;
-  } | null>(null);
-  const [newPlannedDate, setNewPlannedDate] = useState<Dayjs | null>(null);
-  const [extending, setExtending] = useState(false);
-
-  // Helper function to format date with Nepali
-  const formatDateWithNepali = (date: Dayjs, format: string = 'MMM DD, YYYY'): string => {
-    const nepaliDate = DualDateConverter.gregorianToNepali(date);
-    return `${date.format(format)} (${nepaliDate.format('YYYY-MM-DD', 'np')})`;
-  };
-
-  // Helper function to get short Nepali date
-  const getShortNepaliDate = (date: Dayjs): string => {
-    try {
-      const nepaliDate = DualDateConverter.gregorianToNepali(date);
-      return nepaliDate.format('YYYY-MM-DD', 'np');
-    } catch {
-      return '';
-    }
-  };
-
-  const fetchUserAvailability = async () => {
-    setLoading(true);
-    try {
-      const response = await axios.get(`${backendURI}/projects/availability/users`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      setUserAvailability(response.data);
-    } catch (error) {
-      console.error('Error fetching user availability:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchUserAvailability();
-  }, []);
-
-  // Filter users based on status and role
-  const filteredUsers = useMemo(() => {
-    return userAvailability.filter(user => {
-      // Exclude superuser
-      if (user.role.toLowerCase() === 'superuser') return false;
-      
-      if (statusFilter === 'all') return true;
-      if (statusFilter === 'available') return user.isAvailable;
-      if (statusFilter === 'busy') return !user.isAvailable;
-      return true;
-    });
-  }, [userAvailability, statusFilter]);
-
-  // Generate date columns based on zoom level
-  const dateColumns = useMemo(() => {
-    const columns: Dayjs[] = [];
-    const startDate = dateRange[0];
-    const endDate = dateRange[1];
-    const daysCount = endDate.diff(startDate, 'day');
-    
-    for (let i = 0; i <= daysCount; i += zoomLevel) {
-      columns.push(startDate.add(i, 'day'));
-    }
-    
-    return columns;
-  }, [dateRange, zoomLevel]);
-
-  // Generate colors for projects
-  const projectColors = useMemo(() => {
-    const colors = [
-      '#1890ff', '#52c41a', '#faad14', '#f5222d', '#722ed1',
-      '#13c2c2', '#eb2f96', '#fa8c16', '#a0d911', '#2f54eb',
-      '#fa541c', '#597ef7', '#73d13d', '#ff85c0', '#ffc53d'
-    ];
-    const colorMap: { [key: string]: string } = {};
-    let colorIndex = 0;
-    
-    filteredUsers.forEach(user => {
-      user.currentProjects.forEach(project => {
-        if (!colorMap[project.projectId]) {
-          colorMap[project.projectId] = colors[colorIndex % colors.length];
-          colorIndex++;
-        }
-      });
-    });
-    
-    return colorMap;
-  }, [filteredUsers]);
-
-  // Get all projects that span across a date range cell
-  const getProjectsInRange = (user: UserAvailability, startDate: Dayjs, endDate: Dayjs): { active: ProjectInfo[], inactive: ProjectInfo[] } => {
-    const active: ProjectInfo[] = [];
-    const inactive: ProjectInfo[] = [];
-    
-    user.currentProjects.forEach(project => {
-      const assignedDate = dayjs(project.assignedDate);
-      const releaseDate = project.plannedReleaseDate 
-        ? dayjs(project.plannedReleaseDate) 
-        : dayjs().add(2, 'year');
-      
-      // Check if project overlaps with this date range
-      if (assignedDate.isSameOrBefore(endDate, 'day') && releaseDate.isSameOrAfter(startDate, 'day')) {
-        if (project.isActive) {
-          active.push(project);
-        } else {
-          inactive.push(project);
-        }
-      }
-    });
-    
-    return { active, inactive };
-  };
-
-  const availableCount = userAvailability.filter(u => u.isAvailable).length;
-  const busyCount = userAvailability.filter(u => !u.isAvailable).length;
-
-  const handleZoomIn = () => {
-    setZoomLevel(prev => Math.max(1, prev - 1));
-  };
-
-  const handleZoomOut = () => {
-    setZoomLevel(prev => Math.min(30, prev + 2));
-  };
-
-  const handleExtendClick = (user: UserAvailability, project: ProjectInfo) => {
-    setSelectedExtension({
-      userId: user.userId,
-      userName: user.userName,
-      projectId: project.projectId,
-      projectName: project.projectName,
-      currentDate: project.plannedReleaseDate
-    });
-    setNewPlannedDate(project.plannedReleaseDate ? dayjs(project.plannedReleaseDate) : dayjs().add(1, 'month'));
-    setExtendModalVisible(true);
-  };
-
-  const handleExtendSubmit = async () => {
-    if (!selectedExtension || !newPlannedDate) {
-      message.error('Please select a new date');
-      return;
-    }
-
-    setExtending(true);
-    try {
-      await axios.patch(
-        `${backendURI}/projects/${selectedExtension.projectId}/users/${selectedExtension.userId}`,
-        {
-          plannedReleaseDate: newPlannedDate.format('YYYY-MM-DD')
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`
-          }
-        }
-      );
-      
-      message.success(`Extended ${selectedExtension.userName}'s assignment to ${newPlannedDate.format('MMM DD, YYYY')}`);
-      setExtendModalVisible(false);
-      setSelectedExtension(null);
-      setNewPlannedDate(null);
-      
-      // Refresh data
-      fetchUserAvailability();
-    } catch (error: any) {
-      console.error('Error extending assignment:', error);
-      message.error(error.response?.data?.message || 'Failed to extend assignment');
-    } finally {
-      setExtending(false);
-    }
-  };
-
-  const handleExtendCancel = () => {
-    setExtendModalVisible(false);
-    setSelectedExtension(null);
-    setNewPlannedDate(null);
-  };
-
-  const cellWidth = 120; // Width of each date cell
-  const userRowHeight = 60; // Height of each user row
-
-  return (
-    <>
-      <PageTitle
-        title="User Availability Timeline"
-        element={
-          <Button
-            icon={<ReloadOutlined />}
-            onClick={fetchUserAvailability}
-            loading={loading}
-          >
-            Refresh
-          </Button>
-        }
-      />
-
-      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-        <Col xs={24} sm={12} md={8}>
-          <Card>
-            <Space direction="vertical" size={0}>
-              <Text type="secondary">Total Users</Text>
-              <Title level={2} style={{ margin: 0 }}>
-                <UserOutlined style={{ marginRight: 8 }} />{userAvailability.length}
-              </Title>
-            </Space>
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} md={8}>
-          <Card>
-            <Space direction="vertical" size={0}>
-              <Text type="secondary">Available Users</Text>
-              <Title level={2} style={{ margin: 0, color: '#52c41a' }}>
-                <UserOutlined style={{ marginRight: 8 }} />{availableCount}
-              </Title>
-            </Space>
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} md={8}>
-          <Card>
-            <Space direction="vertical" size={0}>
-              <Text type="secondary">Busy Users</Text>
-              <Title level={2} style={{ margin: 0, color: '#ff4d4f' }}>
-                <UserOutlined style={{ marginRight: 8 }} />{busyCount}
-              </Title>
-            </Space>
-          </Card>
-        </Col>
-      </Row>
-
-      <Card style={{ marginBottom: 16 }}>
-        <Spin spinning={loading}>
-          <Space direction="vertical" size="large" style={{ width: '100%' }}>
-            {/* Controls */}
-            <Row gutter={[16, 16]} align="middle">
-              <Col xs={24} sm={12} md={6}>
-                <Space>
-                  <Text strong>Filter:</Text>
-                  <Select
-                    style={{ width: 150 }}
-                    value={statusFilter}
-                    onChange={setStatusFilter}
-                    options={[
-                      { label: 'All Users', value: 'all' },
-                      { label: 'Available Only', value: 'available' },
-                      { label: 'Busy Only', value: 'busy' },
-                    ]}
-                  />
-                </Space>
-              </Col>
-              <Col xs={24} sm={12} md={12}>
-                <Space>
-                  <Text strong>Date Range:</Text>
-                  <RangePicker
-                    value={dateRange}
-                    onChange={(dates) => {
-                      if (dates && dates[0] && dates[1]) {
-                        setDateRange([dates[0], dates[1]]);
-                      }
-                    }}
-                    format="YYYY-MM-DD"
-                  />
-                </Space>
-              </Col>
-              <Col xs={24} sm={12} md={6}>
-                <Space>
-                  <Tooltip title="Zoom In (More columns)">
-                    <Button 
-                      icon={<ZoomInOutlined />} 
-                      onClick={handleZoomIn}
-                      disabled={zoomLevel <= 1}
-                    />
-                  </Tooltip>
-                  <Tooltip title="Zoom Out (Fewer columns)">
-                    <Button 
-                      icon={<ZoomOutOutlined />} 
-                      onClick={handleZoomOut}
-                      disabled={zoomLevel >= 30}
-                    />
-                  </Tooltip>
-                  <Text type="secondary" style={{ fontSize: '12px' }}>
-                    {zoomLevel} day{zoomLevel > 1 ? 's' : ''}/col
-                  </Text>
-                </Space>
-              </Col>
-            </Row>
-
-            {/* Gantt Chart Timeline */}
-            <div style={{ marginTop: 24 }}>
-              <Title level={4}>
-                <CalendarOutlined /> Project Assignment Gantt Chart (Scroll horizontally)
-              </Title>
-              <div 
-                style={{ 
-                  overflowX: 'auto', 
-                  overflowY: 'auto',
-                  border: '1px solid #f0f0f0',
-                  borderRadius: '8px',
-                  background: '#fafafa'
-                }}
-              >
-                <div style={{ display: 'inline-block', minWidth: '100%' }}>
-                  {/* Header Row - Dates */}
-                  <div style={{ 
-                    display: 'flex', 
-                    position: 'sticky',
-                    top: 0,
-                    zIndex: 10,
-                    background: '#fff',
-                    borderBottom: '2px solid #d9d9d9'
-                  }}>
-                    {/* User column header */}
-                    <div style={{ 
-                      width: '200px', 
-                      padding: '12px',
-                      fontWeight: 'bold',
-                      borderRight: '2px solid #d9d9d9',
-                      background: '#fafafa',
-                      position: 'sticky',
-                      left: 0,
-                      zIndex: 11
-                    }}>
-                      User / Date
-                    </div>
-                    
-                    {/* Date columns */}
-                    {dateColumns.map((date, index) => {
-                      const endDate = index < dateColumns.length - 1 
-                        ? dateColumns[index + 1] 
-                        : dateRange[1];
-                      const isToday = dayjs().isBetween(date, endDate, 'day', '[]');
-                      const nepaliDateStr = getShortNepaliDate(date);
-                      
-                      return (
-                        <div 
-                          key={index}
-                          style={{ 
-                            minWidth: `${cellWidth}px`,
-                            padding: '8px',
-                            borderRight: '1px solid #f0f0f0',
-                            textAlign: 'center',
-                            background: isToday ? '#e6f7ff' : '#fff',
-                            fontWeight: isToday ? 'bold' : 'normal'
-                          }}
-                        >
-                          <div style={{ fontSize: '13px', fontWeight: '600' }}>
-                            {date.format('MMM DD')}
-                          </div>
-                          <div style={{ fontSize: '10px', color: '#1890ff', fontWeight: 500 }}>
-                            {nepaliDateStr}
-                          </div>
-                          <div style={{ fontSize: '11px', color: '#8c8c8c' }}>
-                            {date.format('YYYY')}
-                          </div>
-                          {isToday && (
-                            <Tag color="blue" style={{ fontSize: '10px', marginTop: '2px' }}>
-                              Today
-                            </Tag>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  {/* User Rows */}
-                  {filteredUsers.map((user) => (
-                    <div 
-                      key={user.userId}
-                      style={{ 
-                        display: 'flex',
-                        borderBottom: '1px solid #f0f0f0',
-                        minHeight: `${userRowHeight}px`,
-                        background: user.isAvailable ? '#f6ffed' : '#fff2e8'
-                      }}
-                    >
-                      {/* User Info Column */}
-                      <div style={{ 
-                        width: '200px',
-                        padding: '12px',
-                        borderRight: '2px solid #d9d9d9',
-                        position: 'sticky',
-                        left: 0,
-                        zIndex: 5,
-                        background: user.isAvailable ? '#f6ffed' : '#fff2e8',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        justifyContent: 'center'
-                      }}>
-                        <Space direction="vertical" size={2}>
-                          <Text strong style={{ fontSize: '14px' }}>{user.userName}</Text>
-                          <Text type="secondary" style={{ fontSize: '11px' }}>{user.userEmail}</Text>
-                          <Space size={4}>
-                            <Tag 
-                              color={user.isAvailable ? 'success' : 'error'}
-                              style={{ fontSize: '10px', margin: 0 }}
-                            >
-                              {user.isAvailable ? 'Available' : 'Busy'}
-                            </Tag>
-                            <Tag color="blue" style={{ fontSize: '10px', margin: 0 }}>
-                              {user.role}
-                            </Tag>
-                          </Space>
-                        </Space>
-                      </div>
-                      
-                      {/* Timeline Cells */}
-                      {dateColumns.map((date, index) => {
-                        const endDate = index < dateColumns.length - 1 
-                          ? dateColumns[index + 1].subtract(1, 'day')
-                          : dateRange[1];
-                        
-                        const { active: activeProjects, inactive: inactiveProjects } = getProjectsInRange(user, date, endDate);
-                        const isToday = dayjs().isBetween(date, endDate, 'day', '[]');
-                        
-                        return (
-                          <div 
-                            key={index}
-                            style={{ 
-                              minWidth: `${cellWidth}px`,
-                              borderRight: '1px solid #f0f0f0',
-                              padding: '4px 2px',
-                              display: 'flex',
-                              flexDirection: 'column',
-                              gap: '3px',
-                              justifyContent: 'flex-start',
-                              background: isToday ? '#e6f7ff' : 'transparent',
-                              position: 'relative'
-                            }}
-                          >
-                            {/* Active Projects - Bold and prominent */}
-                            {activeProjects.map((project) => {
-                              const projectStart = dayjs(project.assignedDate);
-                              const projectEnd = project.plannedReleaseDate 
-                                ? dayjs(project.plannedReleaseDate) 
-                                : dayjs().add(2, 'year');
-                              
-                              // Determine if this is start, middle, or end of project
-                              const isStart = date.isSame(projectStart, 'day') || 
-                                            (date.isSameOrBefore(projectStart) && endDate.isSameOrAfter(projectStart));
-                              const isEnd = endDate.isSame(projectEnd, 'day') || 
-                                          (date.isSameOrBefore(projectEnd) && endDate.isSameOrAfter(projectEnd));
-                              
-                              return (
-                                <Tooltip
-                                  key={`active-${project.projectId}`}
-                                  title={
-                                    <div>
-                                      <div><strong>{project.projectName}</strong></div>
-                                      <div style={{ color: '#52c41a', marginTop: 4 }}>✓ Active Assignment</div>
-                                      <div style={{ marginTop: 4 }}>
-                                        From: {formatDateWithNepali(projectStart)}
-                                      </div>
-                                      {project.plannedReleaseDate ? (
-                                        <div>Until: {formatDateWithNepali(projectEnd)}</div>
-                                      ) : (
-                                        <div>Until: Project deadline</div>
-                                      )}
-                                      <Button
-                                        type="primary"
-                                        size="small"
-                                        icon={<ClockCircleOutlined />}
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handleExtendClick(user, project);
-                                        }}
-                                        style={{ marginTop: 8, width: '100%' }}
-                                      >
-                                        Extend Assignment
-                                      </Button>
-                                    </div>
-                                  }
-                                >
-                                  <div
-                                    style={{
-                                      width: '100%',
-                                      height: '26px',
-                                      background: projectColors[project.projectId],
-                                      borderRadius: isStart && isEnd ? '4px' : isStart ? '4px 0 0 4px' : isEnd ? '0 4px 4px 0' : '0',
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      justifyContent: isStart ? 'flex-start' : 'center',
-                                      paddingLeft: isStart ? '6px' : '2px',
-                                      paddingRight: '2px',
-                                      cursor: 'pointer',
-                                      position: 'relative',
-                                      boxShadow: '0 2px 4px rgba(0,0,0,0.15)',
-                                      border: '1px solid rgba(0,0,0,0.1)'
-                                    }}
-                                  >
-                                    {isStart && (
-                                      <Text 
-                                        style={{ 
-                                          fontSize: '10px', 
-                                          color: '#fff', 
-                                          fontWeight: 'bold',
-                                          whiteSpace: 'nowrap',
-                                          overflow: 'hidden',
-                                          textOverflow: 'ellipsis',
-                                          textShadow: '0 1px 2px rgba(0,0,0,0.3)'
-                                        }}
-                                      >
-                                        {project.projectName.length > 15 
-                                          ? project.projectName.substring(0, 12) + '...'
-                                          : project.projectName
-                                        }
-                                      </Text>
-                                    )}
-                                  </div>
-                                </Tooltip>
-                              );
-                            })}
-                            
-                            {/* Inactive Projects Dropdown */}
-                            {inactiveProjects.length > 0 && (
-                              <Dropdown
-                                overlay={
-                                  <Menu>
-                                    {inactiveProjects.map((project) => {
-                                      const projectStart = dayjs(project.assignedDate);
-                                      const projectEnd = project.plannedReleaseDate 
-                                        ? dayjs(project.plannedReleaseDate) 
-                                        : dayjs().add(2, 'year');
-                                      
-                                      return (
-                                        <Menu.Item key={`inactive-menu-${project.projectId}`}>
-                                          <div style={{ padding: '4px 0' }}>
-                                            <div style={{ fontWeight: 'bold', color: projectColors[project.projectId] }}>
-                                              {project.projectName}
-                                            </div>
-                                            <div style={{ fontSize: '11px', color: '#8c8c8c' }}>
-                                              ○ Inactive / Released
-                                            </div>
-                                            <div style={{ fontSize: '11px', color: '#666' }}>
-                                              From: {formatDateWithNepali(projectStart, 'MMM DD, YY')}
-                                            </div>
-                                            <div style={{ fontSize: '11px', color: '#666' }}>
-                                              Until: {project.plannedReleaseDate 
-                                                ? formatDateWithNepali(projectEnd, 'MMM DD, YY')
-                                                : 'Project deadline'
-                                              }
-                                            </div>
-                                          </div>
-                                        </Menu.Item>
-                                      );
-                                    })}
-                                  </Menu>
-                                }
-                                trigger={['click']}
-                                placement="bottomLeft"
-                              >
-                                <div
-                                  style={{
-                                    width: '100%',
-                                    height: '20px',
-                                    background: 'rgba(0,0,0,0.04)',
-                                    borderRadius: '3px',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    cursor: 'pointer',
-                                    border: '1px dashed #d9d9d9',
-                                    gap: '4px'
-                                  }}
-                                >
-                                  <Text style={{ fontSize: '9px', color: '#8c8c8c' }}>
-                                    +{inactiveProjects.length} inactive
-                                  </Text>
-                                  <DownOutlined style={{ fontSize: '8px', color: '#8c8c8c' }} />
-                                </div>
-                              </Dropdown>
-                            )}
-                            
-                            {/* Hidden: Inactive projects are now only shown via dropdown above */}
-                            {false && inactiveProjects.map((project) => {
-                              const projectStart = dayjs(project.assignedDate);
-                              const projectEnd = project.plannedReleaseDate 
-                                ? dayjs(project.plannedReleaseDate) 
-                                : dayjs().add(2, 'year');
-                              
-                              // Determine if this is start, middle, or end of project
-                              const isStart = date.isSame(projectStart, 'day') || 
-                                            (date.isSameOrBefore(projectStart) && endDate.isSameOrAfter(projectStart));
-                              const isEnd = endDate.isSame(projectEnd, 'day') || 
-                                          (date.isSameOrBefore(projectEnd) && endDate.isSameOrAfter(projectEnd));
-                              
-                              return (
-                                <Tooltip
-                                  key={`inactive-${project.projectId}`}
-                                  title={
-                                    <div>
-                                      <div><strong>{project.projectName}</strong></div>
-                                      <div style={{ color: '#8c8c8c' }}>○ Inactive / Released</div>
-                                      <div>From: {formatDateWithNepali(projectStart)}</div>
-                                      {project.plannedReleaseDate ? (
-                                        <div>Until: {formatDateWithNepali(projectEnd)}</div>
-                                      ) : (
-                                        <div>Until: Project deadline</div>
-                                      )}
-                                    </div>
-                                  }
-                                >
-                                  <div
-                                    style={{
-                                      width: '100%',
-                                      height: '20px',
-                                      background: `linear-gradient(135deg, ${projectColors[project.projectId]}40 25%, transparent 25%, transparent 50%, ${projectColors[project.projectId]}40 50%, ${projectColors[project.projectId]}40 75%, transparent 75%, transparent)`,
-                                      backgroundSize: '8px 8px',
-                                      borderRadius: isStart && isEnd ? '3px' : isStart ? '3px 0 0 3px' : isEnd ? '0 3px 3px 0' : '0',
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      justifyContent: isStart ? 'flex-start' : 'center',
-                                      paddingLeft: isStart ? '6px' : '2px',
-                                      paddingRight: '2px',
-                                      cursor: 'pointer',
-                                      position: 'relative',
-                                      border: `1px dashed ${projectColors[project.projectId]}80`,
-                                      opacity: 0.6
-                                    }}
-                                  >
-                                    {isStart && (
-                                      <Text 
-                                        style={{ 
-                                          fontSize: '9px', 
-                                          color: projectColors[project.projectId], 
-                                          fontWeight: '500',
-                                          whiteSpace: 'nowrap',
-                                          overflow: 'hidden',
-                                          textOverflow: 'ellipsis',
-                                          fontStyle: 'italic'
-                                        }}
-                                      >
-                                        {project.projectName.length > 15 
-                                          ? project.projectName.substring(0, 12) + '...'
-                                          : project.projectName
-                                        }
-                                      </Text>
-                                    )}
-                                  </div>
-                                </Tooltip>
-                              );
-                            })}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Legend */}
-            <div style={{ marginTop: 24 }}>
-              <Title level={5}>Project Legend</Title>
-              <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-                <div>
-                  <Text strong style={{ marginRight: 12 }}>Active Assignments:</Text>
-                  <Space wrap size={[8, 8]}>
-                    {Object.entries(projectColors).map(([projectId, color]) => {
-                      // Find project name and check if it's active
-                      let projectName = projectId;
-                      let hasActive = false;
-                      filteredUsers.forEach(user => {
-                        const project = user.currentProjects.find(p => p.projectId === projectId && p.isActive);
-                        if (project) {
-                          projectName = project.projectName;
-                          hasActive = true;
-                        }
-                      });
-                      
-                      if (!hasActive) return null;
-                      
-                      return (
-                        <Tag
-                          key={projectId}
-                          color={color}
-                          style={{ 
-                            padding: '4px 12px', 
-                            fontSize: '12px',
-                            border: '1px solid rgba(0,0,0,0.1)'
-                          }}
-                        >
-                          {projectName}
-                        </Tag>
-                      );
-                    })}
-                  </Space>
-                </div>
-                
-                <div>
-                  <Text strong style={{ marginRight: 12 }}>Inactive/Released (Passive):</Text>
-                  <Space wrap size={[8, 8]}>
-                    {Object.entries(projectColors).map(([projectId, color]) => {
-                      // Find project name and check if it's inactive
-                      let projectName = projectId;
-                      let hasInactive = false;
-                      filteredUsers.forEach(user => {
-                        const project = user.currentProjects.find(p => p.projectId === projectId && !p.isActive);
-                        if (project) {
-                          projectName = project.projectName;
-                          hasInactive = true;
-                        }
-                      });
-                      
-                      if (!hasInactive) return null;
-                      
-                      return (
-                        <div
-                          key={projectId}
-                          style={{
-                            display: 'inline-block',
-                            padding: '4px 12px',
-                            fontSize: '12px',
-                            background: `linear-gradient(135deg, ${color}40 25%, transparent 25%, transparent 50%, ${color}40 50%, ${color}40 75%, transparent 75%, transparent)`,
-                            backgroundSize: '8px 8px',
-                            border: `1px dashed ${color}80`,
-                            borderRadius: '4px',
-                            opacity: 0.7,
-                            fontStyle: 'italic',
-                            color: color
-                          }}
-                        >
-                          {projectName}
-                        </div>
-                      );
-                    })}
-                  </Space>
-                </div>
-              </Space>
-            </div>
-
-            {/* Quick Stats */}
-            <div style={{ marginTop: 24 }}>
-              <Title level={5}>Quick Statistics & Actions</Title>
-              <Row gutter={[16, 16]}>
-                {filteredUsers.map(user => {
-                  const activeProjects = user.currentProjects.filter(p => p.isActive);
-                  
-                  return (
-                    <Col xs={24} sm={12} md={8} lg={6} key={user.userId}>
-                      <Card size="small">
-                        <Space direction="vertical" size={8} style={{ width: '100%' }}>
-                          <Text strong>{user.userName}</Text>
-                          <div>
-                            <Text type="secondary" style={{ fontSize: '12px' }}>
-                              Active Projects: 
-                            </Text>
-                            <Text strong style={{ fontSize: '14px', marginLeft: '8px' }}>
-                              {activeProjects.length}
-                            </Text>
-                          </div>
-                          {user.busyUntil && (
-                            <div>
-                              <Text type="secondary" style={{ fontSize: '12px' }}>
-                                Busy Until: 
-                              </Text>
-                              <Text strong style={{ fontSize: '12px', marginLeft: '8px' }}>
-                                {formatDateWithNepali(dayjs(user.busyUntil), 'MMM DD, YY')}
-                              </Text>
-                            </div>
-                          )}
-                          {activeProjects.length > 0 && (
-                            <div style={{ marginTop: 8 }}>
-                              <Text type="secondary" style={{ fontSize: '11px', display: 'block', marginBottom: 4 }}>
-                                Extend:
-                              </Text>
-                              <Space direction="vertical" size={4} style={{ width: '100%' }}>
-                                {activeProjects.map(project => (
-                                  <Button
-                                    key={project.projectId}
-                                    size="small"
-                                    icon={<ClockCircleOutlined />}
-                                    onClick={() => handleExtendClick(user, project)}
-                                    style={{ 
-                                      width: '100%', 
-                                      fontSize: '11px',
-                                      height: '24px'
-                                    }}
-                                  >
-                                    {project.projectName.length > 12 
-                                      ? project.projectName.substring(0, 12) + '...'
-                                      : project.projectName
-                                    }
-                                  </Button>
-                                ))}
-                              </Space>
-                            </div>
-                          )}
-                        </Space>
-                      </Card>
-                    </Col>
-                  );
-                })}
-              </Row>
-            </div>
-          </Space>
-        </Spin>
-      </Card>
-
-      {/* Extend Assignment Modal */}
-      <Modal
-        title={
-          <Space>
-            <ClockCircleOutlined />
-            <span>Extend User Assignment</span>
-          </Space>
-        }
-        open={extendModalVisible}
-        onOk={handleExtendSubmit}
-        onCancel={handleExtendCancel}
-        confirmLoading={extending}
-        okText="Extend Assignment"
-        cancelText="Cancel"
-        width={500}
-      >
-        {selectedExtension && (
-          <Space direction="vertical" size="large" style={{ width: '100%' }}>
-            <div>
-              <Text strong>User: </Text>
-              <Text>{selectedExtension.userName}</Text>
-            </div>
-            <div>
-              <Text strong>Project: </Text>
-              <Text>{selectedExtension.projectName}</Text>
-            </div>
-            <div>
-              <Text strong>Current Planned Release Date: </Text>
-              <Text>
-                {selectedExtension.currentDate 
-                  ? formatDateWithNepali(dayjs(selectedExtension.currentDate))
-                  : 'Not set'
-                }
-              </Text>
-            </div>
-            <div>
-              <Text strong>New Planned Release Date: </Text>
-              <DatePicker
-                value={newPlannedDate}
-                onChange={(date) => setNewPlannedDate(date)}
-                format="YYYY-MM-DD"
-                style={{ width: '100%', marginTop: 8 }}
-                disabledDate={(current) => {
-                  // Can't select dates before current planned date
-                  if (selectedExtension.currentDate) {
-                    return current && current.isBefore(dayjs(selectedExtension.currentDate), 'day');
-                  }
-                  return current && current.isBefore(dayjs(), 'day');
-                }}
-              />
-              {newPlannedDate && (
-                <Text type="secondary" style={{ fontSize: '12px', marginTop: 4, display: 'block' }}>
-                  New Date (Nepali): {getShortNepaliDate(newPlannedDate)}
-                  {selectedExtension.currentDate && (
-                    <span style={{ marginLeft: 8 }}>
-                      | Extension: {dayjs(newPlannedDate).diff(dayjs(selectedExtension.currentDate), 'day')} days
-                    </span>
-                  )}
-                </Text>
-              )}
-            </div>
-          </Space>
-        )}
-      </Modal>
-    </>
-  );
-};
-
-export default UserAvailabilityDashboard;
+import { useState, useEffect, useMemo } from 'react';import { Card, Tag, Space, Button, Typography, Row, Col, Spin, Select, DatePicker, Tooltip, Modal, message, Dropdown, Menu } from 'antd';import { UserOutlined, ReloadOutlined, ZoomInOutlined, ZoomOutOutlined, CalendarOutlined, ClockCircleOutlined, DownOutlined } from '@ant-design/icons';import axios from 'axios';import dayjs, { Dayjs } from 'dayjs';import isBetween from 'dayjs/plugin/isBetween';import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';import isSameOrAfter from 'dayjs/plugin/isSameOrAfter';import PageTitle from '@/components/PageTitle';import { DualDateConverter } from '@/utils/dateConverter';dayjs.extend(isBetween);dayjs.extend(isSameOrBefore);dayjs.extend(isSameOrAfter);const { RangePicker } = DatePicker;const { Title, Text } = Typography;const backendURI = import.meta.env.VITE_BACKEND_URI;interface ProjectInfo {  projectId: string;  projectName: string;  assignedDate: string;  plannedReleaseDate: string | null;  isActive: boolean;}interface UserAvailability {  userId: string;  userName: string;  userEmail: string;  role: string;  isAvailable: boolean;  busyUntil: string | null;  currentProjects: ProjectInfo[];}const UserAvailabilityDashboard = () => {  const [loading, setLoading] = useState(false);  const [userAvailability, setUserAvailability] = useState<UserAvailability[]>([]);  const [statusFilter, setStatusFilter] = useState<string>('all');  const [dateRange, setDateRange] = useState<[Dayjs, Dayjs]>([    dayjs().startOf('month'),    dayjs().add(6, 'month').endOf('month')  ]);  const [zoomLevel, setZoomLevel] = useState<number>(7); // Days per column  // Extension modal state  const [extendModalVisible, setExtendModalVisible] = useState(false);  const [selectedExtension, setSelectedExtension] = useState<{    userId: string;    userName: string;    projectId: string;    projectName: string;    currentDate: string | null;  } | null>(null);  const [newPlannedDate, setNewPlannedDate] = useState<Dayjs | null>(null);  const [extending, setExtending] = useState(false);  // Helper function to format date with Nepali  const formatDateWithNepali = (date: Dayjs, format: string = 'MMM DD, YYYY'): string => {    const nepaliDate = DualDateConverter.gregorianToNepali(date);    return `${date.format(format)} (${nepaliDate.format('YYYY-MM-DD', 'np')})`;  };  // Helper function to get short Nepali date  const getShortNepaliDate = (date: Dayjs): string => {    try {      const nepaliDate = DualDateConverter.gregorianToNepali(date);      return nepaliDate.format('YYYY-MM-DD', 'np');    } catch {      return '';    }  };  const fetchUserAvailability = async () => {    setLoading(true);    try {      const response = await axios.get(`${backendURI}/projects/availability/users`, {        headers: {          Authorization: `Bearer ${localStorage.getItem('token')}`        }      });      setUserAvailability(response.data);    } catch (error) {    } finally {      setLoading(false);    }  };  useEffect(() => {    fetchUserAvailability();  }, []);  // Filter users based on status and role  const filteredUsers = useMemo(() => {    return userAvailability.filter(user => {      // Exclude superuser      if (user.role.toLowerCase() === 'superuser') return false;      if (statusFilter === 'all') return true;      if (statusFilter === 'available') return user.isAvailable;      if (statusFilter === 'busy') return !user.isAvailable;      return true;    });  }, [userAvailability, statusFilter]);  // Generate date columns based on zoom level  const dateColumns = useMemo(() => {    const columns: Dayjs[] = [];    const startDate = dateRange[0];    const endDate = dateRange[1];    const daysCount = endDate.diff(startDate, 'day');    for (let i = 0; i <= daysCount; i += zoomLevel) {      columns.push(startDate.add(i, 'day'));    }    return columns;  }, [dateRange, zoomLevel]);  // Generate colors for projects  const projectColors = useMemo(() => {    const colors = [      '#1890ff', '#52c41a', '#faad14', '#f5222d', '#722ed1',      '#13c2c2', '#eb2f96', '#fa8c16', '#a0d911', '#2f54eb',      '#fa541c', '#597ef7', '#73d13d', '#ff85c0', '#ffc53d'    ];    const colorMap: { [key: string]: string } = {};    let colorIndex = 0;    filteredUsers.forEach(user => {      user.currentProjects.forEach(project => {        if (!colorMap[project.projectId]) {          colorMap[project.projectId] = colors[colorIndex % colors.length];          colorIndex++;        }      });    });    return colorMap;  }, [filteredUsers]);  // Get all projects that span across a date range cell  const getProjectsInRange = (user: UserAvailability, startDate: Dayjs, endDate: Dayjs): { active: ProjectInfo[], inactive: ProjectInfo[] } => {    const active: ProjectInfo[] = [];    const inactive: ProjectInfo[] = [];    user.currentProjects.forEach(project => {      const assignedDate = dayjs(project.assignedDate);      const releaseDate = project.plannedReleaseDate         ? dayjs(project.plannedReleaseDate)         : dayjs().add(2, 'year');      // Check if project overlaps with this date range      if (assignedDate.isSameOrBefore(endDate, 'day') && releaseDate.isSameOrAfter(startDate, 'day')) {        if (project.isActive) {          active.push(project);        } else {          inactive.push(project);        }      }    });    return { active, inactive };  };  const availableCount = userAvailability.filter(u => u.isAvailable).length;  const busyCount = userAvailability.filter(u => !u.isAvailable).length;  const handleZoomIn = () => {    setZoomLevel(prev => Math.max(1, prev - 1));  };  const handleZoomOut = () => {    setZoomLevel(prev => Math.min(30, prev + 2));  };  const handleExtendClick = (user: UserAvailability, project: ProjectInfo) => {    setSelectedExtension({      userId: user.userId,      userName: user.userName,      projectId: project.projectId,      projectName: project.projectName,      currentDate: project.plannedReleaseDate    });    setNewPlannedDate(project.plannedReleaseDate ? dayjs(project.plannedReleaseDate) : dayjs().add(1, 'month'));    setExtendModalVisible(true);  };  const handleExtendSubmit = async () => {    if (!selectedExtension || !newPlannedDate) {      message.error('Please select a new date');      return;    }    setExtending(true);    try {      await axios.patch(        `${backendURI}/projects/${selectedExtension.projectId}/users/${selectedExtension.userId}`,        {          plannedReleaseDate: newPlannedDate.format('YYYY-MM-DD')        },        {          headers: {            Authorization: `Bearer ${localStorage.getItem('token')}`          }        }      );      message.success(`Extended ${selectedExtension.userName}'s assignment to ${newPlannedDate.format('MMM DD, YYYY')}`);      setExtendModalVisible(false);      setSelectedExtension(null);      setNewPlannedDate(null);      // Refresh data      fetchUserAvailability();    } catch (error: any) {      message.error(error.response?.data?.message || 'Failed to extend assignment');    } finally {      setExtending(false);    }  };  const handleExtendCancel = () => {    setExtendModalVisible(false);    setSelectedExtension(null);    setNewPlannedDate(null);  };  const cellWidth = 120; // Width of each date cell  const userRowHeight = 60; // Height of each user row  return (    <>      <PageTitle        title="User Availability Timeline"        element={          <Button            icon={<ReloadOutlined />}            onClick={fetchUserAvailability}            loading={loading}          >            Refresh          </Button>        }      />      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>        <Col xs={24} sm={12} md={8}>          <Card>            <Space direction="vertical" size={0}>              <Text type="secondary">Total Users</Text>              <Title level={2} style={{ margin: 0 }}>                <UserOutlined style={{ marginRight: 8 }} />{userAvailability.length}              </Title>            </Space>          </Card>        </Col>        <Col xs={24} sm={12} md={8}>          <Card>            <Space direction="vertical" size={0}>              <Text type="secondary">Available Users</Text>              <Title level={2} style={{ margin: 0, color: '#52c41a' }}>                <UserOutlined style={{ marginRight: 8 }} />{availableCount}              </Title>            </Space>          </Card>        </Col>        <Col xs={24} sm={12} md={8}>          <Card>            <Space direction="vertical" size={0}>              <Text type="secondary">Busy Users</Text>              <Title level={2} style={{ margin: 0, color: '#ff4d4f' }}>                <UserOutlined style={{ marginRight: 8 }} />{busyCount}              </Title>            </Space>          </Card>        </Col>      </Row>      <Card style={{ marginBottom: 16 }}>        <Spin spinning={loading}>          <Space direction="vertical" size="large" style={{ width: '100%' }}>            {/* Controls */}            <Row gutter={[16, 16]} align="middle">              <Col xs={24} sm={12} md={6}>                <Space>                  <Text strong>Filter:</Text>                  <Select                    style={{ width: 150 }}                    value={statusFilter}                    onChange={setStatusFilter}                    options={[                      { label: 'All Users', value: 'all' },                      { label: 'Available Only', value: 'available' },                      { label: 'Busy Only', value: 'busy' },                    ]}                  />                </Space>              </Col>              <Col xs={24} sm={12} md={12}>                <Space>                  <Text strong>Date Range:</Text>                  <RangePicker                    value={dateRange}                    onChange={(dates) => {                      if (dates && dates[0] && dates[1]) {                        setDateRange([dates[0], dates[1]]);                      }                    }}                    format="YYYY-MM-DD"                  />                </Space>              </Col>              <Col xs={24} sm={12} md={6}>                <Space>                  <Tooltip title="Zoom In (More columns)">                    <Button                       icon={<ZoomInOutlined />}                       onClick={handleZoomIn}                      disabled={zoomLevel <= 1}                    />                  </Tooltip>                  <Tooltip title="Zoom Out (Fewer columns)">                    <Button                       icon={<ZoomOutOutlined />}                       onClick={handleZoomOut}                      disabled={zoomLevel >= 30}                    />                  </Tooltip>                  <Text type="secondary" style={{ fontSize: '12px' }}>                    {zoomLevel} day{zoomLevel > 1 ? 's' : ''}/col                  </Text>                </Space>              </Col>            </Row>            {/* Gantt Chart Timeline */}            <div style={{ marginTop: 24 }}>              <Title level={4}>                <CalendarOutlined /> Project Assignment Gantt Chart (Scroll horizontally)              </Title>              <div                 style={{                   overflowX: 'auto',                   overflowY: 'auto',                  border: '1px solid #f0f0f0',                  borderRadius: '8px',                  background: '#fafafa'                }}              >                <div style={{ display: 'inline-block', minWidth: '100%' }}>                  {/* Header Row - Dates */}                  <div style={{                     display: 'flex',                     position: 'sticky',                    top: 0,                    zIndex: 10,                    background: '#fff',                    borderBottom: '2px solid #d9d9d9'                  }}>                    {/* User column header */}                    <div style={{                       width: '200px',                       padding: '12px',                      fontWeight: 'bold',                      borderRight: '2px solid #d9d9d9',                      background: '#fafafa',                      position: 'sticky',                      left: 0,                      zIndex: 11                    }}>                      User / Date                    </div>                    {/* Date columns */}                    {dateColumns.map((date, index) => {                      const endDate = index < dateColumns.length - 1                         ? dateColumns[index + 1]                         : dateRange[1];                      const isToday = dayjs().isBetween(date, endDate, 'day', '[]');                      const nepaliDateStr = getShortNepaliDate(date);                      return (                        <div                           key={index}                          style={{                             minWidth: `${cellWidth}px`,                            padding: '8px',                            borderRight: '1px solid #f0f0f0',                            textAlign: 'center',                            background: isToday ? '#e6f7ff' : '#fff',                            fontWeight: isToday ? 'bold' : 'normal'                          }}                        >                          <div style={{ fontSize: '13px', fontWeight: '600' }}>                            {date.format('MMM DD')}                          </div>                          <div style={{ fontSize: '10px', color: '#1890ff', fontWeight: 500 }}>                            {nepaliDateStr}                          </div>                          <div style={{ fontSize: '11px', color: '#8c8c8c' }}>                            {date.format('YYYY')}                          </div>                          {isToday && (                            <Tag color="blue" style={{ fontSize: '10px', marginTop: '2px' }}>                              Today                            </Tag>                          )}                        </div>                      );                    })}                  </div>                  {/* User Rows */}                  {filteredUsers.map((user) => (                    <div                       key={user.userId}                      style={{                         display: 'flex',                        borderBottom: '1px solid #f0f0f0',                        minHeight: `${userRowHeight}px`,                        background: user.isAvailable ? '#f6ffed' : '#fff2e8'                      }}                    >                      {/* User Info Column */}                      <div style={{                         width: '200px',                        padding: '12px',                        borderRight: '2px solid #d9d9d9',                        position: 'sticky',                        left: 0,                        zIndex: 5,                        background: user.isAvailable ? '#f6ffed' : '#fff2e8',                        display: 'flex',                        flexDirection: 'column',                        justifyContent: 'center'                      }}>                        <Space direction="vertical" size={2}>                          <Text strong style={{ fontSize: '14px' }}>{user.userName}</Text>                          <Text type="secondary" style={{ fontSize: '11px' }}>{user.userEmail}</Text>                          <Space size={4}>                            <Tag                               color={user.isAvailable ? 'success' : 'error'}                              style={{ fontSize: '10px', margin: 0 }}                            >                              {user.isAvailable ? 'Available' : 'Busy'}                            </Tag>                            <Tag color="blue" style={{ fontSize: '10px', margin: 0 }}>                              {user.role}                            </Tag>                          </Space>                        </Space>                      </div>                      {/* Timeline Cells */}                      {dateColumns.map((date, index) => {                        const endDate = index < dateColumns.length - 1                           ? dateColumns[index + 1].subtract(1, 'day')                          : dateRange[1];                        const { active: activeProjects, inactive: inactiveProjects } = getProjectsInRange(user, date, endDate);                        const isToday = dayjs().isBetween(date, endDate, 'day', '[]');                        return (                          <div                             key={index}                            style={{                               minWidth: `${cellWidth}px`,                              borderRight: '1px solid #f0f0f0',                              padding: '4px 2px',                              display: 'flex',                              flexDirection: 'column',                              gap: '3px',                              justifyContent: 'flex-start',                              background: isToday ? '#e6f7ff' : 'transparent',                              position: 'relative'                            }}                          >                            {/* Active Projects - Bold and prominent */}                            {activeProjects.map((project) => {                              const projectStart = dayjs(project.assignedDate);                              const projectEnd = project.plannedReleaseDate                                 ? dayjs(project.plannedReleaseDate)                                 : dayjs().add(2, 'year');                              // Determine if this is start, middle, or end of project                              const isStart = date.isSame(projectStart, 'day') ||                                             (date.isSameOrBefore(projectStart) && endDate.isSameOrAfter(projectStart));                              const isEnd = endDate.isSame(projectEnd, 'day') ||                                           (date.isSameOrBefore(projectEnd) && endDate.isSameOrAfter(projectEnd));                              return (                                <Tooltip                                  key={`active-${project.projectId}`}                                  title={                                    <div>                                      <div><strong>{project.projectName}</strong></div>                                      <div style={{ color: '#52c41a', marginTop: 4 }}>✓ Active Assignment</div>                                      <div style={{ marginTop: 4 }}>                                        From: {formatDateWithNepali(projectStart)}                                      </div>                                      {project.plannedReleaseDate ? (                                        <div>Until: {formatDateWithNepali(projectEnd)}</div>                                      ) : (                                        <div>Until: Project deadline</div>                                      )}                                      <Button                                        type="primary"                                        size="small"                                        icon={<ClockCircleOutlined />}                                        onClick={(e) => {                                          e.stopPropagation();                                          handleExtendClick(user, project);                                        }}                                        style={{ marginTop: 8, width: '100%' }}                                      >                                        Extend Assignment                                      </Button>                                    </div>                                  }                                >                                  <div                                    style={{                                      width: '100%',                                      height: '26px',                                      background: projectColors[project.projectId],                                      borderRadius: isStart && isEnd ? '4px' : isStart ? '4px 0 0 4px' : isEnd ? '0 4px 4px 0' : '0',                                      display: 'flex',                                      alignItems: 'center',                                      justifyContent: isStart ? 'flex-start' : 'center',                                      paddingLeft: isStart ? '6px' : '2px',                                      paddingRight: '2px',                                      cursor: 'pointer',                                      position: 'relative',                                      boxShadow: '0 2px 4px rgba(0,0,0,0.15)',                                      border: '1px solid rgba(0,0,0,0.1)'                                    }}                                  >                                    {isStart && (                                      <Text                                         style={{                                           fontSize: '10px',                                           color: '#fff',                                           fontWeight: 'bold',                                          whiteSpace: 'nowrap',                                          overflow: 'hidden',                                          textOverflow: 'ellipsis',                                          textShadow: '0 1px 2px rgba(0,0,0,0.3)'                                        }}                                      >                                        {project.projectName.length > 15                                           ? project.projectName.substring(0, 12) + '...'                                          : project.projectName                                        }                                      </Text>                                    )}                                  </div>                                </Tooltip>                              );                            })}                            {/* Inactive Projects Dropdown */}                            {inactiveProjects.length > 0 && (                              <Dropdown                                overlay={                                  <Menu>                                    {inactiveProjects.map((project) => {                                      const projectStart = dayjs(project.assignedDate);                                      const projectEnd = project.plannedReleaseDate                                         ? dayjs(project.plannedReleaseDate)                                         : dayjs().add(2, 'year');                                      return (                                        <Menu.Item key={`inactive-menu-${project.projectId}`}>                                          <div style={{ padding: '4px 0' }}>                                            <div style={{ fontWeight: 'bold', color: projectColors[project.projectId] }}>                                              {project.projectName}                                            </div>                                            <div style={{ fontSize: '11px', color: '#8c8c8c' }}>                                              ○ Inactive / Released                                            </div>                                            <div style={{ fontSize: '11px', color: '#666' }}>                                              From: {formatDateWithNepali(projectStart, 'MMM DD, YY')}                                            </div>                                            <div style={{ fontSize: '11px', color: '#666' }}>                                              Until: {project.plannedReleaseDate                                                 ? formatDateWithNepali(projectEnd, 'MMM DD, YY')                                                : 'Project deadline'                                              }                                            </div>                                          </div>                                        </Menu.Item>                                      );                                    })}                                  </Menu>                                }                                trigger={['click']}                                placement="bottomLeft"                              >                                <div                                  style={{                                    width: '100%',                                    height: '20px',                                    background: 'rgba(0,0,0,0.04)',                                    borderRadius: '3px',                                    display: 'flex',                                    alignItems: 'center',                                    justifyContent: 'center',                                    cursor: 'pointer',                                    border: '1px dashed #d9d9d9',                                    gap: '4px'                                  }}                                >                                  <Text style={{ fontSize: '9px', color: '#8c8c8c' }}>                                    +{inactiveProjects.length} inactive                                  </Text>                                  <DownOutlined style={{ fontSize: '8px', color: '#8c8c8c' }} />                                </div>                              </Dropdown>                            )}                            {/* Hidden: Inactive projects are now only shown via dropdown above */}                            {false && inactiveProjects.map((project) => {                              const projectStart = dayjs(project.assignedDate);                              const projectEnd = project.plannedReleaseDate                                 ? dayjs(project.plannedReleaseDate)                                 : dayjs().add(2, 'year');                              // Determine if this is start, middle, or end of project                              const isStart = date.isSame(projectStart, 'day') ||                                             (date.isSameOrBefore(projectStart) && endDate.isSameOrAfter(projectStart));                              const isEnd = endDate.isSame(projectEnd, 'day') ||                                           (date.isSameOrBefore(projectEnd) && endDate.isSameOrAfter(projectEnd));                              return (                                <Tooltip                                  key={`inactive-${project.projectId}`}                                  title={                                    <div>                                      <div><strong>{project.projectName}</strong></div>                                      <div style={{ color: '#8c8c8c' }}>○ Inactive / Released</div>                                      <div>From: {formatDateWithNepali(projectStart)}</div>                                      {project.plannedReleaseDate ? (                                        <div>Until: {formatDateWithNepali(projectEnd)}</div>                                      ) : (                                        <div>Until: Project deadline</div>                                      )}                                    </div>                                  }                                >                                  <div                                    style={{                                      width: '100%',                                      height: '20px',                                      background: `linear-gradient(135deg, ${projectColors[project.projectId]}40 25%, transparent 25%, transparent 50%, ${projectColors[project.projectId]}40 50%, ${projectColors[project.projectId]}40 75%, transparent 75%, transparent)`,                                      backgroundSize: '8px 8px',                                      borderRadius: isStart && isEnd ? '3px' : isStart ? '3px 0 0 3px' : isEnd ? '0 3px 3px 0' : '0',                                      display: 'flex',                                      alignItems: 'center',                                      justifyContent: isStart ? 'flex-start' : 'center',                                      paddingLeft: isStart ? '6px' : '2px',                                      paddingRight: '2px',                                      cursor: 'pointer',                                      position: 'relative',                                      border: `1px dashed ${projectColors[project.projectId]}80`,                                      opacity: 0.6                                    }}                                  >                                    {isStart && (                                      <Text                                         style={{                                           fontSize: '9px',                                           color: projectColors[project.projectId],                                           fontWeight: '500',                                          whiteSpace: 'nowrap',                                          overflow: 'hidden',                                          textOverflow: 'ellipsis',                                          fontStyle: 'italic'                                        }}                                      >                                        {project.projectName.length > 15                                           ? project.projectName.substring(0, 12) + '...'                                          : project.projectName                                        }                                      </Text>                                    )}                                  </div>                                </Tooltip>                              );                            })}                          </div>                        );                      })}                    </div>                  ))}                </div>              </div>            </div>            {/* Legend */}            <div style={{ marginTop: 24 }}>              <Title level={5}>Project Legend</Title>              <Space direction="vertical" size="middle" style={{ width: '100%' }}>                <div>                  <Text strong style={{ marginRight: 12 }}>Active Assignments:</Text>                  <Space wrap size={[8, 8]}>                    {Object.entries(projectColors).map(([projectId, color]) => {                      // Find project name and check if it's active                      let projectName = projectId;                      let hasActive = false;                      filteredUsers.forEach(user => {                        const project = user.currentProjects.find(p => p.projectId === projectId && p.isActive);                        if (project) {                          projectName = project.projectName;                          hasActive = true;                        }                      });                      if (!hasActive) return null;                      return (                        <Tag                          key={projectId}                          color={color}                          style={{                             padding: '4px 12px',                             fontSize: '12px',                            border: '1px solid rgba(0,0,0,0.1)'                          }}                        >                          {projectName}                        </Tag>                      );                    })}                  </Space>                </div>                <div>                  <Text strong style={{ marginRight: 12 }}>Inactive/Released (Passive):</Text>                  <Space wrap size={[8, 8]}>                    {Object.entries(projectColors).map(([projectId, color]) => {                      // Find project name and check if it's inactive                      let projectName = projectId;                      let hasInactive = false;                      filteredUsers.forEach(user => {                        const project = user.currentProjects.find(p => p.projectId === projectId && !p.isActive);                        if (project) {                          projectName = project.projectName;                          hasInactive = true;                        }                      });                      if (!hasInactive) return null;                      return (                        <div                          key={projectId}                          style={{                            display: 'inline-block',                            padding: '4px 12px',                            fontSize: '12px',                            background: `linear-gradient(135deg, ${color}40 25%, transparent 25%, transparent 50%, ${color}40 50%, ${color}40 75%, transparent 75%, transparent)`,                            backgroundSize: '8px 8px',                            border: `1px dashed ${color}80`,                            borderRadius: '4px',                            opacity: 0.7,                            fontStyle: 'italic',                            color: color                          }}                        >                          {projectName}                        </div>                      );                    })}                  </Space>                </div>              </Space>            </div>            {/* Quick Stats */}            <div style={{ marginTop: 24 }}>              <Title level={5}>Quick Statistics & Actions</Title>              <Row gutter={[16, 16]}>                {filteredUsers.map(user => {                  const activeProjects = user.currentProjects.filter(p => p.isActive);                  return (                    <Col xs={24} sm={12} md={8} lg={6} key={user.userId}>                      <Card size="small">                        <Space direction="vertical" size={8} style={{ width: '100%' }}>                          <Text strong>{user.userName}</Text>                          <div>                            <Text type="secondary" style={{ fontSize: '12px' }}>                              Active Projects:                             </Text>                            <Text strong style={{ fontSize: '14px', marginLeft: '8px' }}>                              {activeProjects.length}                            </Text>                          </div>                          {user.busyUntil && (                            <div>                              <Text type="secondary" style={{ fontSize: '12px' }}>                                Busy Until:                               </Text>                              <Text strong style={{ fontSize: '12px', marginLeft: '8px' }}>                                {formatDateWithNepali(dayjs(user.busyUntil), 'MMM DD, YY')}                              </Text>                            </div>                          )}                          {activeProjects.length > 0 && (                            <div style={{ marginTop: 8 }}>                              <Text type="secondary" style={{ fontSize: '11px', display: 'block', marginBottom: 4 }}>                                Extend:                              </Text>                              <Space direction="vertical" size={4} style={{ width: '100%' }}>                                {activeProjects.map(project => (                                  <Button                                    key={project.projectId}                                    size="small"                                    icon={<ClockCircleOutlined />}                                    onClick={() => handleExtendClick(user, project)}                                    style={{                                       width: '100%',                                       fontSize: '11px',                                      height: '24px'                                    }}                                  >                                    {project.projectName.length > 12                                       ? project.projectName.substring(0, 12) + '...'                                      : project.projectName                                    }                                  </Button>                                ))}                              </Space>                            </div>                          )}                        </Space>                      </Card>                    </Col>                  );                })}              </Row>            </div>          </Space>        </Spin>      </Card>      {/* Extend Assignment Modal */}      <Modal        title={          <Space>            <ClockCircleOutlined />            <span>Extend User Assignment</span>          </Space>        }        open={extendModalVisible}        onOk={handleExtendSubmit}        onCancel={handleExtendCancel}        confirmLoading={extending}        okText="Extend Assignment"        cancelText="Cancel"        width={500}      >        {selectedExtension && (          <Space direction="vertical" size="large" style={{ width: '100%' }}>            <div>              <Text strong>User: </Text>              <Text>{selectedExtension.userName}</Text>            </div>            <div>              <Text strong>Project: </Text>              <Text>{selectedExtension.projectName}</Text>            </div>            <div>              <Text strong>Current Planned Release Date: </Text>              <Text>                {selectedExtension.currentDate                   ? formatDateWithNepali(dayjs(selectedExtension.currentDate))                  : 'Not set'                }              </Text>            </div>            <div>              <Text strong>New Planned Release Date: </Text>              <DatePicker                value={newPlannedDate}                onChange={(date) => setNewPlannedDate(date)}                format="YYYY-MM-DD"                style={{ width: '100%', marginTop: 8 }}                disabledDate={(current) => {                  // Can't select dates before current planned date                  if (selectedExtension.currentDate) {                    return current && current.isBefore(dayjs(selectedExtension.currentDate), 'day');                  }                  return current && current.isBefore(dayjs(), 'day');                }}              />              {newPlannedDate && (                <Text type="secondary" style={{ fontSize: '12px', marginTop: 4, display: 'block' }}>                  New Date (Nepali): {getShortNepaliDate(newPlannedDate)}                  {selectedExtension.currentDate && (                    <span style={{ marginLeft: 8 }}>                      | Extension: {dayjs(newPlannedDate).diff(dayjs(selectedExtension.currentDate), 'day')} days                    </span>                  )}                </Text>              )}            </div>          </Space>        )}      </Modal>    </>  );};export default UserAvailabilityDashboard;

@@ -44,9 +44,13 @@ const Sidebar = ({
           trigger={null}
           collapsible
           collapsed={collapsed}
-          width={250}
+          width={240}
           theme="light"
-          className="bg-none"
+          className="bg-none border-r border-gray-200"
+          style={{
+            overflowY: "auto",
+            maxHeight: "calc(100vh - 64px)",
+          }}
         >
           <Menu
             onClick={handleChangePage}

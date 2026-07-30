@@ -29,8 +29,15 @@ export interface MenuItem {
 }
 
 export const MenuItems = (): MenuProps[] => {
-  const { permissions } = useSession()
-// console.log(permissions)
+  const { permissions, profile } = useSession();
+
+  const isSuperOrAdmin =
+    profile?.role?.name === "superuser" ||
+    profile?.role?.name === "administrator" ||
+    _.some(permissions, { resource: "admin" });
+
+  const hasReportsPermission =
+    isSuperOrAdmin || _.some(permissions, { resource: "reports" });
 
   const hasWorklogPagePermission = (permissions || []).some((perm: any) => {
     if (typeof perm !== "object") return false;
@@ -149,26 +156,27 @@ export const MenuItems = (): MenuProps[] => {
       resource: "client-users",
       icon: React.createElement(UserSwitchOutlined),
     },
-    // {
-    //   key: "/reports",
-    //   label: "Reports",
-    //   resource: "reports",
-    //   icon: React.createElement(UserOutlined),
-    // },
-  ]
+    {
+      key: "/reports",
+      label: "Reports",
+      resource: "reports",
+      visible: hasReportsPermission,
+      icon: React.createElement(BarChartOutlined),
+    },
+  ];
 
-  const filteredItems = _.filter(items, item => {
-    if ((item as any).visible === false) {
-      return false;
+  const filteredItems = _.filter(items, (item) => {
+    if ((item as any).visible !== undefined) {
+      return (item as any).visible;
     }
 
-    // Always show attendance for authenticated users
+    // Always show attendance & notice board for authenticated users
     if (item.resource === "default") {
       return true;
     }
-    // For other items, use the original logic
+    // For other items, use original logic
     return _.some(permissions, { resource: item.resource });
-  }).map(item => {
+  }).map((item) => {
     // Strip custom properties that shouldn't go to DOM
     const { visible, resource, ...rest } = item;
     return rest;

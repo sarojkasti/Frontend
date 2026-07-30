@@ -264,12 +264,19 @@ const ClientTable = ({ status }: ClientTableProps) => {
     {
       title: "Contact",
       key: "contact",
-      render: (_: any, record: any) => (
-        <div>
-          <div>{record.email || '-'}</div>
-          <div>{record.mobileNo || '-'}</div>
-        </div>
-      ),
+      render: (_: any, record: any) => {
+        const phone = record.mobileNo || record.telephoneNo || record.phone;
+        const email = record.email;
+        const displayVal = phone || email || '-';
+        const tooltipText = phone && email ? `Email: ${email}` : (email ? `Email: ${email}` : (phone ? `Phone: ${phone}` : undefined));
+        return (
+          <Tooltip title={tooltipText}>
+            <span style={{ cursor: 'pointer', whiteSpace: 'nowrap' }}>
+              {displayVal}
+            </span>
+          </Tooltip>
+        );
+      },
     },
     {
       title: "Action", 

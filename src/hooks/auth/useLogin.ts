@@ -1,39 +1,1 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { login } from "../../service/auth.service";
-import { useNavigate } from "react-router-dom";
-import { useSession } from "@/context/SessionContext";
-
-export const useLogin = () => {
-  const navigate = useNavigate();
-  const queryClient = useQueryClient();
-  const { refreshAuth } = useSession();
-  
-  return useMutation({
-    mutationFn: login,
-    onSuccess: (response) => {
-      console.log('Login response:', response);
-      
-      // Token is already stored in localStorage by the login service
-      // Verify it's there
-      const token = localStorage.getItem('access_token');
-      if (!token) {
-        console.error('Token was not stored properly after login');
-      } else {
-        console.log('Token confirmed in localStorage after login');
-      }
-      
-      // Invalidate the profile query to force a fresh fetch
-      queryClient.invalidateQueries({ queryKey: ['profile'] });
-      
-      // Refresh the authentication state in SessionContext
-      if (refreshAuth) {
-        refreshAuth();
-      }
-      
-      // Small delay to ensure state updates before navigation
-      setTimeout(() => {
-        navigate("/", { replace: true });
-      }, 100);
-    },
-  });
-};
+import { useMutation, useQueryClient } from "@tanstack/react-query";import { login } from "../../service/auth.service";import { useNavigate } from "react-router-dom";import { useSession } from "@/context/SessionContext";export const useLogin = () => {  const navigate = useNavigate();  const queryClient = useQueryClient();  const { refreshAuth } = useSession();  return useMutation({    mutationFn: login,    onSuccess: (response) => {      // Token is already stored in localStorage by the login service      // Verify it's there      const token = localStorage.getItem('access_token');      if (!token) {      } else {      }      // Invalidate the profile query to force a fresh fetch      queryClient.invalidateQueries({ queryKey: ['profile'] });      // Refresh the authentication state in SessionContext      if (refreshAuth) {        refreshAuth();      }      // Small delay to ensure state updates before navigation      setTimeout(() => {        navigate("/", { replace: true });      }, 100);    },  });};

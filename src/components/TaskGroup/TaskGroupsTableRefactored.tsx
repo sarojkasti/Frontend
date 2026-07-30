@@ -1,435 +1,1 @@
-import React, { useState, useEffect, useMemo } from "react";
-import { Table, Button, Space, Modal, Empty, message } from "antd";
-import { DeleteOutlined, EditOutlined, PlusOutlined } from "@ant-design/icons";
-import { useQueryClient } from "@tanstack/react-query";
-import { TaskGroupType } from "@/types/taskSuper";
-import { TaskGroupsTableProps } from "./types";
-import TaskGroupForm from "./TaskGroupForm";
-import TaskTemplatForm from "../TaskTemplate/TaskTemplatForm";
-import { deleteTaskTemplate } from "@/service/tasktemplate.service";
-import { deleteTaskGroup } from "@/service/taskgroup.service";
-import TemplateExpandedView from "./components/TemplateExpandedView";
-import ProjectAssignmentModal from "./components/ProjectAssignmentModal";
-
-const TaskGroupsTable: React.FC<TaskGroupsTableProps> = ({
-  taskSuperId,
-  onEdit,
-  data,
-  page = 1,
-  pageSize = 10,
-  onPageChange = () => {},
-  onPageSizeChange = () => {},
-}) => {
-  const [taskGroups, setTaskGroups] = useState(data || []);
-  const [modal, contextHolder] = Modal.useModal();
-  const [editModalVisible, setEditModalVisible] = useState(false);
-  const [currentTaskGroup, setCurrentTaskGroup] = useState<TaskGroupType | undefined>(undefined);
-  const [templateModalVisible, setTemplateModalVisible] = useState(false);
-  const [currentTaskGroupForTemplate, setCurrentTaskGroupForTemplate] = useState<TaskGroupType | undefined>(undefined);
-  const [templateFormKey, setTemplateFormKey] = useState(Date.now()); // Add key for form reset
-  const [selectedGroups, setSelectedGroups] = useState<React.Key[]>([]);
-  const [editTemplateModalVisible, setEditTemplateModalVisible] = useState(false);
-  const [currentTemplate, setCurrentTemplate] = useState<any>(undefined);
-  // Create state objects to store selected rows for each group and subtask
-  const [selectedTemplateRows, setSelectedTemplateRows] = useState<Record<string, React.Key[]>>({});
-  const [selectedSubtaskRows, setSelectedSubtaskRows] = useState<Record<string, React.Key[]>>({});
-  
-  // State for project assignment
-  const [projectAssignModalVisible, setProjectAssignModalVisible] = useState(false);
-  
-  const queryClient = useQueryClient();
-  
-  // Update taskGroups when data prop changes
-  useEffect(() => {
-    if (data) {
-      setTaskGroups(data);
-    }
-  }, [data]);
-
-  // Update selected templates and subtasks when groups are selected
-  useEffect(() => {
-    // Only process if we have task groups
-    if (!taskGroups || taskGroups.length === 0) return;
-    
-    // REMOVED: Auto-selection of templates and subtasks when groups are selected
-    // Templates and subtasks must be explicitly selected by the user
-  }, [selectedGroups, taskGroups]);
-  
-  // REMOVED: Auto-selection of parent groups when templates are selected
-  // Parent groups must be explicitly selected by the user
-
-  // Helper function to check if there are any selected groups, templates or subtasks
-  const hasSelectedItems = useMemo(() => {
-    const hasGroups = selectedGroups.length > 0;
-    const hasTemplates = Object.values(selectedTemplateRows).some(rows => rows.length > 0);
-    const hasSubtasks = Object.values(selectedSubtaskRows).some(rows => rows.length > 0);
-    return hasGroups || hasTemplates || hasSubtasks;
-  }, [selectedGroups, selectedTemplateRows, selectedSubtaskRows]);
-
-  // Open project assignment modal
-  const handleOpenProjectAssignModal = () => {
-    if (!hasSelectedItems) {
-      message.warning('Please select at least one template or subtask to add to a project');
-      return;
-    }
-    setProjectAssignModalVisible(true);
-  };
-
-  const handleDelete = (groupId: string) => {
-    // Find the task group to check if it has templates
-    const taskGroupToDelete = taskGroups.find((group: TaskGroupType) => group.id === groupId);
-    const templates = taskGroupToDelete?.tasktemplate || taskGroupToDelete?.taskTemplates || [];
-    const hasTemplates = templates.length > 0;
-    
-    modal.confirm({
-      title: "Are you sure you want to delete this task group?",
-      content: hasTemplates 
-        ? `This task group has ${templates.length} task template(s). All associated task templates will be permanently deleted. This action cannot be undone.`
-        : "This action cannot be undone.",
-      okText: "Yes, Delete",
-      okType: "danger",
-      cancelText: "No",
-      onOk: () => {
-        console.log("Deleting task group with ID:", groupId);
-        return new Promise<void>((resolve, reject) => {
-          deleteTaskGroup({ id: groupId })
-            .then(() => {
-              console.log('Delete completed successfully');
-              message.success("Task group and associated task templates deleted successfully");
-              // Refresh the task groups data
-              queryClient.invalidateQueries({ queryKey: ["taskGroups", taskSuperId] });
-              resolve();
-            })
-            .catch((error) => {
-              console.error('Delete failed:', error);
-              message.error(error.response?.data?.message || "Failed to delete task group");
-              reject(error);
-            });
-        });
-      },
-    });
-  };
-
-  const handleEdit = (record: TaskGroupType) => {
-    setCurrentTaskGroup(record);
-    setEditModalVisible(true);
-  };
-  
-  const handleEditModalCancel = () => {
-    setEditModalVisible(false);
-    setCurrentTaskGroup(undefined);
-    // Refresh the task groups data
-    queryClient.invalidateQueries({ queryKey: ["taskGroups", taskSuperId] });
-  };
-  
-  // This function resets the form and opens the modal
-  const handleAddTemplate = (record: TaskGroupType) => {
-    setCurrentTaskGroupForTemplate(record);
-    setTemplateFormKey(Date.now()); // Generate new key to force form reset
-    setTemplateModalVisible(true);
-  };
-  
-  const handleTemplateModalCancel = () => {
-    setTemplateModalVisible(false);
-    setCurrentTaskGroupForTemplate(undefined);
-    // Refresh the task groups data
-    queryClient.invalidateQueries({ queryKey: ["taskGroups", taskSuperId] });
-  };
-  
-  const handleAddSubtask = (templateId: string, groupId: string) => {
-    // Find the task group and the template to get necessary data
-    const taskGroup = taskGroups.find((g: any) => g.id === groupId);
-    if (!taskGroup) return;
-    
-    const template = (taskGroup.tasktemplate || taskGroup.taskTemplates || []).find((t: any) => t.id === templateId);
-    if (!template) return;
-    
-    setCurrentTaskGroupForTemplate(taskGroup);
-    
-    // Set up the subtask template object to be passed to the edit/create form
-    setCurrentTemplate({
-      groupId,
-      parentTaskId: templateId,
-      taskType: 'task',
-    });
-    
-    setTemplateFormKey(Date.now()); // Generate new key to force form reset
-    setEditTemplateModalVisible(true); // Open edit modal which can act as subtask create modal
-  };
-  
-  const handleEditTemplate = (template: any) => {
-    // Create a copy of the template with guaranteed groupId field
-    // This ensures groupId is always available when the template is edited
-    const templateWithGroup = {
-      ...template,
-      // If template already has groupId, use it, otherwise try to extract from parent record
-      groupId: template.groupId || template.group?.id || 
-        // Try to find the containing group from taskGroups array
-        taskGroups.find(group => 
-          (group.tasktemplate || group.taskTemplates || []).some((t: any) => t.id === template.id)
-        )?.id
-    };
-    
-    console.log('Editing template with enhanced data:', {
-      originalTemplate: template,
-      enhancedTemplate: templateWithGroup
-    });
-    
-    setCurrentTemplate(templateWithGroup);
-    setEditTemplateModalVisible(true);
-  };
-  
-  const handleEditTemplateModalCancel = () => {
-    setEditTemplateModalVisible(false);
-    setCurrentTemplate(undefined);
-    // Refresh the task groups data
-    queryClient.invalidateQueries({ queryKey: ["taskGroups", taskSuperId] });
-  };
-  
-  const handleDeleteTemplate = (templateId: string) => {
-    modal.confirm({
-      title: "Are you sure you want to delete this task template?",
-      content: "This action cannot be undone and will affect all associated subtasks.",
-      okText: "Yes",
-      okType: "danger",
-      cancelText: "No",
-      onOk() {
-        // Call API to delete task template
-        deleteTaskTemplate({ id: templateId })
-          .then(() => {
-            message.success("Task template deleted successfully");
-            // Refresh the task groups data
-            queryClient.invalidateQueries({ queryKey: ["taskGroups", taskSuperId] });
-          })
-          .catch((error) => {
-            message.error("Failed to delete task template: " + error.message);
-          });
-      },
-    });
-  };
-
-  const handleProjectAssignmentSuccess = (projectId: string) => {
-    // Clear selections
-    setSelectedGroups([]);
-    setSelectedTemplateRows({});
-    setSelectedSubtaskRows({});
-    // Refresh data
-    queryClient.invalidateQueries({ queryKey: ['taskGroups', taskSuperId] });
-    if (projectId) {
-      queryClient.invalidateQueries({ queryKey: ['project_task', projectId] });
-    }
-  };
-
-  const expandedRowRender = (record: TaskGroupType) => {
-    return (
-      <TemplateExpandedView
-        record={record}
-        selectedTemplateRows={selectedTemplateRows}
-        setSelectedTemplateRows={setSelectedTemplateRows}
-        selectedSubtaskRows={selectedSubtaskRows}
-        setSelectedSubtaskRows={setSelectedSubtaskRows}
-        handleAddTemplate={handleAddTemplate}
-        handleEditTemplate={handleEditTemplate}
-        handleDeleteTemplate={handleDeleteTemplate}
-      />
-    );
-  };
-
-  const columns = [
-    {
-      title: "Group Name",
-      dataIndex: "name",
-      key: "name",
-    },
-    {
-      title: "Description",
-      dataIndex: "description",
-      key: "description",
-      ellipsis: true,
-    },
-    {
-      title: "Actions",
-      key: "actions",
-      width: 120,
-      render: (_: any, record: TaskGroupType) => (
-        <Space size="small">
-          <Button
-            type="text"
-            icon={<EditOutlined />}
-            onClick={(e) => {
-              e.stopPropagation();
-              handleEdit(record);
-            }}
-            title="Edit Group"
-          />
-          <Button
-            type="text"
-            danger
-            icon={<DeleteOutlined />}
-            onClick={(e) => {
-              e.stopPropagation();
-              handleDelete(record.id);
-            }}
-            title="Delete Group"
-          />
-        </Space>
-      ),
-    },
-  ];
-
-  if (!taskGroups || taskGroups.length === 0) {
-    return (
-      <Empty description="No task groups found">
-        {onEdit && <Button type="primary" onClick={() => onEdit("")}>Add Task Group</Button>}
-      </Empty>
-    );
-  }
-
-  return (
-    <div>
-      {contextHolder}
-      {/* Add "Add to Project" button only when items are selected */}
-      {hasSelectedItems && (
-        <div className="mb-4">
-          <Button 
-            type="primary" 
-            onClick={handleOpenProjectAssignModal}
-            icon={<PlusOutlined />}
-          >
-            Add to Project
-          </Button>
-        </div>
-      )}
-      <Table 
-        columns={columns} 
-        dataSource={taskGroups.sort((a, b) => {
-          // Primary sort by rank
-          const rankDiff = (a.rank || 0) - (b.rank || 0);
-          if (rankDiff !== 0) return rankDiff;
-          // Secondary sort by name
-          return (a.name || '').localeCompare(b.name || '');
-        })} 
-        rowKey="id" 
-        pagination={{
-          current: page,
-          pageSize: pageSize,
-          showSizeChanger: true,
-          onChange: (newPage, newPageSize) => {
-            onPageChange(newPage);
-            onPageSizeChange(newPageSize);
-          }
-        }}
-        rowSelection={{
-          selectedRowKeys: selectedGroups,
-          onChange: (selectedRowKeys) => {
-            // Smart selection: when a group is selected, select all its templates and subtasks
-            const newlySelected = selectedRowKeys.filter(key => !selectedGroups.includes(key));
-            const newlyDeselected = selectedGroups.filter(key => !selectedRowKeys.includes(key));
-
-            // Prepare new state for templates and subtasks
-            let newSelectedTemplateRows = { ...selectedTemplateRows };
-            let newSelectedSubtaskRows = { ...selectedSubtaskRows };
-
-            // Handle group selection
-            newlySelected.forEach(groupId => {
-              const groupIdStr = String(groupId);
-              const group = taskGroups.find(g => g.id === groupIdStr);
-              if (!group) return;
-              // Get templates (handle both tasktemplate and taskTemplates)
-              const templates = (group.tasktemplate || group.taskTemplates || []).filter((t: any) => t.taskType === 'story' || !t.taskType);
-              newSelectedTemplateRows[groupIdStr] = templates.map((t: any) => t.id);
-              // For each template, select all its subtasks
-              templates.forEach((template: any) => {
-                if (template.subTasks && template.subTasks.length > 0) {
-                  const subtaskKey = `${groupIdStr}:${template.id}`;
-                  newSelectedSubtaskRows[subtaskKey] = template.subTasks.map((s: any) => s.id);
-                }
-              });
-            });
-
-            // Handle group deselection
-            newlyDeselected.forEach(groupId => {
-              const groupIdStr = String(groupId);
-              delete newSelectedTemplateRows[groupIdStr];
-              // Remove all subtask selections for this group
-              const group = taskGroups.find(g => g.id === groupIdStr);
-              if (!group) return;
-              const templates = (group.tasktemplate || group.taskTemplates || []).filter((t: any) => t.taskType === 'story' || !t.taskType);
-              templates.forEach((template: any) => {
-                const subtaskKey = `${groupIdStr}:${template.id}`;
-                delete newSelectedSubtaskRows[subtaskKey];
-              });
-            });
-
-            setSelectedGroups(selectedRowKeys);
-            setSelectedTemplateRows(newSelectedTemplateRows);
-            setSelectedSubtaskRows(newSelectedSubtaskRows);
-          }
-        }}
-        expandable={{
-          expandedRowRender,
-          expandRowByClick: true,
-        }}
-      />
-      
-      <Modal
-        title={currentTaskGroup ? "Edit Task Group" : "Add Task Group"}
-        open={editModalVisible}
-        onCancel={handleEditModalCancel}
-        footer={null}
-        width={600}
-      >
-        <TaskGroupForm 
-          handleCancel={handleEditModalCancel} 
-          fixedTaskSuperId={taskSuperId}
-          editTaskGroupData={currentTaskGroup}
-        />
-      </Modal>
-
-      <Modal
-        title="Add Task"
-        open={templateModalVisible}
-        onCancel={handleTemplateModalCancel}
-        footer={null}
-        width={600}
-        destroyOnClose={true}
-      >
-        <TaskTemplatForm 
-          key={templateFormKey}
-          handleCancel={handleTemplateModalCancel}
-          groupId={currentTaskGroupForTemplate?.id}
-        />
-      </Modal>
-
-      <Modal
-        title={currentTemplate?.id ? "Edit Task Template" : "Add Sub Task"}
-        open={editTemplateModalVisible}
-        onCancel={handleEditTemplateModalCancel}
-        footer={null}
-        width={600}
-        destroyOnClose={true}
-      >
-        <TaskTemplatForm 
-          key={`edit-template-${currentTemplate?.id || 'new-subtask'}`}
-          handleCancel={handleEditTemplateModalCancel}
-          groupId={currentTemplate?.groupId}
-          editTaskTemplateData={currentTemplate}
-        />
-      </Modal>
-      
-      {/* Project Assignment Modal */}
-      <ProjectAssignmentModal
-        visible={projectAssignModalVisible}
-        onCancel={() => setProjectAssignModalVisible(false)}
-        taskSuperId={taskSuperId}
-        selectedGroups={selectedGroups}
-        selectedTemplateRows={selectedTemplateRows}
-        selectedSubtaskRows={selectedSubtaskRows}
-        taskGroups={taskGroups}
-        onSuccess={handleProjectAssignmentSuccess}
-      />
-    </div>
-  );
-};
-
-export default TaskGroupsTable;
+import React, { useState, useEffect, useMemo } from "react";import { Table, Button, Space, Modal, Empty, message } from "antd";import { DeleteOutlined, EditOutlined, PlusOutlined } from "@ant-design/icons";import { useQueryClient } from "@tanstack/react-query";import { TaskGroupType } from "@/types/taskSuper";import { TaskGroupsTableProps } from "./types";import TaskGroupForm from "./TaskGroupForm";import TaskTemplatForm from "../TaskTemplate/TaskTemplatForm";import { deleteTaskTemplate } from "@/service/tasktemplate.service";import { deleteTaskGroup } from "@/service/taskgroup.service";import TemplateExpandedView from "./components/TemplateExpandedView";import ProjectAssignmentModal from "./components/ProjectAssignmentModal";const TaskGroupsTable: React.FC<TaskGroupsTableProps> = ({  taskSuperId,  onEdit,  data,  page = 1,  pageSize = 10,  onPageChange = () => {},  onPageSizeChange = () => {},}) => {  const [taskGroups, setTaskGroups] = useState(data || []);  const [modal, contextHolder] = Modal.useModal();  const [editModalVisible, setEditModalVisible] = useState(false);  const [currentTaskGroup, setCurrentTaskGroup] = useState<TaskGroupType | undefined>(undefined);  const [templateModalVisible, setTemplateModalVisible] = useState(false);  const [currentTaskGroupForTemplate, setCurrentTaskGroupForTemplate] = useState<TaskGroupType | undefined>(undefined);  const [templateFormKey, setTemplateFormKey] = useState(Date.now()); // Add key for form reset  const [selectedGroups, setSelectedGroups] = useState<React.Key[]>([]);  const [editTemplateModalVisible, setEditTemplateModalVisible] = useState(false);  const [currentTemplate, setCurrentTemplate] = useState<any>(undefined);  // Create state objects to store selected rows for each group and subtask  const [selectedTemplateRows, setSelectedTemplateRows] = useState<Record<string, React.Key[]>>({});  const [selectedSubtaskRows, setSelectedSubtaskRows] = useState<Record<string, React.Key[]>>({});  // State for project assignment  const [projectAssignModalVisible, setProjectAssignModalVisible] = useState(false);  const queryClient = useQueryClient();  // Update taskGroups when data prop changes  useEffect(() => {    if (data) {      setTaskGroups(data);    }  }, [data]);  // Update selected templates and subtasks when groups are selected  useEffect(() => {    // Only process if we have task groups    if (!taskGroups || taskGroups.length === 0) return;    // REMOVED: Auto-selection of templates and subtasks when groups are selected    // Templates and subtasks must be explicitly selected by the user  }, [selectedGroups, taskGroups]);  // REMOVED: Auto-selection of parent groups when templates are selected  // Parent groups must be explicitly selected by the user  // Helper function to check if there are any selected groups, templates or subtasks  const hasSelectedItems = useMemo(() => {    const hasGroups = selectedGroups.length > 0;    const hasTemplates = Object.values(selectedTemplateRows).some(rows => rows.length > 0);    const hasSubtasks = Object.values(selectedSubtaskRows).some(rows => rows.length > 0);    return hasGroups || hasTemplates || hasSubtasks;  }, [selectedGroups, selectedTemplateRows, selectedSubtaskRows]);  // Open project assignment modal  const handleOpenProjectAssignModal = () => {    if (!hasSelectedItems) {      message.warning('Please select at least one template or subtask to add to a project');      return;    }    setProjectAssignModalVisible(true);  };  const handleDelete = (groupId: string) => {    // Find the task group to check if it has templates    const taskGroupToDelete = taskGroups.find((group: TaskGroupType) => group.id === groupId);    const templates = taskGroupToDelete?.tasktemplate || taskGroupToDelete?.taskTemplates || [];    const hasTemplates = templates.length > 0;    modal.confirm({      title: "Are you sure you want to delete this task group?",      content: hasTemplates         ? `This task group has ${templates.length} task template(s). All associated task templates will be permanently deleted. This action cannot be undone.`        : "This action cannot be undone.",      okText: "Yes, Delete",      okType: "danger",      cancelText: "No",      onOk: () => {        return new Promise<void>((resolve, reject) => {          deleteTaskGroup({ id: groupId })            .then(() => {              message.success("Task group and associated task templates deleted successfully");              // Refresh the task groups data              queryClient.invalidateQueries({ queryKey: ["taskGroups", taskSuperId] });              resolve();            })            .catch((error) => {              message.error(error.response?.data?.message || "Failed to delete task group");              reject(error);            });        });      },    });  };  const handleEdit = (record: TaskGroupType) => {    setCurrentTaskGroup(record);    setEditModalVisible(true);  };  const handleEditModalCancel = () => {    setEditModalVisible(false);    setCurrentTaskGroup(undefined);    // Refresh the task groups data    queryClient.invalidateQueries({ queryKey: ["taskGroups", taskSuperId] });  };  // This function resets the form and opens the modal  const handleAddTemplate = (record: TaskGroupType) => {    setCurrentTaskGroupForTemplate(record);    setTemplateFormKey(Date.now()); // Generate new key to force form reset    setTemplateModalVisible(true);  };  const handleTemplateModalCancel = () => {    setTemplateModalVisible(false);    setCurrentTaskGroupForTemplate(undefined);    // Refresh the task groups data    queryClient.invalidateQueries({ queryKey: ["taskGroups", taskSuperId] });  };  const handleAddSubtask = (templateId: string, groupId: string) => {    // Find the task group and the template to get necessary data    const taskGroup = taskGroups.find((g: any) => g.id === groupId);    if (!taskGroup) return;    const template = (taskGroup.tasktemplate || taskGroup.taskTemplates || []).find((t: any) => t.id === templateId);    if (!template) return;    setCurrentTaskGroupForTemplate(taskGroup);    // Set up the subtask template object to be passed to the edit/create form    setCurrentTemplate({      groupId,      parentTaskId: templateId,      taskType: 'task',    });    setTemplateFormKey(Date.now()); // Generate new key to force form reset    setEditTemplateModalVisible(true); // Open edit modal which can act as subtask create modal  };  const handleEditTemplate = (template: any) => {    // Create a copy of the template with guaranteed groupId field    // This ensures groupId is always available when the template is edited    const templateWithGroup = {      ...template,      // If template already has groupId, use it, otherwise try to extract from parent record      groupId: template.groupId || template.group?.id ||         // Try to find the containing group from taskGroups array        taskGroups.find(group =>           (group.tasktemplate || group.taskTemplates || []).some((t: any) => t.id === template.id)        )?.id    };    setCurrentTemplate(templateWithGroup);    setEditTemplateModalVisible(true);  };  const handleEditTemplateModalCancel = () => {    setEditTemplateModalVisible(false);    setCurrentTemplate(undefined);    // Refresh the task groups data    queryClient.invalidateQueries({ queryKey: ["taskGroups", taskSuperId] });  };  const handleDeleteTemplate = (templateId: string) => {    modal.confirm({      title: "Are you sure you want to delete this task template?",      content: "This action cannot be undone and will affect all associated subtasks.",      okText: "Yes",      okType: "danger",      cancelText: "No",      onOk() {        // Call API to delete task template        deleteTaskTemplate({ id: templateId })          .then(() => {            message.success("Task template deleted successfully");            // Refresh the task groups data            queryClient.invalidateQueries({ queryKey: ["taskGroups", taskSuperId] });          })          .catch((error) => {            message.error("Failed to delete task template: " + error.message);          });      },    });  };  const handleProjectAssignmentSuccess = (projectId: string) => {    // Clear selections    setSelectedGroups([]);    setSelectedTemplateRows({});    setSelectedSubtaskRows({});    // Refresh data    queryClient.invalidateQueries({ queryKey: ['taskGroups', taskSuperId] });    if (projectId) {      queryClient.invalidateQueries({ queryKey: ['project_task', projectId] });    }  };  const expandedRowRender = (record: TaskGroupType) => {    return (      <TemplateExpandedView        record={record}        selectedTemplateRows={selectedTemplateRows}        setSelectedTemplateRows={setSelectedTemplateRows}        selectedSubtaskRows={selectedSubtaskRows}        setSelectedSubtaskRows={setSelectedSubtaskRows}        handleAddTemplate={handleAddTemplate}        handleEditTemplate={handleEditTemplate}        handleDeleteTemplate={handleDeleteTemplate}      />    );  };  const columns = [    {      title: "Group Name",      dataIndex: "name",      key: "name",    },    {      title: "Description",      dataIndex: "description",      key: "description",      ellipsis: true,    },    {      title: "Actions",      key: "actions",      width: 120,      render: (_: any, record: TaskGroupType) => (        <Space size="small">          <Button            type="text"            icon={<EditOutlined />}            onClick={(e) => {              e.stopPropagation();              handleEdit(record);            }}            title="Edit Group"          />          <Button            type="text"            danger            icon={<DeleteOutlined />}            onClick={(e) => {              e.stopPropagation();              handleDelete(record.id);            }}            title="Delete Group"          />        </Space>      ),    },  ];  if (!taskGroups || taskGroups.length === 0) {    return (      <Empty description="No task groups found">        {onEdit && <Button type="primary" onClick={() => onEdit("")}>Add Task Group</Button>}      </Empty>    );  }  return (    <div>      {contextHolder}      {/* Add "Add to Project" button only when items are selected */}      {hasSelectedItems && (        <div className="mb-4">          <Button             type="primary"             onClick={handleOpenProjectAssignModal}            icon={<PlusOutlined />}          >            Add to Project          </Button>        </div>      )}      <Table         columns={columns}         dataSource={taskGroups.sort((a, b) => {          // Primary sort by rank          const rankDiff = (a.rank || 0) - (b.rank || 0);          if (rankDiff !== 0) return rankDiff;          // Secondary sort by name          return (a.name || '').localeCompare(b.name || '');        })}         rowKey="id"         pagination={{          current: page,          pageSize: pageSize,          showSizeChanger: true,          onChange: (newPage, newPageSize) => {            onPageChange(newPage);            onPageSizeChange(newPageSize);          }        }}        rowSelection={{          selectedRowKeys: selectedGroups,          onChange: (selectedRowKeys) => {            // Smart selection: when a group is selected, select all its templates and subtasks            const newlySelected = selectedRowKeys.filter(key => !selectedGroups.includes(key));            const newlyDeselected = selectedGroups.filter(key => !selectedRowKeys.includes(key));            // Prepare new state for templates and subtasks            let newSelectedTemplateRows = { ...selectedTemplateRows };            let newSelectedSubtaskRows = { ...selectedSubtaskRows };            // Handle group selection            newlySelected.forEach(groupId => {              const groupIdStr = String(groupId);              const group = taskGroups.find(g => g.id === groupIdStr);              if (!group) return;              // Get templates (handle both tasktemplate and taskTemplates)              const templates = (group.tasktemplate || group.taskTemplates || []).filter((t: any) => t.taskType === 'story' || !t.taskType);              newSelectedTemplateRows[groupIdStr] = templates.map((t: any) => t.id);              // For each template, select all its subtasks              templates.forEach((template: any) => {                if (template.subTasks && template.subTasks.length > 0) {                  const subtaskKey = `${groupIdStr}:${template.id}`;                  newSelectedSubtaskRows[subtaskKey] = template.subTasks.map((s: any) => s.id);                }              });            });            // Handle group deselection            newlyDeselected.forEach(groupId => {              const groupIdStr = String(groupId);              delete newSelectedTemplateRows[groupIdStr];              // Remove all subtask selections for this group              const group = taskGroups.find(g => g.id === groupIdStr);              if (!group) return;              const templates = (group.tasktemplate || group.taskTemplates || []).filter((t: any) => t.taskType === 'story' || !t.taskType);              templates.forEach((template: any) => {                const subtaskKey = `${groupIdStr}:${template.id}`;                delete newSelectedSubtaskRows[subtaskKey];              });            });            setSelectedGroups(selectedRowKeys);            setSelectedTemplateRows(newSelectedTemplateRows);            setSelectedSubtaskRows(newSelectedSubtaskRows);          }        }}        expandable={{          expandedRowRender,          expandRowByClick: true,        }}      />      <Modal        title={currentTaskGroup ? "Edit Task Group" : "Add Task Group"}        open={editModalVisible}        onCancel={handleEditModalCancel}        footer={null}        width={600}      >        <TaskGroupForm           handleCancel={handleEditModalCancel}           fixedTaskSuperId={taskSuperId}          editTaskGroupData={currentTaskGroup}        />      </Modal>      <Modal        title="Add Task"        open={templateModalVisible}        onCancel={handleTemplateModalCancel}        footer={null}        width={600}        destroyOnClose={true}      >        <TaskTemplatForm           key={templateFormKey}          handleCancel={handleTemplateModalCancel}          groupId={currentTaskGroupForTemplate?.id}        />      </Modal>      <Modal        title={currentTemplate?.id ? "Edit Task Template" : "Add Sub Task"}        open={editTemplateModalVisible}        onCancel={handleEditTemplateModalCancel}        footer={null}        width={600}        destroyOnClose={true}      >        <TaskTemplatForm           key={`edit-template-${currentTemplate?.id || 'new-subtask'}`}          handleCancel={handleEditTemplateModalCancel}          groupId={currentTemplate?.groupId}          editTaskTemplateData={currentTemplate}        />      </Modal>      {/* Project Assignment Modal */}      <ProjectAssignmentModal        visible={projectAssignModalVisible}        onCancel={() => setProjectAssignModalVisible(false)}        taskSuperId={taskSuperId}        selectedGroups={selectedGroups}        selectedTemplateRows={selectedTemplateRows}        selectedSubtaskRows={selectedSubtaskRows}        taskGroups={taskGroups}        onSuccess={handleProjectAssignmentSuccess}      />    </div>  );};export default TaskGroupsTable;

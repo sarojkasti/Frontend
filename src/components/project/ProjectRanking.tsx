@@ -607,6 +607,21 @@ const ProjectRanking = () => {
   }, [hierarchicalData, filterType]);
 
   // Function to render taskSuperProjects and allow drag-and-drop
+  
+  const handleUnifiedDragEnd = (result: any) => {
+    if (!result.destination) return;
+    const droppableId = result.source.droppableId;
+    if (droppableId === 'droppable-taskSuper') {
+      onDragEnd(result, 'taskSuper');
+    } else if (droppableId.startsWith('droppable-taskGroup-')) {
+      onDragEnd(result, 'taskGroup');
+    } else if (droppableId.startsWith('droppable-task-')) {
+      onDragEnd(result, 'task');
+    } else if (droppableId.startsWith('droppable-subtask-')) {
+      onDragEnd(result, 'subtask');
+    }
+  };
+
   const renderTaskSuperProjects = () => {
     // Get only the taskSuper items
     const superItems = filteredData.filter(item => item.type === 'taskSuper');
@@ -616,8 +631,7 @@ const ProjectRanking = () => {
     }
     
     return (
-      <DragDropContext onDragEnd={(result) => onDragEnd(result, 'taskSuper')}>
-        <Droppable droppableId="droppable-taskSuper">
+      <Droppable droppableId="droppable-taskSuper">
           {(provided: any) => (
             <div ref={provided.innerRef} {...provided.droppableProps}>
               {superItems.map((item, index) => (
@@ -690,7 +704,6 @@ const ProjectRanking = () => {
             </div>
           )}
         </Droppable>
-      </DragDropContext>
     );
   };
 
@@ -706,8 +719,7 @@ const ProjectRanking = () => {
     
     return (
       <div style={{ marginLeft: '32px', marginTop: '8px' }}>
-        <DragDropContext onDragEnd={(result) => onDragEnd(result, 'taskGroup')}>
-          <Droppable droppableId={`droppable-taskGroup-${superProjectId}`}>
+        <Droppable droppableId={`droppable-taskGroup-${superProjectId}`}>
             {(provided: any) => (
               <div ref={provided.innerRef} {...provided.droppableProps}>
                 {groupItems.map((item, index) => (
@@ -780,7 +792,6 @@ const ProjectRanking = () => {
               </div>
             )}
           </Droppable>
-        </DragDropContext>
       </div>
     );
   };
@@ -797,8 +808,7 @@ const ProjectRanking = () => {
     
     return (
       <div style={{ marginLeft: '32px', marginTop: '8px' }}>
-        <DragDropContext onDragEnd={(result) => onDragEnd(result, 'task')}>
-          <Droppable droppableId={`droppable-task-${groupId}`}>
+        <Droppable droppableId={`droppable-task-${groupId}`}>
             {(provided: any) => (
               <div ref={provided.innerRef} {...provided.droppableProps}>
                 {taskItems.map((item, index) => (
@@ -874,7 +884,6 @@ const ProjectRanking = () => {
               </div>
             )}
           </Droppable>
-        </DragDropContext>
       </div>
     );
   };
@@ -891,8 +900,7 @@ const ProjectRanking = () => {
     
     return (
       <div style={{ marginLeft: '32px', marginTop: '8px' }}>
-        <DragDropContext onDragEnd={(result) => onDragEnd(result, 'subtask')}>
-          <Droppable droppableId={`droppable-subtask-${taskId}`}>
+        <Droppable droppableId={`droppable-subtask-${taskId}`}>
             {(provided: any) => (
               <div ref={provided.innerRef} {...provided.droppableProps}>
                 {subtaskItems.map((item, index) => (
@@ -957,7 +965,6 @@ const ProjectRanking = () => {
               </div>
             )}
           </Droppable>
-        </DragDropContext>
       </div>
     );
   };
@@ -987,7 +994,7 @@ const ProjectRanking = () => {
       ) : filteredData.length === 0 ? (
         <Empty description="No tasks found" />
       ) : (
-        renderTaskSuperProjects()
+        <DragDropContext onDragEnd={handleUnifiedDragEnd}>{renderTaskSuperProjects()}</DragDropContext>
       )}
     </Card>
   );

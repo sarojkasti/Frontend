@@ -1,4 +1,3 @@
-// src/ProjectDetail.tsx
 import { ProjectType } from '@/types/project';
 import { Button, Card, Col, Modal, Row, Select, Tabs, message } from 'antd';
 import { useSession } from '@/context/SessionContext';
@@ -15,18 +14,15 @@ import ProjectCompletionWorkflow from './ProjectCompletionWorkflow';
 import { useQueryClient } from '@tanstack/react-query';
 import ProjectUserAssignment from './ProjectUserAssignment';
 import ProjectWorklogs from './ProjectWorklogs';
-// import DsaManager from './dsa/DsaManager';
+import DsaManager from './dsa/DsaManager';
 import { useUser } from '@/hooks/user/useUser';
 import { editProject, exportProjectExcel } from '@/service/project.service';
 import { DownloadOutlined } from '@ant-design/icons';
-
-
 
 interface ProjectDetailProps {
   project: ProjectType;
   loading?: boolean;
 }
-
 
 const ProjectDetailComponent = ({ project, loading }: ProjectDetailProps) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -43,28 +39,21 @@ const ProjectDetailComponent = ({ project, loading }: ProjectDetailProps) => {
     page: 1,
     keywords: ''
   });
-  
-  // Support both { name } and { permission } in role
+
   const userRole = (profile?.role && 'name' in profile.role && typeof profile.role.name === 'string')
     ? profile.role.name.toLowerCase()
     : undefined;
   const hideAddTask = userRole === 'auditsenior' || userRole === 'auditjunior';
-
-  // Check if user has permission to view task rankings
   const canViewRankings = permissions?.some(
     (permission: any) => permission.resource === "task-ranking" && permission.method === "get"
   );
-
   const canViewProjectWorklogs = permissions?.some(
     (permission: any) => permission.path === '/projects/:id/worklogs' && permission.method?.toLowerCase() === 'get'
   );
 
-  // Add null checks for project data
   const users = project?.users || [];
   const name = project?.name || '';
 
-
-  // Don't render if project is not loaded yet
   if (!project && loading) {
     return (
       <div style={{ textAlign: 'center', padding: '50px' }}>
@@ -73,7 +62,6 @@ const ProjectDetailComponent = ({ project, loading }: ProjectDetailProps) => {
     );
   }
 
-  // If project is null and not loading, show error
   if (!project) {
     return (
       <div style={{ textAlign: 'center', padding: '50px' }}>
@@ -88,7 +76,6 @@ const ProjectDetailComponent = ({ project, loading }: ProjectDetailProps) => {
   };
 
   const normalizeId = (id: unknown): string => String(id ?? '').trim();
-
   const memberOptions = (allUsersData?.results ?? [])
     .map((user: any) => ({
       value: normalizeId(user.id),
@@ -137,24 +124,14 @@ const ProjectDetailComponent = ({ project, loading }: ProjectDetailProps) => {
     setIsModalOpen(true);
   };
 
-  // Function to refresh project data after task operations
   const handleRefresh = () => {
-    // Only invalidate if we have a project ID
     if (project?.id) {
-      // Invalidate project query to refresh the entire project data
       queryClient.invalidateQueries({ queryKey: ["project", project.id.toString()] });
-      
-      // Invalidate the project tasks hierarchy query to ensure task tables refresh
       queryClient.invalidateQueries({ queryKey: ["project-tasks-hierarchy", project.id.toString()] });
     }
-    
-    // Also invalidate general tasks queries if they exist
     queryClient.invalidateQueries({ queryKey: ["tasks"] });
-    
-    console.log("Refreshing project data and task hierarchy...");
   };
 
-  // Build tab items array
   const tabItems = [
     {
       label: 'Summary',
@@ -215,18 +192,17 @@ const ProjectDetailComponent = ({ project, loading }: ProjectDetailProps) => {
       key: '6b',
       children: <ProjectWorklogs projectId={project?.id?.toString?.() ?? String(project?.id ?? '')} wrapInCard={false} />
     }] : []),
-    // {
-    //   label: 'DSA',
-    //   key: 'dsa',
-    //   children: <DsaManager 
-    //     projectId={project?.id?.toString?.() ?? String(project?.id ?? '')} 
-    //     projectUsers={project?.users ?? []}
-    //     isSignedOff={project?.status === 'signed_off'}
-    //   />
-    // }
+    {
+      label: 'DSA',
+      key: 'dsa',
+      children: <DsaManager 
+        projectId={project?.id?.toString?.() ?? String(project?.id ?? '')} 
+        projectUsers={project?.users ?? []}
+        isSignedOff={project?.status === 'signed_off'}
+      />
+    }
   ];
 
-  // Add Completion/Evaluation/Signoff tab for completed or signed off projects
   if (project?.status === 'completed' || project?.status === 'signed_off') {
     tabItems.push({
       label: 'Completion & Sign-off',
@@ -235,7 +211,6 @@ const ProjectDetailComponent = ({ project, loading }: ProjectDetailProps) => {
     });
   }
 
-  // Add Rankings tab if user has permission
   if (canViewRankings) {
     tabItems.push({
       label: 'Rankings',
@@ -243,6 +218,7 @@ const ProjectDetailComponent = ({ project, loading }: ProjectDetailProps) => {
       children: <ProjectRanking />
     });
   }
+
   const handleExport = async () => {
     if (!project?.id) return;
     setIsExporting(true);
@@ -257,10 +233,8 @@ const ProjectDetailComponent = ({ project, loading }: ProjectDetailProps) => {
       link.remove();
       message.success('Export downloaded successfully');
     } catch (error) {
-      console.error(error);
       message.error('Failed to export project data');
-    } finally {
-      setIsExporting(false);
+    } finally {      setIsExporting(false);
     }
   };
 

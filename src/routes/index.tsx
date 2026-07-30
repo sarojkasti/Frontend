@@ -88,6 +88,7 @@ import ClientPortalLayout from "@/components/Layout/ClientPortalLayout";
 // Admin client report management
 import ClientReportsAdmin from "@/pages/ClientReportsAdmin";
 import ClientUsersAdmin from "@/pages/ClientUsersAdmin";
+import ReportsPage from "@/pages/Reports";
 
 const Router = [
   // Client Portal Routes (public)
@@ -302,6 +303,10 @@ const Router = [
         element: <UserDetails />,
       },
       {
+        path: "/user/:id/history",
+        element: <UserHistoryDetails />,
+      },
+      {
         path: "/user/:id/edit",
         element: (
           <ProtectedRoute
@@ -449,7 +454,7 @@ const Router = [
       },
       {
         path: "profile/:id/history",
-        element: <Profile component={UserHistoryDetails} />,
+        element: <UserHistoryDetails />,
       },
       {
         path: "/calendar",
@@ -636,6 +641,16 @@ const Router = [
       method="get"
       resource="client-users"
       component={<ClientUsersAdmin />}
+    />
+  ),
+},
+{
+  path: "/reports",
+  element: (
+    <ProtectedRoute
+      method="get"
+      resource="reports"
+      component={<ReportsPage />}
     />
   ),
 },

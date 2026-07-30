@@ -1,102 +1,1 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import axios from "axios";
-import { useQueryClient } from "@tanstack/react-query";
-import { ClientUserType } from "@/types/clientUser";
-import { getClientProfile, clientLogout } from "@/service/clientPortal.service";
-
-interface ClientAuthContextType {
-  clientUser: ClientUserType | null;
-  isClientAuthenticated: boolean;
-  isLoading: boolean;
-  error: string | null;
-  logout: () => Promise<void>;
-  refreshClientAuth: () => Promise<boolean>;
-  checkAuth: () => Promise<void>;
-}
-
-const ClientAuthContext = createContext<ClientAuthContextType>({
-  clientUser: null,
-  isClientAuthenticated: false,
-  isLoading: true,
-  error: null,
-  logout: async () => {},
-  refreshClientAuth: async () => false,
-  checkAuth: async () => {}
-});
-
-export const ClientAuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const queryClient = useQueryClient();
-  const [clientUser, setClientUser] = useState<ClientUserType | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const checkClientAuth = async () => {
-    try {
-      setIsLoading(true);
-      const token = localStorage.getItem("client_token");
-      
-      if (!token) {
-        setIsLoading(false);
-        return;
-      }
-
-      // Set the Authorization header for client requests
-      axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-      
-      const profile = await getClientProfile();
-      setClientUser(profile);
-    } catch (err) {
-      console.error("Client auth check failed:", err);
-      localStorage.removeItem("client_token");
-      localStorage.removeItem("client_user");
-      setError("Session expired. Please login again.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    checkClientAuth();
-  }, []);
-
-  const logout = async () => {
-    try {
-      await clientLogout();
-    } catch (err) {
-      console.error("Logout error:", err);
-    } finally {
-      localStorage.removeItem("client_token");
-      localStorage.removeItem("client_user");
-      setClientUser(null);
-      setError(null);
-      queryClient.clear();
-    }
-  };
-
-  const refreshClientAuth = async (): Promise<boolean> => {
-    try {
-      await checkClientAuth();
-      return !!clientUser;
-    } catch {
-      return false;
-    }
-  };
-
-  return (
-    <ClientAuthContext.Provider
-      value={{
-        clientUser,
-        isClientAuthenticated: !!clientUser,
-        isLoading,
-        error,
-        logout,
-        refreshClientAuth,
-        checkAuth: checkClientAuth
-      }}
-    >
-      {children}
-    </ClientAuthContext.Provider>
-  );
-};
-
-export const useClientAuth = () => useContext(ClientAuthContext);
+import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";import axios from "axios";import { useQueryClient } from "@tanstack/react-query";import { ClientUserType } from "@/types/clientUser";import { getClientProfile, clientLogout } from "@/service/clientPortal.service";interface ClientAuthContextType {  clientUser: ClientUserType | null;  isClientAuthenticated: boolean;  isLoading: boolean;  error: string | null;  logout: () => Promise<void>;  refreshClientAuth: () => Promise<boolean>;  checkAuth: () => Promise<void>;}const ClientAuthContext = createContext<ClientAuthContextType>({  clientUser: null,  isClientAuthenticated: false,  isLoading: true,  error: null,  logout: async () => {},  refreshClientAuth: async () => false,  checkAuth: async () => {}});export const ClientAuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {  const queryClient = useQueryClient();  const [clientUser, setClientUser] = useState<ClientUserType | null>(null);  const [isLoading, setIsLoading] = useState(true);  const [error, setError] = useState<string | null>(null);  const checkClientAuth = async () => {    try {      setIsLoading(true);      const token = localStorage.getItem("client_token");      if (!token) {        setIsLoading(false);        return;      }      // Set the Authorization header for client requests      axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;      const profile = await getClientProfile();      setClientUser(profile);    } catch (err) {      localStorage.removeItem("client_token");      localStorage.removeItem("client_user");      setError("Session expired. Please login again.");    } finally {      setIsLoading(false);    }  };  useEffect(() => {    checkClientAuth();  }, []);  const logout = async () => {    try {      await clientLogout();    } catch (err) {    } finally {      localStorage.removeItem("client_token");      localStorage.removeItem("client_user");      setClientUser(null);      setError(null);      queryClient.clear();    }  };  const refreshClientAuth = async (): Promise<boolean> => {    try {      await checkClientAuth();      return !!clientUser;    } catch {      return false;    }  };  return (    <ClientAuthContext.Provider      value={{        clientUser,        isClientAuthenticated: !!clientUser,        isLoading,        error,        logout,        refreshClientAuth,        checkAuth: checkClientAuth      }}    >      {children}    </ClientAuthContext.Provider>  );};export const useClientAuth = () => useContext(ClientAuthContext);

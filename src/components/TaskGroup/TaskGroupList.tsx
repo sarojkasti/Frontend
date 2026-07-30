@@ -1,132 +1,1 @@
-import { useTaskGroup } from "@/hooks/taskGroup/useTaskGroup";
-import { useDeleteTaskGroup } from "@/hooks/taskGroup/useTaskGroupDelete";
-import { DeleteOutlined, EditOutlined, PlusCircleOutlined } from '@ant-design/icons';
-import { Avatar, Button, Card, Checkbox, Col, Modal, Row } from "antd";
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import MoveTemplateModal from "../TaskTemplate/MoveTemplateModal";
-import { TaskGroupType } from "@/types/taskGroup";
-import { useQueryClient } from "@tanstack/react-query";
-
-interface TaskGroupListProps {
-  showModal: (group?: TaskGroupType) => void;
-}
-
-
-const TaskGroupList = ({  showModal }: TaskGroupListProps) => {
-  const [modal, contextHolder] = Modal.useModal();
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [checkedRows, setCheckedRows] = useState<string[]>([]);
-  const navigate = useNavigate();
-  const queryClient = useQueryClient();
-  const { data: taskGroup, isPending } = useTaskGroup();
-  const { mutate: deleteTaskGroup } = useDeleteTaskGroup();
-  
-  const handleCheckboxChange = (id: string) => {
-    if (checkedRows.includes(id)) {
-      setCheckedRows(checkedRows.filter((rowId) => rowId !== id));
-    } else {
-      setCheckedRows([...checkedRows, id]);
-    }
-  };
-
-  const handleTemplateAddSuccess = () => {
-    // Refresh task group data and close modal
-    queryClient.invalidateQueries({ queryKey: ["taskGroup"] });
-    queryClient.invalidateQueries({ queryKey: ["projects"] });
-    setIsModalOpen(false);
-    setCheckedRows([]); // Clear selected rows
-    console.log("Refreshing task group data after template add...");
-  };
-  const handleDelete = (id: string) => {
-    console.log('Delete button clicked for ID:', id);
-    // Find the task group to check if it has templates
-    const taskGroupToDelete = taskGroup?.find((group: TaskGroupType) => group.id === id);
-    const hasTemplates = taskGroupToDelete?.tasktemplate && taskGroupToDelete.tasktemplate.length > 0;
-    
-    console.log('Task group to delete:', taskGroupToDelete);
-    console.log('Has templates:', hasTemplates);
-    
-    modal.confirm({
-      title: 'Are you sure you want to delete this task group?',
-      content: hasTemplates 
-        ? `This task group has ${taskGroupToDelete.tasktemplate.length} task template(s). All associated task templates will be permanently deleted. This action cannot be undone.`
-        : 'This action cannot be undone.',
-      okText: 'Yes, Delete',
-      okType: 'danger',
-      cancelText: 'No',
-      onOk: () => {
-        console.log('Deleting task group with ID:', id);
-        return new Promise<void>((resolve, reject) => {
-          deleteTaskGroup(
-            { id },
-            {
-              onSuccess: () => {
-                console.log('Delete completed successfully');
-                resolve();
-              },
-              onError: (error) => {
-                console.error('Delete failed:', error);
-                reject(error);
-              },
-            }
-          );
-        });
-      },
-    })
-  };
-
-  return (
-    <>
-      {contextHolder}
-
-      {checkedRows.length > 0 && <Button type="primary" onClick={() => setIsModalOpen(true)} >Add To</Button>}
-      <Row gutter={[8, 8]}>
-        <Col span={6}>
-          <Card
-            className="h-full flex justify-center items-center cursor-pointer"
-            bordered={false}
-            style={{ border: "2px dotted #ccc" }}
-            onClick={() => showModal()}
-          >
-            <PlusCircleOutlined key='plus' /> Add Template
-          </Card>
-        </Col>
-        {taskGroup?.map((group: TaskGroupType) => (
-          <Col span={6} key={group.id}>
-            <Card
-              loading={isPending}
-              title={group.name}
-              extra={<Checkbox onClick={(e) => { e.stopPropagation(); e.preventDefault(); }} onChange={() => handleCheckboxChange(group.id)} />}
-              actions={[
-                <EditOutlined key="edit" onClick={(e) => { e.stopPropagation(); e.preventDefault(); showModal(group); }} />,
-                <DeleteOutlined key="delete" onClick={(e) => { e.stopPropagation(); e.preventDefault(); handleDelete(group.id); }} />,
-              ]}
-              onClick={() => navigate(`/task-template/${group.id}`)}
-            >
-              <Card.Meta
-                avatar={<Avatar src="https://api.dicebear.com/7.x/miniavs/svg?seed=1" />}
-                description={
-                  <>
-                    <p>{group.description}</p>
-                  </>
-                }
-              />
-            </Card>
-          </Col>
-        ))}
-      </Row>
-
-      {isModalOpen && (
-        <MoveTemplateModal
-          selectedRow={checkedRows}
-          handleCancel={() => setIsModalOpen(false)}
-          isModalOpen={isModalOpen}
-          onSuccess={handleTemplateAddSuccess}
-        />
-      )}
-    </>
-  );
-};
-
-export default TaskGroupList;
+import { useTaskGroup } from "@/hooks/taskGroup/useTaskGroup";import { useDeleteTaskGroup } from "@/hooks/taskGroup/useTaskGroupDelete";import { DeleteOutlined, EditOutlined, PlusCircleOutlined } from '@ant-design/icons';import { Avatar, Button, Card, Checkbox, Col, Modal, Row } from "antd";import { useState } from "react";import { useNavigate } from "react-router-dom";import MoveTemplateModal from "../TaskTemplate/MoveTemplateModal";import { TaskGroupType } from "@/types/taskGroup";import { useQueryClient } from "@tanstack/react-query";interface TaskGroupListProps {  showModal: (group?: TaskGroupType) => void;}const TaskGroupList = ({  showModal }: TaskGroupListProps) => {  const [modal, contextHolder] = Modal.useModal();  const [isModalOpen, setIsModalOpen] = useState(false);  const [checkedRows, setCheckedRows] = useState<string[]>([]);  const navigate = useNavigate();  const queryClient = useQueryClient();  const { data: taskGroup, isPending } = useTaskGroup();  const { mutate: deleteTaskGroup } = useDeleteTaskGroup();  const handleCheckboxChange = (id: string) => {    if (checkedRows.includes(id)) {      setCheckedRows(checkedRows.filter((rowId) => rowId !== id));    } else {      setCheckedRows([...checkedRows, id]);    }  };  const handleTemplateAddSuccess = () => {    // Refresh task group data and close modal    queryClient.invalidateQueries({ queryKey: ["taskGroup"] });    queryClient.invalidateQueries({ queryKey: ["projects"] });    setIsModalOpen(false);    setCheckedRows([]); // Clear selected rows  };  const handleDelete = (id: string) => {    // Find the task group to check if it has templates    const taskGroupToDelete = taskGroup?.find((group: TaskGroupType) => group.id === id);    const hasTemplates = taskGroupToDelete?.tasktemplate && taskGroupToDelete.tasktemplate.length > 0;    modal.confirm({      title: 'Are you sure you want to delete this task group?',      content: hasTemplates         ? `This task group has ${taskGroupToDelete.tasktemplate.length} task template(s). All associated task templates will be permanently deleted. This action cannot be undone.`        : 'This action cannot be undone.',      okText: 'Yes, Delete',      okType: 'danger',      cancelText: 'No',      onOk: () => {        return new Promise<void>((resolve, reject) => {          deleteTaskGroup(            { id },            {              onSuccess: () => {                resolve();              },              onError: (error) => {                reject(error);              },            }          );        });      },    })  };  return (    <>      {contextHolder}      {checkedRows.length > 0 && <Button type="primary" onClick={() => setIsModalOpen(true)} >Add To</Button>}      <Row gutter={[8, 8]}>        <Col span={6}>          <Card            className="h-full flex justify-center items-center cursor-pointer"            bordered={false}            style={{ border: "2px dotted #ccc" }}            onClick={() => showModal()}          >            <PlusCircleOutlined key='plus' /> Add Template          </Card>        </Col>        {taskGroup?.map((group: TaskGroupType) => (          <Col span={6} key={group.id}>            <Card              loading={isPending}              title={group.name}              extra={<Checkbox onClick={(e) => { e.stopPropagation(); e.preventDefault(); }} onChange={() => handleCheckboxChange(group.id)} />}              actions={[                <EditOutlined key="edit" onClick={(e) => { e.stopPropagation(); e.preventDefault(); showModal(group); }} />,                <DeleteOutlined key="delete" onClick={(e) => { e.stopPropagation(); e.preventDefault(); handleDelete(group.id); }} />,              ]}              onClick={() => navigate(`/task-template/${group.id}`)}            >              <Card.Meta                avatar={<Avatar src="https://api.dicebear.com/7.x/miniavs/svg?seed=1" />}                description={                  <>                    <p>{group.description}</p>                  </>                }              />            </Card>          </Col>        ))}      </Row>      {isModalOpen && (        <MoveTemplateModal          selectedRow={checkedRows}          handleCancel={() => setIsModalOpen(false)}          isModalOpen={isModalOpen}          onSuccess={handleTemplateAddSuccess}        />      )}    </>  );};export default TaskGroupList;

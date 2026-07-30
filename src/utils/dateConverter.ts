@@ -1,252 +1,1 @@
-import NepaliDate from 'nepali-date';
-import dayjs, { Dayjs } from 'dayjs';
-import * as bikram from 'bikram-sambat';
-
-export interface DualDate {
-  gregorian: Dayjs;
-  nepali: NepaliDate;
-  gregorianString: string;
-  nepaliString: string;
-}
-
-export class DualDateConverter {
-  
-  /**
-   * Convert a Gregorian date to Nepali date
-   */
-  static gregorianToNepali(date: Dayjs): NepaliDate {
-    try {
-      // Always convert to Nepal time (UTC+5:45) before passing to NepaliDate
-      // Add 5 hours and 45 minutes to the date
-      const nepalTime = date.add(5, 'hour').add(45, 'minute');
-      const jsDate = nepalTime.toDate();
-      
-      // Use bikram-sambat for accurate conversion
-      // Check if toBik exists (it should in v1.8.0)
-      if (typeof (bikram as any).toBik === 'function') {
-        const bs = (bikram as any).toBik(jsDate);
-        // bikram-sambat returns 1-indexed month, NepaliDate expects 0-indexed
-        return new NepaliDate(bs.year, bs.month - 1, bs.day);
-      }
-      
-      // Fallback to NepaliDate constructor if bikram not available
-      return new NepaliDate(jsDate);
-    } catch (error) {
-      console.warn('Failed to convert Gregorian to Nepali date:', error);
-      return new NepaliDate(); // Return current date as fallback
-    }
-  }
-
-  /**
-   * Convert a Nepali date to Gregorian date
-   */
-  static nepaliToGregorian(nepaliDate: NepaliDate): Dayjs {
-    try {
-      if (typeof (nepaliDate as any).toJSDate === 'function') {
-        return dayjs((nepaliDate as any).toJSDate());
-      }
-      if (typeof (nepaliDate as any).getEnglishDate === 'function') {
-        return dayjs((nepaliDate as any).getEnglishDate());
-      }
-      // If neither exists, fallback
-      throw new Error("No method to convert to JS Date");
-    } catch (error) {
-      console.warn('Failed to convert Nepali to Gregorian date:', error);
-      return dayjs(); // Return current date as fallback
-    }
-  }
-
-  /**
-   * Convert a Nepali date string (format YYYY-MM-DD) to AD date string
-   * Uses bikram-sambat library for reliable conversion
-   */
-  static convertToAD(nepaliDateStr: string): string {
-    try {
-      console.log('convertToAD received:', nepaliDateStr);
-      
-      // Parse the Nepali date string into year, month, day
-      const [year, month, day] = nepaliDateStr.split('-').map(Number);
-      if (!year || !month || !day) {
-        throw new Error('Invalid Nepali date format. Expected YYYY-MM-DD');
-      }
-      
-      console.log('Parsing BS date:', { year, month, day });
-      
-      // Try using bikram-sambat library to convert BS to AD
-      // The library exports { toGreg } function (not toAD)
-      if (typeof (bikram as any).toGreg === 'function') {
-        const adDateObj = (bikram as any).toGreg(year, month, day);
-        console.log('bikram.toGreg result:', adDateObj);
-        
-        if (adDateObj && adDateObj.year && adDateObj.month && adDateObj.day) {
-           const adDate = `${adDateObj.year}-${String(adDateObj.month).padStart(2, '0')}-${String(adDateObj.day).padStart(2, '0')}`;
-           console.log('Final AD date:', adDate);
-           return adDate;
-        }
-      }
-      
-      // Fallback to old code if toGreg not found (unlikely)
-      if (typeof (bikram as any).toAD === 'function') {
-         const adDateObj = (bikram as any).toAD(year, month, day);
-         if (Array.isArray(adDateObj) && adDateObj.length === 3) {
-            const adDate = `${adDateObj[0]}-${String(adDateObj[1]).padStart(2, '0')}-${String(adDateObj[2]).padStart(2, '0')}`;
-            return adDate;
-         }
-      }
-
-      throw new Error('Invalid result from bikram conversion');
-    } catch (error) {
-      console.error('Error converting Nepali date to AD:', error);
-      console.error('Input was:', nepaliDateStr);
-      
-      // Try alternative method using NepaliDate if bikram fails
-      try {
-        console.log('Trying alternative conversion with NepaliDate...');
-        const [year, month, day] = nepaliDateStr.split('-').map(Number);
-        const nepaliDate = new NepaliDate(year, month - 1, day);
-        
-        // Get the equivalent AD date from NepaliDate
-        const adYear = nepaliDate.getYear();
-        const adMonth = nepaliDate.getMonth() + 1; // Convert 0-indexed to 1-indexed
-        const adDay = nepaliDate.getDate();
-        
-        const adDate = `${adYear}-${String(adMonth).padStart(2, '0')}-${String(adDay).padStart(2, '0')}`;
-        console.log('Alternative conversion result:', adDate);
-        return adDate;
-      } catch (altError) {
-        console.error('Alternative conversion also failed:', altError);
-      }
-      
-      throw error;
-    }
-  }
-
-  /**
-   * Create a dual date object from a Gregorian date
-   */
-  static createDualDate(gregorianDate: Dayjs): DualDate {
-    const nepaliDate = this.gregorianToNepali(gregorianDate);
-    
-    return {
-      gregorian: gregorianDate,
-      nepali: nepaliDate,
-      gregorianString: gregorianDate.format('YYYY-MM-DD'),
-      nepaliString: nepaliDate.format('YYYY-MM-DD', 'np')
-    };
-  }
-
-  /**
-   * Create a dual date object from a Nepali date
-   */
-  static createDualDateFromNepali(nepaliYear: number, nepaliMonth: number, nepaliDay: number): DualDate {
-    const nepaliDate = new NepaliDate(nepaliYear, nepaliMonth - 1, nepaliDay); // Month is 0-indexed
-    const gregorianDate = this.nepaliToGregorian(nepaliDate);
-    
-    return {
-      gregorian: gregorianDate,
-      nepali: nepaliDate,
-      gregorianString: gregorianDate.format('YYYY-MM-DD'),
-      nepaliString: nepaliDate.format('YYYY-MM-DD', 'np')
-    };
-  }
-
-  /**
-   * Format dual date for display
-   */
-  static formatDualDate(dualDate: DualDate, showBoth: boolean = true): string {
-    if (!showBoth) {
-      return dualDate.gregorianString;
-    }
-    
-    const gregorianFormatted = dualDate.gregorian.format('MMM DD, YYYY');
-    const nepaliFormatted = dualDate.nepali.format('MMMM DD, YYYY', 'np');
-    
-    return `${gregorianFormatted} (${nepaliFormatted})`;
-  }
-
-  /**
-   * Get month names in both systems
-   */
-  static getMonthNames() {
-    return {
-      gregorian: [
-        'January', 'February', 'March', 'April', 'May', 'June',
-        'July', 'August', 'September', 'October', 'November', 'December'
-      ],
-      nepali: [
-        'बैशाख', 'जेष्ठ', 'आषाढ', 'श्रावण', 'भाद्र', 'आश्विन',
-        'कार्तिक', 'मंसिर', 'पौष', 'माघ', 'फाल्गुन', 'चैत्र'
-      ],
-      nepaliEn: [
-        'Baisakh', 'Jestha', 'Ashadh', 'Shrawan', 'Bhadra', 'Ashwin',
-        'Kartik', 'Mangsir', 'Poush', 'Magh', 'Falgun', 'Chaitra'
-      ]
-    };
-  }
-
-  /**
-   * Get day names in both systems
-   */
-  static getDayNames() {
-    return {
-      gregorian: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
-      nepali: ['आइतबार', 'सोमबार', 'मंगलबार', 'बुधबार', 'बिहिबार', 'शुक्रबार', 'शनिबार'],
-      nepaliEn: ['Aaitabar', 'Sombar', 'Mangalbar', 'Budhabar', 'Bihibar', 'Shukrabar', 'Shanibar']
-    };
-  }
-
-  /**
-   * Check if a date is a Nepali festival/holiday
-   */
-  static getNepaliEvents(nepaliDate: NepaliDate): string[] {
-    try {
-      const events: string[] = [];
-      const month = nepaliDate.getMonth() + 1; // Convert to 1-indexed
-      const day = nepaliDate.getDate();
-
-      // Add major Nepali festivals (simplified list)
-      const festivals = [
-        { month: 1, day: 1, name: 'Naya Barsa (New Year)' },
-        { month: 2, day: 15, name: 'Buddha Purnima' },
-        { month: 3, day: 15, name: 'Janai Purnima' },
-        { month: 4, day: 3, name: 'Gai Jatra' },
-        { month: 5, day: 3, name: 'Teej (Haritalika)' },
-        { month: 6, day: 15, name: 'Indra Jatra' },
-        { month: 7, day: 1, name: 'Dashain Begins' },
-        { month: 7, day: 10, name: 'Vijaya Dashami' },
-        { month: 8, day: 1, name: 'Tihar Begins' },
-        { month: 8, day: 3, name: 'Laxmi Puja' },
-        { month: 8, day: 5, name: 'Bhai Tika' },
-        { month: 9, day: 15, name: 'Holi (Fagu Purnima)' },
-        { month: 10, day: 1, name: 'Chaite Dashain' }
-      ];
-
-      festivals.forEach(festival => {
-        if (festival.month === month && festival.day === day) {
-          events.push(festival.name);
-        }
-      });
-
-      return events;
-    } catch (error) {
-      console.warn('Failed to get Nepali events:', error);
-      return [];
-    }
-  }
-
-  /**
-   * Check if it's a weekend in Nepal (Saturday is holiday)
-   */
-  static isNepaliWeekend(gregorianDate: Dayjs): boolean {
-    return gregorianDate.day() === 6; // Saturday
-  }
-
-  /**
-   * Get today's date in dual format
-   */
-  static getToday(): DualDate {
-    return this.createDualDate(dayjs());
-  }
-}
-
-export default DualDateConverter;
+import NepaliDate from 'nepali-date';import dayjs, { Dayjs } from 'dayjs';import * as bikram from 'bikram-sambat';export interface DualDate {  gregorian: Dayjs;  nepali: NepaliDate;  gregorianString: string;  nepaliString: string;}export class DualDateConverter {  /**   * Convert a Gregorian date to Nepali date   */  static gregorianToNepali(date: Dayjs): NepaliDate {    try {      // Always convert to Nepal time (UTC+5:45) before passing to NepaliDate      // Add 5 hours and 45 minutes to the date      const nepalTime = date.add(5, 'hour').add(45, 'minute');      const jsDate = nepalTime.toDate();      // Use bikram-sambat for accurate conversion      // Check if toBik exists (it should in v1.8.0)      if (typeof (bikram as any).toBik === 'function') {        const bs = (bikram as any).toBik(jsDate);        // bikram-sambat returns 1-indexed month, NepaliDate expects 0-indexed        return new NepaliDate(bs.year, bs.month - 1, bs.day);      }      // Fallback to NepaliDate constructor if bikram not available      return new NepaliDate(jsDate);    } catch (error) {      return new NepaliDate(); // Return current date as fallback    }  }  /**   * Convert a Nepali date to Gregorian date   */  static nepaliToGregorian(nepaliDate: NepaliDate): Dayjs {    try {      if (typeof (nepaliDate as any).toJSDate === 'function') {        return dayjs((nepaliDate as any).toJSDate());      }      if (typeof (nepaliDate as any).getEnglishDate === 'function') {        return dayjs((nepaliDate as any).getEnglishDate());      }      // If neither exists, fallback      throw new Error("No method to convert to JS Date");    } catch (error) {      return dayjs(); // Return current date as fallback    }  }  /**   * Convert a Nepali date string (format YYYY-MM-DD) to AD date string   * Uses bikram-sambat library for reliable conversion   */  static convertToAD(nepaliDateStr: string): string {    try {      // Parse the Nepali date string into year, month, day      const [year, month, day] = nepaliDateStr.split('-').map(Number);      if (!year || !month || !day) {        throw new Error('Invalid Nepali date format. Expected YYYY-MM-DD');      }      // Try using bikram-sambat library to convert BS to AD      // The library exports { toGreg } function (not toAD)      if (typeof (bikram as any).toGreg === 'function') {        const adDateObj = (bikram as any).toGreg(year, month, day);        if (adDateObj && adDateObj.year && adDateObj.month && adDateObj.day) {           const adDate = `${adDateObj.year}-${String(adDateObj.month).padStart(2, '0')}-${String(adDateObj.day).padStart(2, '0')}`;           return adDate;        }      }      // Fallback to old code if toGreg not found (unlikely)      if (typeof (bikram as any).toAD === 'function') {         const adDateObj = (bikram as any).toAD(year, month, day);         if (Array.isArray(adDateObj) && adDateObj.length === 3) {            const adDate = `${adDateObj[0]}-${String(adDateObj[1]).padStart(2, '0')}-${String(adDateObj[2]).padStart(2, '0')}`;            return adDate;         }      }      throw new Error('Invalid result from bikram conversion');    } catch (error) {      // Try alternative method using NepaliDate if bikram fails      try {        const [year, month, day] = nepaliDateStr.split('-').map(Number);        const nepaliDate = new NepaliDate(year, month - 1, day);        // Get the equivalent AD date from NepaliDate        const adYear = nepaliDate.getYear();        const adMonth = nepaliDate.getMonth() + 1; // Convert 0-indexed to 1-indexed        const adDay = nepaliDate.getDate();        const adDate = `${adYear}-${String(adMonth).padStart(2, '0')}-${String(adDay).padStart(2, '0')}`;        return adDate;      } catch (altError) {      }      throw error;    }  }  /**   * Create a dual date object from a Gregorian date   */  static createDualDate(gregorianDate: Dayjs): DualDate {    const nepaliDate = this.gregorianToNepali(gregorianDate);    return {      gregorian: gregorianDate,      nepali: nepaliDate,      gregorianString: gregorianDate.format('YYYY-MM-DD'),      nepaliString: nepaliDate.format('YYYY-MM-DD', 'np')    };  }  /**   * Create a dual date object from a Nepali date   */  static createDualDateFromNepali(nepaliYear: number, nepaliMonth: number, nepaliDay: number): DualDate {    const nepaliDate = new NepaliDate(nepaliYear, nepaliMonth - 1, nepaliDay); // Month is 0-indexed    const gregorianDate = this.nepaliToGregorian(nepaliDate);    return {      gregorian: gregorianDate,      nepali: nepaliDate,      gregorianString: gregorianDate.format('YYYY-MM-DD'),      nepaliString: nepaliDate.format('YYYY-MM-DD', 'np')    };  }  /**   * Format dual date for display   */  static formatDualDate(dualDate: DualDate, showBoth: boolean = true): string {    if (!showBoth) {      return dualDate.gregorianString;    }    const gregorianFormatted = dualDate.gregorian.format('MMM DD, YYYY');    const nepaliFormatted = dualDate.nepali.format('MMMM DD, YYYY', 'np');    return `${gregorianFormatted} (${nepaliFormatted})`;  }  /**   * Get month names in both systems   */  static getMonthNames() {    return {      gregorian: [        'January', 'February', 'March', 'April', 'May', 'June',        'July', 'August', 'September', 'October', 'November', 'December'      ],      nepali: [        'बैशाख', 'जेष्ठ', 'आषाढ', 'श्रावण', 'भाद्र', 'आश्विन',        'कार्तिक', 'मंसिर', 'पौष', 'माघ', 'फाल्गुन', 'चैत्र'      ],      nepaliEn: [        'Baisakh', 'Jestha', 'Ashadh', 'Shrawan', 'Bhadra', 'Ashwin',        'Kartik', 'Mangsir', 'Poush', 'Magh', 'Falgun', 'Chaitra'      ]    };  }  /**   * Get day names in both systems   */  static getDayNames() {    return {      gregorian: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],      nepali: ['आइतबार', 'सोमबार', 'मंगलबार', 'बुधबार', 'बिहिबार', 'शुक्रबार', 'शनिबार'],      nepaliEn: ['Aaitabar', 'Sombar', 'Mangalbar', 'Budhabar', 'Bihibar', 'Shukrabar', 'Shanibar']    };  }  /**   * Check if a date is a Nepali festival/holiday   */  static getNepaliEvents(nepaliDate: NepaliDate): string[] {    try {      const events: string[] = [];      const month = nepaliDate.getMonth() + 1; // Convert to 1-indexed      const day = nepaliDate.getDate();      // Add major Nepali festivals (simplified list)      const festivals = [        { month: 1, day: 1, name: 'Naya Barsa (New Year)' },        { month: 2, day: 15, name: 'Buddha Purnima' },        { month: 3, day: 15, name: 'Janai Purnima' },        { month: 4, day: 3, name: 'Gai Jatra' },        { month: 5, day: 3, name: 'Teej (Haritalika)' },        { month: 6, day: 15, name: 'Indra Jatra' },        { month: 7, day: 1, name: 'Dashain Begins' },        { month: 7, day: 10, name: 'Vijaya Dashami' },        { month: 8, day: 1, name: 'Tihar Begins' },        { month: 8, day: 3, name: 'Laxmi Puja' },        { month: 8, day: 5, name: 'Bhai Tika' },        { month: 9, day: 15, name: 'Holi (Fagu Purnima)' },        { month: 10, day: 1, name: 'Chaite Dashain' }      ];      festivals.forEach(festival => {        if (festival.month === month && festival.day === day) {          events.push(festival.name);        }      });      return events;    } catch (error) {      return [];    }  }  /**   * Check if it's a weekend in Nepal (Saturday is holiday)   */  static isNepaliWeekend(gregorianDate: Dayjs): boolean {    return gregorianDate.day() === 6; // Saturday  }  /**   * Get today's date in dual format   */  static getToday(): DualDate {    return this.createDualDate(dayjs());  }}export default DualDateConverter;

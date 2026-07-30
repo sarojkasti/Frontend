@@ -1,190 +1,1 @@
-import { useState, useEffect } from 'react';
-import { Card, Table, Tag, Typography, Row, Col, Spin, Button } from 'antd';
-import { UserOutlined, EyeOutlined } from '@ant-design/icons';
-import axios from 'axios';
-import dayjs from 'dayjs';
-import { useNavigate } from 'react-router-dom';
-
-const { Text, Title } = Typography;
-const backendURI = import.meta.env.VITE_BACKEND_URI;
-
-interface ProjectInfo {
-  projectId: string;
-  projectName: string;
-  assignedDate: string;
-  plannedReleaseDate: string | null;
-  isActive: boolean;
-}
-
-interface UserAvailability {
-  userId: string;
-  userName: string;
-  userEmail: string;
-  role: string;
-  isAvailable: boolean;
-  busyUntil: string | null;
-  currentProjects: ProjectInfo[];
-}
-
-const UserAvailabilityDashboard = () => {
-  const navigate = useNavigate();
-  const [loading, setLoading] = useState(false);
-  const [userAvailability, setUserAvailability] = useState<UserAvailability[]>([]);
-
-  const fetchUserAvailability = async () => {
-    setLoading(true);
-    try {
-      const response = await axios.get(`${backendURI}/projects/availability/users`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      setUserAvailability(response.data);
-    } catch (error) {
-      console.error('Error fetching user availability:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchUserAvailability();
-  }, []);
-
-  const columns = [
-    {
-      title: 'User',
-      key: 'user',
-      render: (record: UserAvailability) => (
-        <div>
-          <Text strong>{record.userName}</Text>
-          <br />
-          <Text type="secondary" style={{ fontSize: '11px' }}>{record.role}</Text>
-        </div>
-      ),
-      width: 150,
-    },
-    {
-      title: 'Status',
-      key: 'status',
-      render: (record: UserAvailability) => (
-        <Tag color={record.isAvailable ? 'success' : 'error'} style={{ fontSize: '11px' }}>
-          {record.isAvailable ? 'Available' : 'Busy'}
-        </Tag>
-      ),
-      width: 80,
-    },
-    {
-      title: 'Busy Until',
-      dataIndex: 'busyUntil',
-      key: 'busyUntil',
-      render: (date: string | null) => (
-        <Text style={{ fontSize: '11px' }}>
-          {date ? dayjs(date).format('YYYY-MM-DD') : '-'}
-        </Text>
-      ),
-      width: 100,
-    },
-    {
-      title: 'Current Projects',
-      key: 'currentProjects',
-      render: (record: UserAvailability) => (
-        <div style={{ fontSize: '11px' }}>
-          {record.currentProjects.length === 0 ? (
-            <Text type="secondary">No projects</Text>
-          ) : (
-            record.currentProjects.slice(0, 3).map((project) => (
-              <div key={project.projectId} style={{ marginBottom: 4 }}>
-                <Tag 
-                  color={project.isActive ? 'blue' : 'default'}
-                  style={{ 
-                    fontSize: '10px', 
-                    marginRight: 4,
-                    opacity: project.isActive ? 1 : 0.6
-                  }}
-                >
-                  {project.isActive ? '●' : '○'}
-                </Tag>
-                <Text 
-                  strong={project.isActive}
-                  type={project.isActive ? undefined : 'secondary'}
-                  style={{ fontStyle: project.isActive ? 'normal' : 'italic' }}
-                >
-                  {project.projectName}
-                </Text>
-                {project.plannedReleaseDate && project.isActive && (
-                  <Text type="secondary"> (until {dayjs(project.plannedReleaseDate).format('MMM DD')})</Text>
-                )}
-              </div>
-            ))
-          )}
-          {record.currentProjects.length > 3 && (
-            <Text type="secondary">+{record.currentProjects.length - 3} more</Text>
-          )}
-        </div>
-      ),
-    },
-  ];
-
-  const availableCount = userAvailability.filter(u => u.isAvailable).length;
-  const busyCount = userAvailability.filter(u => !u.isAvailable).length;
-
-  return (
-    <Card
-      title={
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span>User Availability</span>
-          <Button
-            type="link"
-            icon={<EyeOutlined />}
-            onClick={() => navigate('/projects/availability')}
-            size="small"
-          >
-            View Full Dashboard
-          </Button>
-        </div>
-      }
-      style={{ height: '100%' }}
-    >
-      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-        <Col xs={8}>
-          <Card size="small" style={{ textAlign: 'center', background: '#f0f2f5' }}>
-            <Title level={4} style={{ margin: 0, color: '#1890ff' }}>
-              <UserOutlined /> {userAvailability.length}
-            </Title>
-            <Text type="secondary" style={{ fontSize: '12px' }}>Total</Text>
-          </Card>
-        </Col>
-        <Col xs={8}>
-          <Card size="small" style={{ textAlign: 'center', background: '#f6ffed' }}>
-            <Title level={4} style={{ margin: 0, color: '#52c41a' }}>
-              <UserOutlined /> {availableCount}
-            </Title>
-            <Text type="secondary" style={{ fontSize: '12px' }}>Available</Text>
-          </Card>
-        </Col>
-        <Col xs={8}>
-          <Card size="small" style={{ textAlign: 'center', background: '#fff1f0' }}>
-            <Title level={4} style={{ margin: 0, color: '#ff4d4f' }}>
-              <UserOutlined /> {busyCount}
-            </Title>
-            <Text type="secondary" style={{ fontSize: '12px' }}>Busy</Text>
-          </Card>
-        </Col>
-      </Row>
-
-      <Spin spinning={loading}>
-        <Table
-          columns={columns}
-          dataSource={userAvailability}
-          rowKey="userId"
-          pagination={{ pageSize: 5, size: 'small', showSizeChanger: false }}
-          size="small"
-          scroll={{ x: 800 }}
-        />
-      </Spin>
-    </Card>
-  );
-};
-
-export default UserAvailabilityDashboard;
+import { useState, useEffect } from 'react';import { Card, Table, Tag, Typography, Row, Col, Spin, Button } from 'antd';import { UserOutlined, EyeOutlined } from '@ant-design/icons';import axios from 'axios';import dayjs from 'dayjs';import { useNavigate } from 'react-router-dom';const { Text, Title } = Typography;const backendURI = import.meta.env.VITE_BACKEND_URI;interface ProjectInfo {  projectId: string;  projectName: string;  assignedDate: string;  plannedReleaseDate: string | null;  isActive: boolean;}interface UserAvailability {  userId: string;  userName: string;  userEmail: string;  role: string;  isAvailable: boolean;  busyUntil: string | null;  currentProjects: ProjectInfo[];}const UserAvailabilityDashboard = () => {  const navigate = useNavigate();  const [loading, setLoading] = useState(false);  const [userAvailability, setUserAvailability] = useState<UserAvailability[]>([]);  const fetchUserAvailability = async () => {    setLoading(true);    try {      const response = await axios.get(`${backendURI}/projects/availability/users`, {        headers: {          Authorization: `Bearer ${localStorage.getItem('token')}`        }      });      setUserAvailability(response.data);    } catch (error) {    } finally {      setLoading(false);    }  };  useEffect(() => {    fetchUserAvailability();  }, []);  const columns = [    {      title: 'User',      key: 'user',      render: (record: UserAvailability) => (        <div>          <Text strong>{record.userName}</Text>          <br />          <Text type="secondary" style={{ fontSize: '11px' }}>{record.role}</Text>        </div>      ),      width: 150,    },    {      title: 'Status',      key: 'status',      render: (record: UserAvailability) => (        <Tag color={record.isAvailable ? 'success' : 'error'} style={{ fontSize: '11px' }}>          {record.isAvailable ? 'Available' : 'Busy'}        </Tag>      ),      width: 80,    },    {      title: 'Busy Until',      dataIndex: 'busyUntil',      key: 'busyUntil',      render: (date: string | null) => (        <Text style={{ fontSize: '11px' }}>          {date ? dayjs(date).format('YYYY-MM-DD') : '-'}        </Text>      ),      width: 100,    },    {      title: 'Current Projects',      key: 'currentProjects',      render: (record: UserAvailability) => (        <div style={{ fontSize: '11px' }}>          {record.currentProjects.length === 0 ? (            <Text type="secondary">No projects</Text>          ) : (            record.currentProjects.slice(0, 3).map((project) => (              <div key={project.projectId} style={{ marginBottom: 4 }}>                <Tag                   color={project.isActive ? 'blue' : 'default'}                  style={{                     fontSize: '10px',                     marginRight: 4,                    opacity: project.isActive ? 1 : 0.6                  }}                >                  {project.isActive ? '●' : '○'}                </Tag>                <Text                   strong={project.isActive}                  type={project.isActive ? undefined : 'secondary'}                  style={{ fontStyle: project.isActive ? 'normal' : 'italic' }}                >                  {project.projectName}                </Text>                {project.plannedReleaseDate && project.isActive && (                  <Text type="secondary"> (until {dayjs(project.plannedReleaseDate).format('MMM DD')})</Text>                )}              </div>            ))          )}          {record.currentProjects.length > 3 && (            <Text type="secondary">+{record.currentProjects.length - 3} more</Text>          )}        </div>      ),    },  ];  const availableCount = userAvailability.filter(u => u.isAvailable).length;  const busyCount = userAvailability.filter(u => !u.isAvailable).length;  return (    <Card      title={        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>          <span>User Availability</span>          <Button            type="link"            icon={<EyeOutlined />}            onClick={() => navigate('/projects/availability')}            size="small"          >            View Full Dashboard          </Button>        </div>      }      style={{ height: '100%' }}    >      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>        <Col xs={8}>          <Card size="small" style={{ textAlign: 'center', background: '#f0f2f5' }}>            <Title level={4} style={{ margin: 0, color: '#1890ff' }}>              <UserOutlined /> {userAvailability.length}            </Title>            <Text type="secondary" style={{ fontSize: '12px' }}>Total</Text>          </Card>        </Col>        <Col xs={8}>          <Card size="small" style={{ textAlign: 'center', background: '#f6ffed' }}>            <Title level={4} style={{ margin: 0, color: '#52c41a' }}>              <UserOutlined /> {availableCount}            </Title>            <Text type="secondary" style={{ fontSize: '12px' }}>Available</Text>          </Card>        </Col>        <Col xs={8}>          <Card size="small" style={{ textAlign: 'center', background: '#fff1f0' }}>            <Title level={4} style={{ margin: 0, color: '#ff4d4f' }}>              <UserOutlined /> {busyCount}            </Title>            <Text type="secondary" style={{ fontSize: '12px' }}>Busy</Text>          </Card>        </Col>      </Row>      <Spin spinning={loading}>        <Table          columns={columns}          dataSource={userAvailability}          rowKey="userId"          pagination={{ pageSize: 5, size: 'small', showSizeChanger: false }}          size="small"          scroll={{ x: 800 }}        />      </Spin>    </Card>  );};export default UserAvailabilityDashboard;

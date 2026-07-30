@@ -1,1043 +1,1 @@
-import { useCreateProject } from "@/hooks/project/useCreateProject";
-import { useEditProject } from "@/hooks/project/useEditProject";
-import { UserType } from "@/hooks/user/type";
-import { useUser } from "@/hooks/user/useUser";
-import { Button, Col, Divider, Form, Row, Select, Switch } from "antd";
-import { message } from "antd";
-import { useEffect, useMemo, useState } from "react";
-import FormInputWrapper from "../FormInputWrapper";
-import {
-  fetchNatureOfWorkGroups,
-  fetchNatureOfWorks,
-  NatureOfWork,
-  NatureOfWorkGroup,
-} from "@/service/natureOfWork.service";
-import moment from "moment";
-import { ProjectType } from "@/types/project";
-import TextArea from "antd/es/input/TextArea";
-import { useClient } from "@/hooks/client/useClient";
-import { useBilling } from "@/hooks/billing/useBilling";
-import NepaliDatePicker, { NepaliDate } from "../NepaliDatePicker";
-import dayjs from "dayjs";
-
-// Improved AD<->BS conversion for frontend using the DualDateConverter
-import { DualDateConverter } from "@/utils/dateConverter";
-
-function adToBs(adDate: string): NepaliDate {
-  try {
-    const adDateObj = dayjs(adDate);
-    if (!adDateObj.isValid()) {
-      throw new Error('Invalid date format');
-    }
-    const dual = DualDateConverter.createDualDate(adDateObj);
-    return {
-      year: dual.nepali.getYear(),
-      month: dual.nepali.getMonth() + 1,
-      day: dual.nepali.getDate()
-    };
-  } catch (error) {
-    console.error('Error converting AD to BS:', error);
-    // Fallback to simple conversion
-    const [year, month, day] = adDate.split("-").map(Number);
-    return { year: year + 57, month, day };
-  }
-}
-
-function formatNepaliDateForForm(nepaliDate: NepaliDate | undefined): string | null {
-  if (!nepaliDate) return null;
-  // Format as YYYY-MM-DD
-  return `${nepaliDate.year}-${String(nepaliDate.month).padStart(2, '0')}-${String(nepaliDate.day).padStart(2, '0')}`;
-}
-
-interface ProjectFormProps {
-  id?: string;
-  editProjectData?: ProjectType;
-  handleCancel?: () => void;
-}
-
-const ProjectForm = ({ editProjectData, handleCancel }: ProjectFormProps) => {
-  const [form] = Form.useForm();
-  const { mutate, isPending } = useCreateProject();
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const { data: clients } = useClient();
-  const { data: billings } = useBilling("active");
-  const { mutate: mutateEdit, isPending: isPendingEdit } = useEditProject();
-  const isProjectInactive = editProjectData && editProjectData.status !== 'active';
-  const { data: users, isPending: isPendingUser } = useUser({
-    limit: 1000,
-    page: 1,
-    keywords: "",
-  });
-  const [natureOfWorkOptions, setNatureOfWorkOptions] = useState<{ value: string; label: string; shortName: string; groupId?: string }[]>([]);
-  const [natureOfWorkGroupOptions, setNatureOfWorkGroupOptions] = useState<{ value: string; label: string }[]>([]);
-  const [suggestedProjectName, setSuggestedProjectName] = useState("");
-
-  // Sentinel value used in the Group select to represent "types with no group"
-  const UNCATEGORIZED_GROUP = "__uncategorized__";
-
-  // Watch the currently-selected group so we can filter the Nature of Work list
-  const selectedGroupId = Form.useWatch("natureOfWorkGroup", form);
-
-  // Filter natures based on the currently selected group
-  const filteredNatureOfWorkOptions = useMemo(() => {
-    if (!selectedGroupId) return natureOfWorkOptions;
-    if (selectedGroupId === UNCATEGORIZED_GROUP) {
-      return natureOfWorkOptions.filter((n) => !n.groupId);
-    }
-    return natureOfWorkOptions.filter((n) => n.groupId === selectedGroupId);
-  }, [selectedGroupId, natureOfWorkOptions]);
-  
-  // Add state for Nepali dates only
-  const [nepaliStartDate, setNepaliStartDate] = useState<NepaliDate | undefined>(undefined);
-  const [nepaliEndDate, setNepaliEndDate] = useState<NepaliDate | undefined>(undefined);
-
-  // Get the current project lead and manager value from the form
-  const projectLead = Form.useWatch("projectLead", form);
-  const projectManager = Form.useWatch("projectManager", form);
-
-  const formatUserOptionLabel = (user: UserType) => {
-    const roleName = (user.role as any)?.displayName || user.role?.name;
-    return roleName ? `${user.name} (${roleName})` : user.name;
-  };
-
-  const projectManagerRoleNames = new Set([
-    "projectmanager",
-    "administrator",
-    "superadmin",
-    "superuser",
-  ]);
-
-  const normalizeRoleName = (roleName?: string) =>
-    roleName?.toLowerCase().replace(/[\s_-]/g, "") || "";
-
-  // Suggest project name when client, nature of work, or fiscal year changes
-  const handleFieldChange = () => {
-    setTimeout(() => {
-      const clientId = form.getFieldValue("client");
-      const natureOfWorkId = form.getFieldValue("natureOfWork");
-      const fiscalYear = form.getFieldValue("fiscalYear");
-      const billingId = form.getFieldValue("billing");
-      
-      if (clientId && natureOfWorkId && fiscalYear && clients && natureOfWorkOptions.length > 0) {
-        const clientObj = clients.find((c: any) => c.id === clientId);
-        const natureObj = natureOfWorkOptions.find((n: any) => n.value === natureOfWorkId);
-        const billingObj = billingId && billings ? billings.find((b: any) => b.id === billingId) : null;
-        
-        if (clientObj && natureObj) {
-          // Format fiscal year as full format (e.g., 2082/83)
-          const formattedFiscalYear = `${fiscalYear}/${(fiscalYear + 1).toString().slice(-2)}`;
-          
-          // Include billing short name at the end if available
-          const billingSuffix = billingObj?.shortName ? `-${billingObj.shortName}` : '';
-          const suggested = `${clientObj.shortName}-${natureObj.shortName}-${formattedFiscalYear}${billingSuffix}`;
-          setSuggestedProjectName(suggested);
-          // Only set if name field is empty or contains the old suggested name
-          const currentName = form.getFieldValue("name");
-          if (!currentName || currentName === suggestedProjectName || currentName.includes("-")) {
-            form.setFieldsValue({ name: suggested });
-          }
-        }
-      }
-    }, 100);
-  };
-
-  const handleNatureOfWorkChange = (natureOfWorkId: string) => {
-    handleFieldChange();
-    const selectedNature = natureOfWorkOptions.find((item) => item.value === natureOfWorkId);
-    if (!selectedNature) return;
-    // Keep the group in sync with the chosen nature so the filtered select stays coherent.
-    if (selectedNature.groupId) {
-      form.setFieldsValue({ natureOfWorkGroup: selectedNature.groupId });
-    } else {
-      form.setFieldsValue({ natureOfWorkGroup: UNCATEGORIZED_GROUP });
-    }
-  };
-
-  const handleGroupChange = (groupId: string | undefined) => {
-    // When the user changes the group, clear the nature-of-work selection if it
-    // no longer belongs to the newly-selected group.
-    const currentNatureId = form.getFieldValue("natureOfWork");
-    if (!currentNatureId) return;
-    const currentNature = natureOfWorkOptions.find((n) => n.value === currentNatureId);
-    if (!currentNature) return;
-    if (!groupId) {
-      // Cleared - keep selection so user can re-choose group freely
-      return;
-    }
-    const natureBelongs =
-      groupId === UNCATEGORIZED_GROUP
-        ? !currentNature.groupId
-        : currentNature.groupId === groupId;
-    if (!natureBelongs) {
-      form.setFieldsValue({ natureOfWork: undefined });
-    }
-  };
-
-  const onFinish = (values: any) => {
-    // Log all form values for debugging
-    console.log('=== FORM SUBMISSION START ===');
-    console.log('Values from onFinish:', values);
-    
-    // CRITICAL: Get the current field values directly from the form
-    // Don't trust the values passed to onFinish for hidden fields
-    const allFormValues = form.getFieldsValue(true);
-    console.log('All form field values:', allFormValues);
-    
-    console.log('Current nepali dates state:', { 
-      nepaliStartDate, 
-      nepaliEndDate,
-      formattedNepaliStart: formatNepaliDateForForm(nepaliStartDate),
-      formattedNepaliEnd: formatNepaliDateForForm(nepaliEndDate)
-    });
-    
-    // Ensure projectLead and projectManager are included in the users array
-    const userIds = [values.projectLead, values.projectManager].filter(Boolean);
-    
-    // Get dates from the form fields (use allFormValues for hidden fields)
-    let startDate = allFormValues.startingDateEnglish || allFormValues.startingDate || values.startingDateEnglish || values.startingDate;
-    let endDate = allFormValues.endingDateEnglish || allFormValues.endingDate || values.endingDateEnglish || values.endingDate;
-    
-    console.log('Initial date values from form:', { startDate, endDate });
-    
-    // If still no date, try converting from Nepali
-    if (!startDate) {
-      const nepaliValue = allFormValues.startingDateNepali || values.startingDateNepali || nepaliStartDate;
-      if (nepaliValue) {
-        try {
-          const nepaliDateStr = typeof nepaliValue === 'string' 
-            ? nepaliValue 
-            : formatNepaliDateForForm(nepaliValue);
-          if (nepaliDateStr) {
-            startDate = DualDateConverter.convertToAD(nepaliDateStr);
-            console.log('Converted start date from Nepali:', nepaliDateStr, '=>', startDate);
-          }
-        } catch (error) {
-          console.error('Failed to convert start date:', error);
-        }
-      }
-    }
-    
-    if (!endDate) {
-      const nepaliValue = allFormValues.endingDateNepali || values.endingDateNepali || nepaliEndDate;
-      if (nepaliValue) {
-        try {
-          const nepaliDateStr = typeof nepaliValue === 'string'
-            ? nepaliValue
-            : formatNepaliDateForForm(nepaliValue);
-          if (nepaliDateStr) {
-            endDate = DualDateConverter.convertToAD(nepaliDateStr);
-            console.log('Converted end date from Nepali:', nepaliDateStr, '=>', endDate);
-          }
-        } catch (error) {
-          console.error('Failed to convert end date:', error);
-        }
-      }
-    }
-    
-    // Final validation to ensure we have dates
-    if (!startDate || startDate === '') {
-      console.error('Missing starting date after all conversions');
-      console.error('Attempting final fallback to state...');
-      // Last resort: use state values
-      if (nepaliStartDate) {
-        const nepaliDateStr = formatNepaliDateForForm(nepaliStartDate);
-        if (nepaliDateStr) {
-          try {
-            startDate = DualDateConverter.convertToAD(nepaliDateStr);
-            console.log('Used state fallback for start date:', startDate);
-          } catch (err) {
-            console.error('State fallback failed:', err);
-          }
-        }
-      }
-      if (!startDate) {
-        message.error('Please select a starting date');
-        return;
-      }
-    }
-    
-    if (!endDate || endDate === '') {
-      console.error('Missing ending date after all conversions');
-      console.error('Attempting final fallback to state...');
-      // Last resort: use state values
-      if (nepaliEndDate) {
-        const nepaliDateStr = formatNepaliDateForForm(nepaliEndDate);
-        if (nepaliDateStr) {
-          try {
-            endDate = DualDateConverter.convertToAD(nepaliDateStr);
-            console.log('Used state fallback for end date:', endDate);
-          } catch (err) {
-            console.error('State fallback failed:', err);
-          }
-        }
-      }
-      if (!endDate) {
-        message.error('Please select an ending date');
-        return;
-      }
-    }
-    
-    // Transform dates to proper format for backend
-    const transformedValues = {
-      ...values,
-      startingDate: startDate,
-      endingDate: endDate,
-      users: values.users
-        ? [...new Set([...values.users, ...userIds])]
-        : userIds,
-    };
-
-    // "Uncategorized" is a UI-only sentinel meaning "no group" - don't send it to the backend
-    if (transformedValues.natureOfWorkGroup === UNCATEGORIZED_GROUP) {
-      transformedValues.natureOfWorkGroup = null;
-    }
-    
-    // Remove Nepali date fields before sending to backend
-    delete transformedValues.startingDateNepali;
-    delete transformedValues.endingDateNepali;
-    delete transformedValues.startingDateEnglish;
-    delete transformedValues.endingDateEnglish;
-
-    console.log('Final payload:', transformedValues);
-    console.log('=== FORM SUBMISSION END ===');
-
-    if (editProjectData?.id) {
-      mutateEdit(
-        { id: editProjectData.id, payload: transformedValues },
-        { onSuccess: () => handleCancel?.() }
-      );
-    } else {
-      mutate(transformedValues, {
-        onSuccess: () => { if (handleCancel) handleCancel(); },
-        onError: (error: any) => {
-          const msg = error?.response?.data?.message || error?.message || "Failed to create project.";
-          setErrorMessage(msg);
-          // Show error using Ant Design message
-          if (msg.toLowerCase().includes("already exists")) {
-            message.error(msg);
-          } else {
-            message.error("Failed to create project. Please try again.");
-          }
-        }
-      });
-    }
-  };
-
-  // Filter out the project lead and manager from available users for the "Invite Users" field
-  const filteredUsers = isPendingUser
-    ? []
-    : users?.results
-        ?.filter((user: UserType) => user.id !== projectLead && user.id !== projectManager)
-        ?.map((user: UserType) => ({
-          value: user.id,
-          label: formatUserOptionLabel(user),
-        })) || [];
-
-  // Filter users eligible for the Project Manager field
-  const managerOptions = isPendingUser
-    ? []
-    : users?.results
-        ?.filter((user: UserType) => projectManagerRoleNames.has(normalizeRoleName(user.role?.name)))
-        ?.map((user: UserType) => ({
-          value: user.id,
-          label: formatUserOptionLabel(user),
-        })) || [];
-
-
-  useEffect(() => {
-    Promise.all([fetchNatureOfWorks(), fetchNatureOfWorkGroups()])
-      .then(([natureData, groupData]: [NatureOfWork[], NatureOfWorkGroup[]]) => {
-        setNatureOfWorkOptions(
-          natureData.map((item) => ({
-            value: item.id,
-            label: `${item.name} (${item.shortName})`,
-            shortName: item.shortName,
-            groupId: item.groupId || item.group?.id || undefined,
-          }))
-        );
-
-        setNatureOfWorkGroupOptions(
-          groupData.map((group) => ({
-            value: group.id,
-            label: group.name,
-          }))
-        );
-      })
-      .catch(() => {
-        message.error("Failed to load Nature of Work options");
-      });
-  }, []);
-
-  // Trigger name suggestion when dependencies change
-  useEffect(() => {
-    handleFieldChange();
-  }, [clients, natureOfWorkOptions, billings]);
-
-  useEffect(() => {
-    if (editProjectData) {
-      // Helper function to safely parse dates and create new moment instances
-      const parseDate = (dateStr: string | null | undefined) => {
-        if (!dateStr) return null;
-        try {
-          // Extract just the date part if it's a full datetime string
-          const dateOnly = dateStr.includes('T') ? dateStr.split('T')[0] : dateStr;
-          // Create a completely new moment instance with UTC to avoid timezone issues
-          const date = moment.utc(dateOnly, 'YYYY-MM-DD', true);
-          
-          if (date.isValid()) {
-            // Convert to local time and clone to ensure independence
-            return date.local().clone();
-          }
-          
-          // Fallback: try different formats
-          const fallbackDate = moment.utc(dateOnly).local();
-          return fallbackDate.isValid() ? fallbackDate.clone() : null;
-        } catch (error) {
-          console.warn('Invalid date format:', dateStr);
-          return null;
-        }
-      };
-
-      // Parse dates for edit mode FIRST
-      const parsedStartDate = parseDate(editProjectData.startingDate);
-      const parsedEndDate = parseDate(editProjectData.endingDate);
-      
-      // Get the AD dates as strings for the form
-      const startDateAD = parsedStartDate ? parsedStartDate.format('YYYY-MM-DD') : '';
-      const endDateAD = parsedEndDate ? parsedEndDate.format('YYYY-MM-DD') : '';
-      
-      console.log('Edit mode - Parsed dates:', { startDateAD, endDateAD, parsedStartDate: parsedStartDate?.toString(), parsedEndDate: parsedEndDate?.toString() });
-      
-      // Convert to Nepali dates if we have valid Gregorian dates
-      let nepaliStart: NepaliDate | undefined = undefined;
-      let nepaliEnd: NepaliDate | undefined = undefined;
-      
-      if (parsedStartDate && startDateAD) {
-        try {
-          nepaliStart = adToBs(startDateAD);
-          console.log('Converted start date to Nepali in edit mode:', nepaliStart);
-        } catch (error) {
-          console.error('Error converting start date to BS in edit mode:', error);
-        }
-      }
-      
-      if (parsedEndDate && endDateAD) {
-        try {
-          nepaliEnd = adToBs(endDateAD);
-          console.log('Converted end date to Nepali in edit mode:', nepaliEnd);
-        } catch (error) {
-          console.error('Error converting end date to BS in edit mode:', error);
-        }
-      }
-
-      // Set state BEFORE setting form values
-      if (nepaliStart) setNepaliStartDate(nepaliStart);
-      if (nepaliEnd) setNepaliEndDate(nepaliEnd);
-
-      // Set form values with a delay to ensure form is ready
-      setTimeout(() => {
-        // Create form data object
-        const formData: any = {
-          name: editProjectData.name || '',
-          description: editProjectData.description || '',
-          status: editProjectData.status || 'active',
-          fiscalYear: editProjectData.fiscalYear,
-          users: editProjectData.users?.map((user: any) => user.id) || [],
-          projectLead: editProjectData.projectLead?.id,
-          projectManager: editProjectData.projectManager?.id,
-          client: (editProjectData as any).client?.id || (editProjectData as any).customer?.id || (editProjectData as any).client || (editProjectData as any).customer,
-          billing: (editProjectData as any).billing?.id || (editProjectData as any).billing,
-          allowSubtaskWorklog: editProjectData.allowSubtaskWorklog !== undefined ? editProjectData.allowSubtaskWorklog : true,
-          countsForAvailability: editProjectData.countsForAvailability !== undefined ? editProjectData.countsForAvailability : true,
-          isPaymentDone: editProjectData.isPaymentDone || false,
-          isPaymentTemporarilyEnabled: editProjectData.isPaymentTemporarilyEnabled || false,
-          natureOfWork: typeof editProjectData.natureOfWork === "string" ? editProjectData.natureOfWork : (editProjectData.natureOfWork as any)?.id,
-          natureOfWorkGroup:
-            (editProjectData as any).natureOfWorkGroup?.id ||
-            (editProjectData as any).natureOfWorkGroupId ||
-            (editProjectData as any).natureOfWork?.groupId ||
-            // If the project's nature has no group, show it under "Uncategorized"
-            (editProjectData.natureOfWork && typeof editProjectData.natureOfWork !== "string"
-              ? UNCATEGORIZED_GROUP
-              : undefined),
-          
-          // Set all date fields together
-          startingDate: startDateAD,
-          endingDate: endDateAD,
-          startingDateEnglish: startDateAD,
-          endingDateEnglish: endDateAD,
-          startingDateNepali: nepaliStart,
-          endingDateNepali: nepaliEnd
-        };
-
-        // Clear form first, then set values
-        form.resetFields();
-        
-        setTimeout(() => {
-          // Set the form values
-          form.setFieldsValue(formData);
-          
-          console.log('Form values after initialization:', form.getFieldsValue());
-          
-          // Force form validation
-          form.validateFields(['startingDateNepali', 'endingDateNepali'])
-            .then(() => console.log('Initial validation passed'))
-            .catch(err => console.log('Initial validation error:', err));
-        }, 100);
-      }, 200);
-    } else {
-      // For new project, reset form and initialize with today's date
-      form.resetFields();
-      
-      // Get today's date in Nepali
-      const todayNepali = adToBs(new Date().toISOString().split('T')[0]);
-      setNepaliStartDate(todayNepali);
-      setNepaliEndDate(todayNepali);
-      
-      console.log('Initializing NEW project with today:', todayNepali);
-      
-      // Format the Nepali date for conversion
-      const nepaliDateStr = formatNepaliDateForForm(todayNepali);
-      
-      // Set the form values for new project
-      setTimeout(() => {
-        if (nepaliDateStr) {
-          try {
-            const adDate = DualDateConverter.convertToAD(nepaliDateStr);
-            console.log('Setting NEW project default dates to:', adDate);
-            form.setFieldsValue({ 
-              startingDateNepali: todayNepali,
-              startingDate: adDate,
-              startingDateEnglish: adDate,
-              endingDateNepali: todayNepali,
-              endingDate: adDate,
-              endingDateEnglish: adDate,
-              allowSubtaskWorklog: true,
-              countsForAvailability: true,
-              isPaymentDone: false,
-              isPaymentTemporarilyEnabled: false
-            });
-            console.log('Set default dates for new project:', { todayNepali, adDate });
-            
-            // Force form validation
-            form.validateFields(['startingDateNepali', 'endingDateNepali'])
-              .then(() => console.log('Initial validation passed'))
-              .catch(err => console.log('Initial validation error:', err));
-          } catch (error) {
-            console.error('Error setting default dates:', error);
-          }
-        }
-      }, 200);
-    }
-  }, [editProjectData, form]);
-
-  return (
-    <Form
-      form={form}
-      layout="vertical"
-      onFinish={onFinish}
-    >
-      {errorMessage && (
-        <div style={{ color: 'red', marginBottom: 16 }}>{errorMessage}</div>
-      )}
-      <Row gutter={18}>
-        <Divider />
-        <Col span={12}>
-          <Form.Item
-            label="Client"
-            name="client"
-            rules={[{ required: true, message: "Please select the client!" }]}
-          >
-            <Select
-              className="h-[48px] w-full"
-              placeholder="Select client"
-              onChange={handleFieldChange}
-              disabled={!!isProjectInactive}
-              showSearch
-              optionFilterProp="label"
-              filterOption={(input, option) =>
-                option?.label && typeof option.label === 'string' 
-                  ? option.label.toLowerCase().includes(input.toLowerCase())
-                  : false
-              }
-              options={clients?.filter((client: any) => client.status === 'active').map((client: any) => ({
-                value: client.id,
-                label: `${client.name} (${client.shortName})`,
-              }))}
-            />
-          </Form.Item>
-        </Col>
-        <Col span={12}>
-          <Form.Item
-            label="Billing Entity"
-            name="billing"
-            rules={[{ required: false, message: "Please select the billing entity!" }]}
-          >
-            <Select
-              className="h-[48px] w-full"
-              placeholder="Select billing entity"
-              onChange={handleFieldChange}
-              disabled={!!isProjectInactive}
-              showSearch
-              optionFilterProp="label"
-              filterOption={(input, option) =>
-                option?.label && typeof option.label === 'string' 
-                  ? option.label.toLowerCase().includes(input.toLowerCase())
-                  : false
-              }
-              options={billings?.map((billing: any) => ({
-                value: billing.id,
-                label: `${billing.name}${billing.shortName ? ` (${billing.shortName})` : ''}`,
-              }))}
-            />
-          </Form.Item>
-        </Col>
-        <Col span={12}>
-          <Form.Item
-            label="Allow Subtask Worklog"
-            name="allowSubtaskWorklog"
-            valuePropName="checked"
-            initialValue={true}
-          >
-            <Switch 
-              checkedChildren="Yes" 
-              unCheckedChildren="No" 
-              defaultChecked={true}
-              disabled={!!isProjectInactive}
-            />
-          </Form.Item>
-        </Col>
-        <Col span={12}>
-          <Form.Item
-            label="Counts for User Availability"
-            name="countsForAvailability"
-            valuePropName="checked"
-            initialValue={true}
-            tooltip="When enabled, this project will be considered when calculating user availability and workload"
-          >
-            <Switch 
-              checkedChildren="Yes" 
-              unCheckedChildren="No" 
-              defaultChecked={true}
-              disabled={!!isProjectInactive}
-            />
-          </Form.Item>
-        </Col>
-        <Col span={12}>
-          <Form.Item
-            label="Payment Done"
-            name="isPaymentDone"
-            valuePropName="checked"
-            initialValue={false}
-            tooltip="When enabled, client can access documents for this project in their portal"
-          >
-            <Switch 
-              checkedChildren="Paid" 
-              unCheckedChildren="Pending" 
-            />
-          </Form.Item>
-        </Col>
-        <Col span={12}>
-          <Form.Item
-            label="Temporary Document Access"
-            name="isPaymentTemporarilyEnabled"
-            valuePropName="checked"
-            initialValue={false}
-            tooltip="Temporarily grant document access even if payment is pending"
-          >
-            <Switch 
-              checkedChildren="On" 
-              unCheckedChildren="Off" 
-            />
-          </Form.Item>
-        </Col>
-        <Col span={12}>
-          <Form.Item
-            label="Fiscal Year"
-            name="fiscalYear"
-            rules={[
-              { required: true, message: "Please select the fiscal year!" },
-            ]}
-          >
-            <Select
-              className="h-[48px] w-full"
-              placeholder="Select fiscal year"
-              onChange={handleFieldChange}
-              disabled={!!isProjectInactive}
-              showSearch
-              optionFilterProp="label"
-              filterOption={(input, option) =>
-                option?.label && typeof option.label === 'string' 
-                  ? option.label.toLowerCase().includes(input.toLowerCase())
-                  : false
-              }
-              options={(() => {
-                // Get current Nepali year (roughly, adjust as needed)
-                const today = new Date();
-                // Example: Nepali year is about 56-57 years ahead of AD
-                const nepaliYear = today.getFullYear() + 57;
-                // Generate fiscal years for the last 20 years
-                return [...Array(20).keys()].map((_, idx) => {
-                  const startYear = nepaliYear - idx;
-                  const endYear = (startYear + 1).toString().slice(-2);
-                  return {
-                    value: startYear,
-                    label: `${startYear}/${endYear}`,
-                  };
-                });
-              })()}
-            />
-          </Form.Item>
-        </Col>
-  {/* Project Name will be moved to the bottom */}
-        <Col span={12}>
-          <Form.Item
-            name="projectLead"
-            label="Project Lead"
-            rules={[
-              { required: true, message: "Please select a project lead!" },
-            ]}
-          >
-            <Select
-              className="h-[48px] w-full"
-              placeholder="Select project lead"
-              showSearch
-              disabled={!!isProjectInactive}
-              optionFilterProp="label"
-              filterOption={(input, option) =>
-                option?.label && typeof option.label === 'string' 
-                  ? option.label.toLowerCase().includes(input.toLowerCase())
-                  : false
-              }
-              options={
-                isPendingUser
-                  ? []
-                  : users?.results?.map((user: UserType) => ({
-                      value: user.id,
-                      label: formatUserOptionLabel(user),
-                    }))
-              }
-            />
-          </Form.Item>
-        </Col>
-        <Col span={12}>
-          <Form.Item
-            name="projectManager"
-            label="Project Manager"
-            rules={[
-              { required: true, message: "Please select a project manager!" },
-            ]}
-          >
-            <Select
-              className="h-[48px] w-full"
-              placeholder="Select project manager"
-              showSearch
-              disabled={!!isProjectInactive}
-              optionFilterProp="label"
-              filterOption={(input, option) =>
-                option?.label && typeof option.label === 'string' 
-                  ? option.label.toLowerCase().includes(input.toLowerCase())
-                  : false
-              }
-              options={managerOptions}
-            />
-          </Form.Item>
-        </Col>
-        <Col span={12}>
-          <Form.Item
-            label="Invite Users"
-            name="users"
-            className="user-select-field"
-          >
-            <Select
-              placeholder="Select users"
-              options={filteredUsers}
-              mode="multiple"
-              style={{ width: '100%' }}
-              disabled={!!isProjectInactive}
-              optionFilterProp="label"
-              showSearch
-              allowClear
-              maxTagCount="responsive"
-              virtual={false}
-              filterOption={(input, option) =>
-                option?.label && typeof option.label === 'string' 
-                  ? option.label.toLowerCase().includes(input.toLowerCase())
-                  : false
-              }
-            />
-          </Form.Item>
-        </Col>
-
-        {/* Rest of the form fields remain unchanged */}
-        <Col span={12}>
-          <Form.Item
-            label="Nature of Work Group"
-            name="natureOfWorkGroup"
-            tooltip="Pick a group first to narrow down the list of work types below."
-            rules={[{ required: true, message: "Please select a group!" }]}
-          >
-            <Select
-              className="h-[48px] w-full"
-              placeholder="Select group"
-              allowClear
-              showSearch
-              disabled={!!isProjectInactive}
-              optionFilterProp="label"
-              onChange={handleGroupChange}
-              filterOption={(input, option) =>
-                option?.label && typeof option.label === 'string'
-                  ? option.label.toLowerCase().includes(input.toLowerCase())
-                  : false
-              }
-              options={[
-                ...natureOfWorkGroupOptions,
-                { value: UNCATEGORIZED_GROUP, label: "Uncategorized (no group)" },
-              ]}
-            />
-          </Form.Item>
-        </Col>
-        <Col span={12}>
-          <Form.Item
-            label="Nature of Work"
-            name="natureOfWork"
-            rules={[
-              {
-                required: true,
-                message: "Please select the nature of work!",
-              },
-            ]}
-          >
-            <Select
-              className="h-[48px] w-full"
-              placeholder={
-                selectedGroupId
-                  ? "Select nature of work"
-                  : "Select a group first"
-              }
-              disabled={!selectedGroupId || !!isProjectInactive}
-              onChange={handleNatureOfWorkChange}
-              showSearch
-              optionFilterProp="label"
-              filterOption={(input, option) =>
-                option?.label && typeof option.label === 'string' 
-                  ? option.label.toLowerCase().includes(input.toLowerCase())
-                  : false
-              }
-              notFoundContent={
-                selectedGroupId
-                  ? "No nature of work in this group"
-                  : "Please select a group first"
-              }
-              options={filteredNatureOfWorkOptions}
-            />
-          </Form.Item>
-        </Col>
-        <Col span={12}>
-          <Form.Item
-            label="Starting Date (BS)"
-            name="startingDateNepali"
-            initialValue={nepaliStartDate}
-            rules={[
-              { 
-                required: true, 
-                message: "Please select the starting date!",
-                validator: (_, value) => {
-                  console.log("Validating startingDateNepali:", value);
-                  if (value) {
-                    return Promise.resolve();
-                  }
-                  return Promise.reject(new Error("Please select the starting date!"));
-                }
-              },
-            ]}
-          >
-            <NepaliDatePicker
-              value={nepaliStartDate}
-              disabled={!!isProjectInactive}
-              onChange={bs => {
-                console.log('Starting date changed to:', bs);
-                setNepaliStartDate(bs);
-                try {
-                  // Format the Nepali date for conversion
-                  const nepaliDateStr = formatNepaliDateForForm(bs);
-                  if (nepaliDateStr) {
-                    const adDate = DualDateConverter.convertToAD(nepaliDateStr);
-                    console.log("Converted starting date - BS:", nepaliDateStr, "=> AD:", adDate);
-                    // Set both form fields immediately
-                    form.setFieldsValue({ 
-                      startingDateNepali: bs, 
-                      startingDate: adDate,
-                      startingDateEnglish: adDate
-                    });
-                    // Trigger validation to confirm the field is set
-                    setTimeout(() => {
-                      form.validateFields(['startingDateNepali']);
-                    }, 50);
-                  }
-                } catch (error) {
-                  console.error("Error converting start date to AD:", error);
-                }
-              }}
-            />
-          </Form.Item>
-          {/* Hidden fields to store the AD dates - using Input with display:none */}
-          <Form.Item
-            name="startingDate"
-            style={{ display: 'none' }}
-          >
-            <input style={{ display: 'none' }} />
-          </Form.Item>
-          <Form.Item
-            name="startingDateEnglish"
-            style={{ display: 'none' }}
-          >
-            <input style={{ display: 'none' }} />
-          </Form.Item>
-        </Col>
-        <Col span={12}>
-          <Form.Item
-            label="Ending Date (BS)"
-            name="endingDateNepali"
-            initialValue={nepaliEndDate}
-            rules={[
-              { 
-                required: true, 
-                message: "Please select the ending date!",
-                validator: (_, value) => {
-                  console.log("Validating endingDateNepali:", value);
-                  if (value) {
-                    return Promise.resolve();
-                  }
-                  return Promise.reject(new Error("Please select the ending date!"));
-                }
-              },
-            ]}
-          >
-            <NepaliDatePicker
-              value={nepaliEndDate}
-              disabled={!!isProjectInactive}
-              onChange={bs => {
-                console.log('Ending date changed to:', bs);
-                setNepaliEndDate(bs);
-                try {
-                  // Format the Nepali date for conversion
-                  const nepaliDateStr = formatNepaliDateForForm(bs);
-                  console.log('Formatted Nepali date string:', nepaliDateStr);
-                  if (nepaliDateStr) {
-                    const adDate = DualDateConverter.convertToAD(nepaliDateStr);
-                    console.log("Converted ending date - BS:", nepaliDateStr, "=> AD:", adDate);
-                    
-                    // Verify the date is not today
-                    const today = new Date().toISOString().split('T')[0];
-                    if (adDate === today) {
-                      console.warn('WARNING: Converted date equals today! This might be wrong.');
-                      console.warn('Nepali input:', bs, 'String:', nepaliDateStr);
-                    }
-                    
-                    // Set both form fields immediately
-                    form.setFieldsValue({ 
-                      endingDateNepali: bs, 
-                      endingDate: adDate,
-                      endingDateEnglish: adDate
-                    });
-                    
-                    // Verify the field was set
-                    setTimeout(() => {
-                      const values = form.getFieldsValue(['endingDate', 'endingDateEnglish']);
-                      console.log('Verified form values after setting:', values);
-                    }, 10);
-                    
-                    // Trigger validation to confirm the field is set
-                    setTimeout(() => {
-                      form.validateFields(['endingDateNepali']);
-                    }, 50);
-                  }
-                } catch (error: any) {
-                  console.error("Error converting end date to AD:", error);
-                  alert('Error converting date: ' + (error?.message || 'Unknown error'));
-                }
-              }}
-            />
-          </Form.Item>
-          {/* Hidden fields to store the AD dates - using Input with display:none */}
-          <Form.Item
-            name="endingDate"
-            style={{ display: 'none' }}
-          >
-            <input style={{ display: 'none' }} />
-          </Form.Item>
-          <Form.Item
-            name="endingDateEnglish"
-            style={{ display: 'none' }}
-          >
-            <input style={{ display: 'none' }} />
-          </Form.Item>
-        </Col>
-        <Col span={12}>
-          <Form.Item
-            label="Status"
-            name="status"
-            rules={[{ required: true, message: "Please select the status!" }]}
-          >
-            <Select
-              className="h-[48px] w-full"
-              placeholder="Select status"
-              showSearch
-              optionFilterProp="label"
-              filterOption={(input, option) =>
-                option?.label && typeof option.label === 'string' 
-                  ? option.label.toLowerCase().includes(input.toLowerCase())
-                  : false
-              }
-              options={[
-                { value: "active", label: "Active" },
-                { value: "suspended", label: "Suspended" },
-                { value: "archived", label: "Archived" },
-                { value: "signed_off", label: "Signed Off" },
-              ]}
-            />
-          </Form.Item>
-        </Col>
-        <Col span={24}>
-          <Form.Item
-            id="Description"
-            label="Description"
-            name="description"
-            rules={[
-              { required: true, message: "Please input the description!" },
-            ]}
-          >
-            <TextArea rows={4} disabled={!!isProjectInactive} />
-          </Form.Item>
-        </Col>
-      {/* Move Project Name to the bottom */}
-      <Col span={24}>
-        <FormInputWrapper
-          id="Project Name"
-          label="Project Name"
-          name="name"
-          rules={[
-            { required: true, message: "Please input the project name!" },
-          ]}
-          placeholder="Project name will be auto-generated or you can enter manually"
-          disabled={!!isProjectInactive}
-        />
-      </Col>
-      </Row>
-      <Form.Item>
-        <Button
-          type="primary"
-          htmlType="submit"
-          disabled={isPending || isPendingEdit}
-          loading={isPending || isPendingEdit}
-          style={{ marginRight: 8 }}
-        >
-          Save
-        </Button>
-      </Form.Item>
-    </Form>
-  );
-};
-
-export default ProjectForm;
+import { useCreateProject } from "@/hooks/project/useCreateProject";import { useEditProject } from "@/hooks/project/useEditProject";import { UserType } from "@/hooks/user/type";import { useUser } from "@/hooks/user/useUser";import { Button, Col, Divider, Form, Row, Select, Switch } from "antd";import { message } from "antd";import { useEffect, useMemo, useState } from "react";import FormInputWrapper from "../FormInputWrapper";import {  fetchNatureOfWorkGroups,  fetchNatureOfWorks,  NatureOfWork,  NatureOfWorkGroup,} from "@/service/natureOfWork.service";import moment from "moment";import { ProjectType } from "@/types/project";import TextArea from "antd/es/input/TextArea";import { useClient } from "@/hooks/client/useClient";import { useBilling } from "@/hooks/billing/useBilling";import NepaliDatePicker, { NepaliDate } from "../NepaliDatePicker";import dayjs from "dayjs";// Improved AD<->BS conversion for frontend using the DualDateConverterimport { DualDateConverter } from "@/utils/dateConverter";function adToBs(adDate: string): NepaliDate {  try {    const adDateObj = dayjs(adDate);    if (!adDateObj.isValid()) {      throw new Error('Invalid date format');    }    const dual = DualDateConverter.createDualDate(adDateObj);    return {      year: dual.nepali.getYear(),      month: dual.nepali.getMonth() + 1,      day: dual.nepali.getDate()    };  } catch (error) {    // Fallback to simple conversion    const [year, month, day] = adDate.split("-").map(Number);    return { year: year + 57, month, day };  }}function formatNepaliDateForForm(nepaliDate: NepaliDate | undefined): string | null {  if (!nepaliDate) return null;  // Format as YYYY-MM-DD  return `${nepaliDate.year}-${String(nepaliDate.month).padStart(2, '0')}-${String(nepaliDate.day).padStart(2, '0')}`;}interface ProjectFormProps {  id?: string;  editProjectData?: ProjectType;  handleCancel?: () => void;}const ProjectForm = ({ editProjectData, handleCancel }: ProjectFormProps) => {  const [form] = Form.useForm();  const { mutate, isPending } = useCreateProject();  const [errorMessage, setErrorMessage] = useState<string | null>(null);  const { data: clients } = useClient();  const { data: billings } = useBilling("active");  const { mutate: mutateEdit, isPending: isPendingEdit } = useEditProject();  const isProjectInactive = editProjectData && editProjectData.status !== 'active';  const { data: users, isPending: isPendingUser } = useUser({    limit: 1000,    page: 1,    keywords: "",  });  const [natureOfWorkOptions, setNatureOfWorkOptions] = useState<{ value: string; label: string; shortName: string; groupId?: string }[]>([]);  const [natureOfWorkGroupOptions, setNatureOfWorkGroupOptions] = useState<{ value: string; label: string }[]>([]);  const [suggestedProjectName, setSuggestedProjectName] = useState("");  // Sentinel value used in the Group select to represent "types with no group"  const UNCATEGORIZED_GROUP = "__uncategorized__";  // Watch the currently-selected group so we can filter the Nature of Work list  const selectedGroupId = Form.useWatch("natureOfWorkGroup", form);  // Filter natures based on the currently selected group  const filteredNatureOfWorkOptions = useMemo(() => {    if (!selectedGroupId) return natureOfWorkOptions;    if (selectedGroupId === UNCATEGORIZED_GROUP) {      return natureOfWorkOptions.filter((n) => !n.groupId);    }    return natureOfWorkOptions.filter((n) => n.groupId === selectedGroupId);  }, [selectedGroupId, natureOfWorkOptions]);  // Add state for Nepali dates only  const [nepaliStartDate, setNepaliStartDate] = useState<NepaliDate | undefined>(undefined);  const [nepaliEndDate, setNepaliEndDate] = useState<NepaliDate | undefined>(undefined);  // Get the current project lead and manager value from the form  const projectLead = Form.useWatch("projectLead", form);  const projectManager = Form.useWatch("projectManager", form);  const formatUserOptionLabel = (user: UserType) => {    const roleName = (user.role as any)?.displayName || user.role?.name;    return roleName ? `${user.name} (${roleName})` : user.name;  };  const projectManagerRoleNames = new Set([    "projectmanager",    "administrator",    "superadmin",    "superuser",  ]);  const normalizeRoleName = (roleName?: string) =>    roleName?.toLowerCase().replace(/[\s_-]/g, "") || "";  // Suggest project name when client, nature of work, or fiscal year changes  const handleFieldChange = () => {    setTimeout(() => {      const clientId = form.getFieldValue("client");      const natureOfWorkId = form.getFieldValue("natureOfWork");      const fiscalYear = form.getFieldValue("fiscalYear");      const billingId = form.getFieldValue("billing");      if (clientId && natureOfWorkId && fiscalYear && clients && natureOfWorkOptions.length > 0) {        const clientObj = clients.find((c: any) => c.id === clientId);        const natureObj = natureOfWorkOptions.find((n: any) => n.value === natureOfWorkId);        const billingObj = billingId && billings ? billings.find((b: any) => b.id === billingId) : null;        if (clientObj && natureObj) {          // Format fiscal year as full format (e.g., 2082/83)          const formattedFiscalYear = `${fiscalYear}/${(fiscalYear + 1).toString().slice(-2)}`;          // Include billing short name at the end if available          const billingSuffix = billingObj?.shortName ? `-${billingObj.shortName}` : '';          const suggested = `${clientObj.shortName}-${natureObj.shortName}-${formattedFiscalYear}${billingSuffix}`;          setSuggestedProjectName(suggested);          // Only set if name field is empty or contains the old suggested name          const currentName = form.getFieldValue("name");          if (!currentName || currentName === suggestedProjectName || currentName.includes("-")) {            form.setFieldsValue({ name: suggested });          }        }      }    }, 100);  };  const handleNatureOfWorkChange = (natureOfWorkId: string) => {    handleFieldChange();    const selectedNature = natureOfWorkOptions.find((item) => item.value === natureOfWorkId);    if (!selectedNature) return;    // Keep the group in sync with the chosen nature so the filtered select stays coherent.    if (selectedNature.groupId) {      form.setFieldsValue({ natureOfWorkGroup: selectedNature.groupId });    } else {      form.setFieldsValue({ natureOfWorkGroup: UNCATEGORIZED_GROUP });    }  };  const handleGroupChange = (groupId: string | undefined) => {    // When the user changes the group, clear the nature-of-work selection if it    // no longer belongs to the newly-selected group.    const currentNatureId = form.getFieldValue("natureOfWork");    if (!currentNatureId) return;    const currentNature = natureOfWorkOptions.find((n) => n.value === currentNatureId);    if (!currentNature) return;    if (!groupId) {      // Cleared - keep selection so user can re-choose group freely      return;    }    const natureBelongs =      groupId === UNCATEGORIZED_GROUP        ? !currentNature.groupId        : currentNature.groupId === groupId;    if (!natureBelongs) {      form.setFieldsValue({ natureOfWork: undefined });    }  };  const onFinish = (values: any) => {    // Log all form values for debugging    // CRITICAL: Get the current field values directly from the form    // Don't trust the values passed to onFinish for hidden fields    const allFormValues = form.getFieldsValue(true);    // Ensure projectLead and projectManager are included in the users array    const userIds = [values.projectLead, values.projectManager].filter(Boolean);    // Get dates from the form fields (use allFormValues for hidden fields)    let startDate = allFormValues.startingDateEnglish || allFormValues.startingDate || values.startingDateEnglish || values.startingDate;    let endDate = allFormValues.endingDateEnglish || allFormValues.endingDate || values.endingDateEnglish || values.endingDate;    // If still no date, try converting from Nepali    if (!startDate) {      const nepaliValue = allFormValues.startingDateNepali || values.startingDateNepali || nepaliStartDate;      if (nepaliValue) {        try {          const nepaliDateStr = typeof nepaliValue === 'string'             ? nepaliValue             : formatNepaliDateForForm(nepaliValue);          if (nepaliDateStr) {            startDate = DualDateConverter.convertToAD(nepaliDateStr);          }        } catch (error) {        }      }    }    if (!endDate) {      const nepaliValue = allFormValues.endingDateNepali || values.endingDateNepali || nepaliEndDate;      if (nepaliValue) {        try {          const nepaliDateStr = typeof nepaliValue === 'string'            ? nepaliValue            : formatNepaliDateForForm(nepaliValue);          if (nepaliDateStr) {            endDate = DualDateConverter.convertToAD(nepaliDateStr);          }        } catch (error) {        }      }    }    // Final validation to ensure we have dates    if (!startDate || startDate === '') {      // Last resort: use state values      if (nepaliStartDate) {        const nepaliDateStr = formatNepaliDateForForm(nepaliStartDate);        if (nepaliDateStr) {          try {            startDate = DualDateConverter.convertToAD(nepaliDateStr);          } catch (err) {          }        }      }      if (!startDate) {        message.error('Please select a starting date');        return;      }    }    if (!endDate || endDate === '') {      // Last resort: use state values      if (nepaliEndDate) {        const nepaliDateStr = formatNepaliDateForForm(nepaliEndDate);        if (nepaliDateStr) {          try {            endDate = DualDateConverter.convertToAD(nepaliDateStr);          } catch (err) {          }        }      }      if (!endDate) {        message.error('Please select an ending date');        return;      }    }    // Transform dates to proper format for backend    const transformedValues = {      ...values,      startingDate: startDate,      endingDate: endDate,      users: values.users        ? [...new Set([...values.users, ...userIds])]        : userIds,    };    // "Uncategorized" is a UI-only sentinel meaning "no group" - don't send it to the backend    if (transformedValues.natureOfWorkGroup === UNCATEGORIZED_GROUP) {      transformedValues.natureOfWorkGroup = null;    }    // Remove Nepali date fields before sending to backend    delete transformedValues.startingDateNepali;    delete transformedValues.endingDateNepali;    delete transformedValues.startingDateEnglish;    delete transformedValues.endingDateEnglish;    if (editProjectData?.id) {      mutateEdit(        { id: editProjectData.id, payload: transformedValues },        { onSuccess: () => handleCancel?.() }      );    } else {      mutate(transformedValues, {        onSuccess: () => { if (handleCancel) handleCancel(); },        onError: (error: any) => {          const msg = error?.response?.data?.message || error?.message || "Failed to create project.";          setErrorMessage(msg);          // Show error using Ant Design message          if (msg.toLowerCase().includes("already exists")) {            message.error(msg);          } else {            message.error("Failed to create project. Please try again.");          }        }      });    }  };  // Filter out the project lead and manager from available users for the "Invite Users" field  const filteredUsers = isPendingUser    ? []    : users?.results        ?.filter((user: UserType) => user.id !== projectLead && user.id !== projectManager)        ?.map((user: UserType) => ({          value: user.id,          label: formatUserOptionLabel(user),        })) || [];  // Filter users eligible for the Project Manager field  const managerOptions = isPendingUser    ? []    : users?.results        ?.filter((user: UserType) => projectManagerRoleNames.has(normalizeRoleName(user.role?.name)))        ?.map((user: UserType) => ({          value: user.id,          label: formatUserOptionLabel(user),        })) || [];  useEffect(() => {    Promise.all([fetchNatureOfWorks(), fetchNatureOfWorkGroups()])      .then(([natureData, groupData]: [NatureOfWork[], NatureOfWorkGroup[]]) => {        setNatureOfWorkOptions(          natureData.map((item) => ({            value: item.id,            label: `${item.name} (${item.shortName})`,            shortName: item.shortName,            groupId: item.groupId || item.group?.id || undefined,          }))        );        setNatureOfWorkGroupOptions(          groupData.map((group) => ({            value: group.id,            label: group.name,          }))        );      })      .catch(() => {        message.error("Failed to load Nature of Work options");      });  }, []);  // Trigger name suggestion when dependencies change  useEffect(() => {    handleFieldChange();  }, [clients, natureOfWorkOptions, billings]);  useEffect(() => {    if (editProjectData) {      // Helper function to safely parse dates and create new moment instances      const parseDate = (dateStr: string | null | undefined) => {        if (!dateStr) return null;        try {          // Extract just the date part if it's a full datetime string          const dateOnly = dateStr.includes('T') ? dateStr.split('T')[0] : dateStr;          // Create a completely new moment instance with UTC to avoid timezone issues          const date = moment.utc(dateOnly, 'YYYY-MM-DD', true);          if (date.isValid()) {            // Convert to local time and clone to ensure independence            return date.local().clone();          }          // Fallback: try different formats          const fallbackDate = moment.utc(dateOnly).local();          return fallbackDate.isValid() ? fallbackDate.clone() : null;        } catch (error) {          return null;        }      };      // Parse dates for edit mode FIRST      const parsedStartDate = parseDate(editProjectData.startingDate);      const parsedEndDate = parseDate(editProjectData.endingDate);      // Get the AD dates as strings for the form      const startDateAD = parsedStartDate ? parsedStartDate.format('YYYY-MM-DD') : '';      const endDateAD = parsedEndDate ? parsedEndDate.format('YYYY-MM-DD') : '';      // Convert to Nepali dates if we have valid Gregorian dates      let nepaliStart: NepaliDate | undefined = undefined;      let nepaliEnd: NepaliDate | undefined = undefined;      if (parsedStartDate && startDateAD) {        try {          nepaliStart = adToBs(startDateAD);        } catch (error) {        }      }      if (parsedEndDate && endDateAD) {        try {          nepaliEnd = adToBs(endDateAD);        } catch (error) {        }      }      // Set state BEFORE setting form values      if (nepaliStart) setNepaliStartDate(nepaliStart);      if (nepaliEnd) setNepaliEndDate(nepaliEnd);      // Set form values with a delay to ensure form is ready      setTimeout(() => {        // Create form data object        const formData: any = {          name: editProjectData.name || '',          description: editProjectData.description || '',          status: editProjectData.status || 'active',          fiscalYear: editProjectData.fiscalYear,          users: editProjectData.users?.map((user: any) => user.id) || [],          projectLead: editProjectData.projectLead?.id,          projectManager: editProjectData.projectManager?.id,          client: (editProjectData as any).client?.id || (editProjectData as any).customer?.id || (editProjectData as any).client || (editProjectData as any).customer,          billing: (editProjectData as any).billing?.id || (editProjectData as any).billing,          allowSubtaskWorklog: editProjectData.allowSubtaskWorklog !== undefined ? editProjectData.allowSubtaskWorklog : true,          countsForAvailability: editProjectData.countsForAvailability !== undefined ? editProjectData.countsForAvailability : true,          isPaymentDone: editProjectData.isPaymentDone || false,          isPaymentTemporarilyEnabled: editProjectData.isPaymentTemporarilyEnabled || false,          natureOfWork: typeof editProjectData.natureOfWork === "string" ? editProjectData.natureOfWork : (editProjectData.natureOfWork as any)?.id,          natureOfWorkGroup:            (editProjectData as any).natureOfWorkGroup?.id ||            (editProjectData as any).natureOfWorkGroupId ||            (editProjectData as any).natureOfWork?.groupId ||            // If the project's nature has no group, show it under "Uncategorized"            (editProjectData.natureOfWork && typeof editProjectData.natureOfWork !== "string"              ? UNCATEGORIZED_GROUP              : undefined),          // Set all date fields together          startingDate: startDateAD,          endingDate: endDateAD,          startingDateEnglish: startDateAD,          endingDateEnglish: endDateAD,          startingDateNepali: nepaliStart,          endingDateNepali: nepaliEnd        };        // Clear form first, then set values        form.resetFields();        setTimeout(() => {          // Set the form values          form.setFieldsValue(formData);          // Force form validation          form.validateFields(['startingDateNepali', 'endingDateNepali'])            .then(() => {})            .catch(err => {})        }, 100);      }, 200);    } else {      // For new project, reset form and initialize with today's date      form.resetFields();      // Get today's date in Nepali      const todayNepali = adToBs(new Date().toISOString().split('T')[0]);      setNepaliStartDate(todayNepali);      setNepaliEndDate(todayNepali);      // Format the Nepali date for conversion      const nepaliDateStr = formatNepaliDateForForm(todayNepali);      // Set the form values for new project      setTimeout(() => {        if (nepaliDateStr) {          try {            const adDate = DualDateConverter.convertToAD(nepaliDateStr);            form.setFieldsValue({               startingDateNepali: todayNepali,              startingDate: adDate,              startingDateEnglish: adDate,              endingDateNepali: todayNepali,              endingDate: adDate,              endingDateEnglish: adDate,              allowSubtaskWorklog: true,              countsForAvailability: true,              isPaymentDone: false,              isPaymentTemporarilyEnabled: false            });            // Force form validation            form.validateFields(['startingDateNepali', 'endingDateNepali'])              .then(() => {})              .catch(err => {})          } catch (error) {          }        }      }, 200);    }  }, [editProjectData, form]);  return (    <Form      form={form}      layout="vertical"      onFinish={onFinish}    >      {errorMessage && (        <div style={{ color: 'red', marginBottom: 16 }}>{errorMessage}</div>      )}      <Row gutter={18}>        <Divider />        <Col span={12}>          <Form.Item            label="Client"            name="client"            rules={[{ required: true, message: "Please select the client!" }]}          >            <Select              className="h-[48px] w-full"              placeholder="Select client"              onChange={handleFieldChange}              disabled={!!isProjectInactive}              showSearch              optionFilterProp="label"              filterOption={(input, option) =>                option?.label && typeof option.label === 'string'                   ? option.label.toLowerCase().includes(input.toLowerCase())                  : false              }              options={clients?.filter((client: any) => client.status === 'active').map((client: any) => ({                value: client.id,                label: `${client.name} (${client.shortName})`,              }))}            />          </Form.Item>        </Col>        <Col span={12}>          <Form.Item            label="Billing Entity"            name="billing"            rules={[{ required: false, message: "Please select the billing entity!" }]}          >            <Select              className="h-[48px] w-full"              placeholder="Select billing entity"              onChange={handleFieldChange}              disabled={!!isProjectInactive}              showSearch              optionFilterProp="label"              filterOption={(input, option) =>                option?.label && typeof option.label === 'string'                   ? option.label.toLowerCase().includes(input.toLowerCase())                  : false              }              options={billings?.map((billing: any) => ({                value: billing.id,                label: `${billing.name}${billing.shortName ? ` (${billing.shortName})` : ''}`,              }))}            />          </Form.Item>        </Col>        <Col span={12}>          <Form.Item            label="Allow Subtask Worklog"            name="allowSubtaskWorklog"            valuePropName="checked"            initialValue={true}          >            <Switch               checkedChildren="Yes"               unCheckedChildren="No"               defaultChecked={true}              disabled={!!isProjectInactive}            />          </Form.Item>        </Col>        <Col span={12}>          <Form.Item            label="Counts for User Availability"            name="countsForAvailability"            valuePropName="checked"            initialValue={true}            tooltip="When enabled, this project will be considered when calculating user availability and workload"          >            <Switch               checkedChildren="Yes"               unCheckedChildren="No"               defaultChecked={true}              disabled={!!isProjectInactive}            />          </Form.Item>        </Col>        <Col span={12}>          <Form.Item            label="Payment Done"            name="isPaymentDone"            valuePropName="checked"            initialValue={false}            tooltip="When enabled, client can access documents for this project in their portal"          >            <Switch               checkedChildren="Paid"               unCheckedChildren="Pending"             />          </Form.Item>        </Col>        <Col span={12}>          <Form.Item            label="Temporary Document Access"            name="isPaymentTemporarilyEnabled"            valuePropName="checked"            initialValue={false}            tooltip="Temporarily grant document access even if payment is pending"          >            <Switch               checkedChildren="On"               unCheckedChildren="Off"             />          </Form.Item>        </Col>        <Col span={12}>          <Form.Item            label="Fiscal Year"            name="fiscalYear"            rules={[              { required: true, message: "Please select the fiscal year!" },            ]}          >            <Select              className="h-[48px] w-full"              placeholder="Select fiscal year"              onChange={handleFieldChange}              disabled={!!isProjectInactive}              showSearch              optionFilterProp="label"              filterOption={(input, option) =>                option?.label && typeof option.label === 'string'                   ? option.label.toLowerCase().includes(input.toLowerCase())                  : false              }              options={(() => {                // Get current Nepali year (roughly, adjust as needed)                const today = new Date();                // Example: Nepali year is about 56-57 years ahead of AD                const nepaliYear = today.getFullYear() + 57;                // Generate fiscal years for the last 20 years                return [...Array(20).keys()].map((_, idx) => {                  const startYear = nepaliYear - idx;                  const endYear = (startYear + 1).toString().slice(-2);                  return {                    value: startYear,                    label: `${startYear}/${endYear}`,                  };                });              })()}            />          </Form.Item>        </Col>  {/* Project Name will be moved to the bottom */}        <Col span={12}>          <Form.Item            name="projectLead"            label="Project Lead"            rules={[              { required: true, message: "Please select a project lead!" },            ]}          >            <Select              className="h-[48px] w-full"              placeholder="Select project lead"              showSearch              disabled={!!isProjectInactive}              optionFilterProp="label"              filterOption={(input, option) =>                option?.label && typeof option.label === 'string'                   ? option.label.toLowerCase().includes(input.toLowerCase())                  : false              }              options={                isPendingUser                  ? []                  : users?.results?.map((user: UserType) => ({                      value: user.id,                      label: formatUserOptionLabel(user),                    }))              }            />          </Form.Item>        </Col>        <Col span={12}>          <Form.Item            name="projectManager"            label="Project Manager"            rules={[              { required: true, message: "Please select a project manager!" },            ]}          >            <Select              className="h-[48px] w-full"              placeholder="Select project manager"              showSearch              disabled={!!isProjectInactive}              optionFilterProp="label"              filterOption={(input, option) =>                option?.label && typeof option.label === 'string'                   ? option.label.toLowerCase().includes(input.toLowerCase())                  : false              }              options={managerOptions}            />          </Form.Item>        </Col>        <Col span={12}>          <Form.Item            label="Invite Users"            name="users"            className="user-select-field"          >            <Select              placeholder="Select users"              options={filteredUsers}              mode="multiple"              style={{ width: '100%' }}              disabled={!!isProjectInactive}              optionFilterProp="label"              showSearch              allowClear              maxTagCount="responsive"              virtual={false}              filterOption={(input, option) =>                option?.label && typeof option.label === 'string'                   ? option.label.toLowerCase().includes(input.toLowerCase())                  : false              }            />          </Form.Item>        </Col>        {/* Rest of the form fields remain unchanged */}        <Col span={12}>          <Form.Item            label="Nature of Work Group"            name="natureOfWorkGroup"            tooltip="Pick a group first to narrow down the list of work types below."            rules={[{ required: true, message: "Please select a group!" }]}          >            <Select              className="h-[48px] w-full"              placeholder="Select group"              allowClear              showSearch              disabled={!!isProjectInactive}              optionFilterProp="label"              onChange={handleGroupChange}              filterOption={(input, option) =>                option?.label && typeof option.label === 'string'                  ? option.label.toLowerCase().includes(input.toLowerCase())                  : false              }              options={[                ...natureOfWorkGroupOptions,                { value: UNCATEGORIZED_GROUP, label: "Uncategorized (no group)" },              ]}            />          </Form.Item>        </Col>        <Col span={12}>          <Form.Item            label="Nature of Work"            name="natureOfWork"            rules={[              {                required: true,                message: "Please select the nature of work!",              },            ]}          >            <Select              className="h-[48px] w-full"              placeholder={                selectedGroupId                  ? "Select nature of work"                  : "Select a group first"              }              disabled={!selectedGroupId || !!isProjectInactive}              onChange={handleNatureOfWorkChange}              showSearch              optionFilterProp="label"              filterOption={(input, option) =>                option?.label && typeof option.label === 'string'                   ? option.label.toLowerCase().includes(input.toLowerCase())                  : false              }              notFoundContent={                selectedGroupId                  ? "No nature of work in this group"                  : "Please select a group first"              }              options={filteredNatureOfWorkOptions}            />          </Form.Item>        </Col>        <Col span={12}>          <Form.Item            label="Starting Date (BS)"            name="startingDateNepali"            initialValue={nepaliStartDate}            rules={[              {                 required: true,                 message: "Please select the starting date!",                validator: (_, value) => {                  if (value) {                    return Promise.resolve();                  }                  return Promise.reject(new Error("Please select the starting date!"));                }              },            ]}          >            <NepaliDatePicker              value={nepaliStartDate}              disabled={!!isProjectInactive}              onChange={bs => {                setNepaliStartDate(bs);                try {                  // Format the Nepali date for conversion                  const nepaliDateStr = formatNepaliDateForForm(bs);                  if (nepaliDateStr) {                    const adDate = DualDateConverter.convertToAD(nepaliDateStr);                    // Set both form fields immediately                    form.setFieldsValue({                       startingDateNepali: bs,                       startingDate: adDate,                      startingDateEnglish: adDate                    });                    // Trigger validation to confirm the field is set                    setTimeout(() => {                      form.validateFields(['startingDateNepali']);                    }, 50);                  }                } catch (error) {                }              }}            />          </Form.Item>          {/* Hidden fields to store the AD dates - using Input with display:none */}          <Form.Item            name="startingDate"            style={{ display: 'none' }}          >            <input style={{ display: 'none' }} />          </Form.Item>          <Form.Item            name="startingDateEnglish"            style={{ display: 'none' }}          >            <input style={{ display: 'none' }} />          </Form.Item>        </Col>        <Col span={12}>          <Form.Item            label="Ending Date (BS)"            name="endingDateNepali"            initialValue={nepaliEndDate}            rules={[              {                 required: true,                 message: "Please select the ending date!",                validator: (_, value) => {                  if (value) {                    return Promise.resolve();                  }                  return Promise.reject(new Error("Please select the ending date!"));                }              },            ]}          >            <NepaliDatePicker              value={nepaliEndDate}              disabled={!!isProjectInactive}              onChange={bs => {                setNepaliEndDate(bs);                try {                  // Format the Nepali date for conversion                  const nepaliDateStr = formatNepaliDateForForm(bs);                  if (nepaliDateStr) {                    const adDate = DualDateConverter.convertToAD(nepaliDateStr);                    // Verify the date is not today                    const today = new Date().toISOString().split('T')[0];                    if (adDate === today) {                    }                    // Set both form fields immediately                    form.setFieldsValue({                       endingDateNepali: bs,                       endingDate: adDate,                      endingDateEnglish: adDate                    });                    // Verify the field was set                    setTimeout(() => {                      const values = form.getFieldsValue(['endingDate', 'endingDateEnglish']);                    }, 10);                    // Trigger validation to confirm the field is set                    setTimeout(() => {                      form.validateFields(['endingDateNepali']);                    }, 50);                  }                } catch (error: any) {                  alert('Error converting date: ' + (error?.message || 'Unknown error'));                }              }}            />          </Form.Item>          {/* Hidden fields to store the AD dates - using Input with display:none */}          <Form.Item            name="endingDate"            style={{ display: 'none' }}          >            <input style={{ display: 'none' }} />          </Form.Item>          <Form.Item            name="endingDateEnglish"            style={{ display: 'none' }}          >            <input style={{ display: 'none' }} />          </Form.Item>        </Col>        <Col span={12}>          <Form.Item            label="Status"            name="status"            rules={[{ required: true, message: "Please select the status!" }]}          >            <Select              className="h-[48px] w-full"              placeholder="Select status"              showSearch              optionFilterProp="label"              filterOption={(input, option) =>                option?.label && typeof option.label === 'string'                   ? option.label.toLowerCase().includes(input.toLowerCase())                  : false              }              options={[                { value: "active", label: "Active" },                { value: "suspended", label: "Suspended" },                { value: "archived", label: "Archived" },                { value: "signed_off", label: "Signed Off" },              ]}            />          </Form.Item>        </Col>        <Col span={24}>          <Form.Item            id="Description"            label="Description"            name="description"            rules={[              { required: true, message: "Please input the description!" },            ]}          >            <TextArea rows={4} disabled={!!isProjectInactive} />          </Form.Item>        </Col>      {/* Move Project Name to the bottom */}      <Col span={24}>        <FormInputWrapper          id="Project Name"          label="Project Name"          name="name"          rules={[            { required: true, message: "Please input the project name!" },          ]}          placeholder="Project name will be auto-generated or you can enter manually"          disabled={!!isProjectInactive}        />      </Col>      </Row>      <Form.Item>        <Button          type="primary"          htmlType="submit"          disabled={isPending || isPendingEdit}          loading={isPending || isPendingEdit}          style={{ marginRight: 8 }}        >          Save        </Button>      </Form.Item>    </Form>  );};export default ProjectForm;
