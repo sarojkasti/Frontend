@@ -25,5 +25,7 @@ export default defineConfig({
     //   key: fs.readFileSync(path.resolve(__dirname, 'ssl/private.key')),
     //   cert: fs.readFileSync(path.resolve(__dirname, 'ssl/certificate.crt')),
     // },
-    host: '0.0.0.0'  },
+    host: '0.0.0.0',
+    allowedHosts: ['artha.sarojkasti.com.np', 'task.artha.com.np', 'client.artha.com.np', 'localhost'],
+  },
 });
