@@ -1,13 +1,32 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Card, Button, Tabs, Spin, Divider, Typography, Space, Row, Col, Tag, Avatar } from 'antd';
-import { EditOutlined, ArrowLeftOutlined, PhoneOutlined, MailOutlined, GlobalOutlined, HomeOutlined, BankOutlined, IdcardOutlined, CalendarOutlined, TeamOutlined } from '@ant-design/icons';
+import { Card, Button, Tabs, Spin, Typography, Space, Row, Col, Tag, Avatar, Statistic, Divider, Tooltip, message } from 'antd';
+import {
+  EditOutlined,
+  ArrowLeftOutlined,
+  PhoneOutlined,
+  MailOutlined,
+  GlobalOutlined,
+  HomeOutlined,
+  BankOutlined,
+  IdcardOutlined,
+  CalendarOutlined,
+  TeamOutlined,
+  CopyOutlined,
+  CheckOutlined,
+  AppstoreOutlined,
+  EnvironmentOutlined,
+  CompassOutlined,
+  SafetyCertificateOutlined,
+  KeyOutlined,
+  ProjectOutlined,
+  UsergroupAddOutlined
+} from '@ant-design/icons';
 import { useClientById } from '@/hooks/client/useClientById';
-import PageTitle from '@/components/PageTitle';
 import PortalCredentialsForm from '@/components/Client/portalcredentialsform';
 import ClientProjects from '@/components/Client/ClientProjects';
-import moment from 'moment';
-import { formatBusinessStatus } from '@/utils/formatUtils';
+import ClientUsersTab from '@/components/Client/ClientUsersTab';
+import dayjs from 'dayjs';
 
 const { TabPane } = Tabs;
 const { Title, Text } = Typography;
@@ -17,261 +36,396 @@ const ClientView: React.FC = () => {
   const navigate = useNavigate();
   const { data: client, isLoading } = useClientById({ id: id || '' });
   const [activeTab, setActiveTab] = useState('basic');
+  const [copiedPan, setCopiedPan] = useState(false);
 
   if (isLoading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh' }}>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '70vh' }}>
         <Spin size="large" />
       </div>
     );
   }
 
-  const handleTabChange = (key: string) => {
-    setActiveTab(key);
-  };
-
-  const handleEdit = () => {
-    navigate(`/client/edit/${id}`);
-  };
-
-  const handleBack = () => {
-    navigate('/client');
-  };
-
   if (!client) {
-    return <div>Client not found</div>;
+    return (
+      <Card style={{ textAlign: 'center', padding: '40px 0', margin: '24px 0' }}>
+        <Title level={4} type="secondary">Client Not Found</Title>
+        <Button type="primary" icon={<ArrowLeftOutlined />} onClick={() => navigate('/client')}>
+          Back to Clients List
+        </Button>
+      </Card>
+    );
   }
+
+  const handleCopyPan = () => {
+    if (client.panNo) {
+      navigator.clipboard.writeText(client.panNo);
+      setCopiedPan(true);
+      message.success('PAN number copied to clipboard!');
+      setTimeout(() => setCopiedPan(false), 2000);
+    }
+  };
+
+  const formatText = (text?: string) => {
+    if (!text) return '-';
+    return text.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
+  };
 
   const formatLegalStatus = (status?: any) => {
     if (!status) return '-';
     if (typeof status === 'object' && status.name) {
       return status.name;
     }
-    if (typeof status === 'string') {
-      return status.split('_').map((word: string) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
-    }
-    return String(status);
+    return formatText(String(status));
   };
-  
-  const getStatusColor = (status?: any) => {
-    if (typeof status !== 'string') return 'default';
-    switch(status.toLowerCase()) {
-      case 'active': return 'green';
-      case 'suspended': return 'orange';
-      case 'archive': return 'red';
-      default: return 'default';
+
+  const getStatusTag = (status?: string) => {
+    const st = String(status || 'active').toLowerCase();
+    switch (st) {
+      case 'active':
+        return <Tag color="success" style={{ padding: '4px 12px', fontSize: 13, borderRadius: 12 }}>Active</Tag>;
+      case 'suspended':
+        return <Tag color="warning" style={{ padding: '4px 12px', fontSize: 13, borderRadius: 12 }}>Suspended</Tag>;
+      case 'archive':
+      case 'archived':
+        return <Tag color="error" style={{ padding: '4px 12px', fontSize: 13, borderRadius: 12 }}>Archived</Tag>;
+      default:
+        return <Tag style={{ padding: '4px 12px', fontSize: 13, borderRadius: 12 }}>{formatText(st)}</Tag>;
     }
   };
 
   return (
-    <>
-      <PageTitle
-        title={
-          <Space>
-            <Button 
-              icon={<ArrowLeftOutlined />} 
-              onClick={handleBack}
-              style={{ marginRight: 8 }}
-            />
-            Client Details
-          </Space>
-        }
-        extra={
-          <Button type="primary" icon={<EditOutlined />} onClick={handleEdit}>
-            Edit
-          </Button>
-        }
-      />
+    <div style={{ padding: '0 4px', minHeight: '85vh' }}>
+      {/* Hero Header Banner */}
+      <Card
+        className="shadow-sm border-slate-200"
+        style={{ marginBottom: 20, borderRadius: 12, overflow: 'hidden' }}
+        bodyStyle={{ padding: '24px 28px' }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16 }}>
+          {/* Left: Avatar & Main Title */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+            <Avatar
+              size={72}
+              style={{
+                background: 'linear-gradient(135deg, #1677ff 0%, #003eb3 100%)',
+                fontSize: 28,
+                fontWeight: 700,
+                boxShadow: '0 4px 12px rgba(22, 119, 255, 0.3)'
+              }}
+            >
+              {typeof client.name === 'string' ? client.name.charAt(0).toUpperCase() : 'C'}
+            </Avatar>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                <Title level={2} style={{ margin: 0, color: '#0f172a', fontWeight: 700 }}>
+                  {client.name}
+                </Title>
+                {getStatusTag(client.status)}
+              </div>
+              {client.shortName && (
+                <Text type="secondary" style={{ fontSize: 14, fontWeight: 500 }}>
+                  Short Name: <Tag color="blue">{client.shortName}</Tag>
+                </Text>
+              )}
+            </div>
+          </div>
 
-      <Card>
-        <Row gutter={[24, 24]}>
-          <Col xs={24} sm={24} md={16}>
-            <div style={{ display: 'flex', alignItems: 'center' }}>
-              <Avatar 
-                size={64} 
-                style={{ backgroundColor: '#1890ff', marginRight: 16 }}
-              >
-                {typeof client.name === 'string' ? client.name.charAt(0).toUpperCase() : 'C'}
-              </Avatar>
+          {/* Right: Actions Header */}
+          <Space size={12}>
+            <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/client')} size="large">
+              Back to Clients
+            </Button>
+            <Button type="primary" icon={<EditOutlined />} onClick={() => navigate(`/client/edit/${id}`)} size="large">
+              Edit Client
+            </Button>
+          </Space>
+        </div>
+
+        <Divider style={{ margin: '18px 0 14px 0' }} />
+
+        {/* Top Metric Header Chips */}
+        <Row gutter={[24, 12]}>
+          <Col xs={24} sm={12} md={6}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ width: 38, height: 38, borderRadius: 8, backgroundColor: '#e6f4ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <IdcardOutlined style={{ color: '#1677ff', fontSize: 18 }} />
+              </div>
               <div>
-                <Title level={3} style={{ margin: 0 }}>{client.name}</Title>
-                {client.shortName && <Text type="secondary">{client.shortName}</Text>}
-                <div style={{ marginTop: 8 }}>
-                  <Tag color={getStatusColor(client.status)}>
-                    {typeof client.status === 'string' ? client.status.charAt(0).toUpperCase() + client.status.slice(1) : 'Unknown'}
-                  </Tag>
-                </div>
+                <Text type="secondary" style={{ fontSize: 11, display: 'block', lineHeight: 1.2 }}>PAN NUMBER</Text>
+                <Space size={4}>
+                  <Text strong style={{ fontSize: 14, color: '#0f172a' }}>{client.panNo || '-'}</Text>
+                  {client.panNo && (
+                    <Tooltip title="Copy PAN">
+                      <Button
+                        type="text"
+                        size="small"
+                        icon={copiedPan ? <CheckOutlined style={{ color: '#52c41a' }} /> : <CopyOutlined style={{ color: '#94a3b8' }} />}
+                        onClick={handleCopyPan}
+                      />
+                    </Tooltip>
+                  )}
+                </Space>
               </div>
             </div>
           </Col>
-          <Col xs={24} sm={24} md={8}>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-              {client.registeredDate && (
-                <div style={{ marginBottom: 8 }}>
-                  <Space>
-                    <CalendarOutlined />
-                    <Text type="secondary">Registered on:</Text>
-                    <Text>{moment(client.registeredDate).format('MMM DD, YYYY')}</Text>
-                  </Space>
-                </div>
-              )}
-              <div style={{ marginBottom: 8 }}>
-                <Space>
-                  <BankOutlined />
-                  <Text type="secondary">Legal Status:</Text>
-                  <Text>{formatLegalStatus(client.legalStatus)}</Text>
-                </Space>
+
+          <Col xs={24} sm={12} md={6}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ width: 38, height: 38, borderRadius: 8, backgroundColor: '#f6ffed', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <BankOutlined style={{ color: '#52c41a', fontSize: 18 }} />
               </div>
-              {(client.businessSize?.name || client.businessSizeEnum) && (
-                <div>
-                  <Space>
-                    <TeamOutlined />
-                    <Text type="secondary">Business Size:</Text>
-                    <Text>{client.businessSize?.name || formatBusinessStatus(client.businessSizeEnum)}</Text>
-                  </Space>
-                </div>
-              )}
+              <div>
+                <Text type="secondary" style={{ fontSize: 11, display: 'block', lineHeight: 1.2 }}>LEGAL STATUS</Text>
+                <Text strong style={{ fontSize: 14, color: '#0f172a' }}>{formatLegalStatus(client.legalStatus)}</Text>
+              </div>
+            </div>
+          </Col>
+
+          <Col xs={24} sm={12} md={6}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ width: 38, height: 38, borderRadius: 8, backgroundColor: '#fff7e6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <TeamOutlined style={{ color: '#fa8c16', fontSize: 18 }} />
+              </div>
+              <div>
+                <Text type="secondary" style={{ fontSize: 11, display: 'block', lineHeight: 1.2 }}>BUSINESS SIZE</Text>
+                <Text strong style={{ fontSize: 14, color: '#0f172a' }}>
+                  {client.businessSize?.name || formatText(client.businessSizeEnum)}
+                </Text>
+              </div>
+            </div>
+          </Col>
+
+          <Col xs={24} sm={12} md={6}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ width: 38, height: 38, borderRadius: 8, backgroundColor: '#f9f0ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <CalendarOutlined style={{ color: '#722ed1', fontSize: 18 }} />
+              </div>
+              <div>
+                <Text type="secondary" style={{ fontSize: 11, display: 'block', lineHeight: 1.2 }}>REGISTERED DATE</Text>
+                <Text strong style={{ fontSize: 14, color: '#0f172a' }}>
+                  {client.registeredDate ? dayjs(client.registeredDate).format('MMM DD, YYYY') : '-'}
+                </Text>
+              </div>
             </div>
           </Col>
         </Row>
-
-        <Divider />
-
-        <Tabs activeKey={activeTab} onChange={handleTabChange}>
-          <TabPane tab="Basic Information" key="basic">
-            <Row gutter={[24, 24]}>
-              <Col xs={24} sm={24} md={12}>
-                <Card title="Business Information" bordered={false}>
-                  <div style={{ marginBottom: 16 }}>
-                    <Text type="secondary">PAN No:</Text>
-                    <div>
-                      <IdcardOutlined style={{ marginRight: 8 }} />
-                      <Text strong>{client.panNo}</Text>
-                    </div>
-                  </div>
-                  
-                  <div style={{ marginBottom: 16 }}>
-                    <Text type="secondary">Industry Nature:</Text>
-                    <div>
-                      <Text strong>
-                        {client.industryNature?.name || 
-                         (client.industryNatureEnum && formatBusinessStatus(client.industryNatureEnum)) ||
-                         '-'}
-                      </Text>
-                    </div>
-                  </div>
-                </Card>
-              </Col>
-              
-              <Col xs={24} sm={24} md={12}>
-                <Card title="Contact Information" bordered={false}>
-                  {client.email && (
-                    <div style={{ marginBottom: 16 }}>
-                      <Text type="secondary">Email:</Text>
-                      <div>
-                        <MailOutlined style={{ marginRight: 8 }} />
-                        <Text strong>{client.email}</Text>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {client.telephoneNo && (
-                    <div style={{ marginBottom: 16 }}>
-                      <Text type="secondary">Telephone:</Text>
-                      <div>
-                        <PhoneOutlined style={{ marginRight: 8 }} />
-                        <Text strong>{client.telephoneNo}</Text>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {client.mobileNo && (
-                    <div style={{ marginBottom: 16 }}>
-                      <Text type="secondary">Mobile:</Text>
-                      <div>
-                        <PhoneOutlined style={{ marginRight: 8 }} />
-                        <Text strong>{client.mobileNo}</Text>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {client.website && (
-                    <div>
-                      <Text type="secondary">Website:</Text>
-                      <div>
-                        <GlobalOutlined style={{ marginRight: 8 }} />
-                        <a href={client.website.startsWith('http') ? client.website : `http://${client.website}`} target="_blank" rel="noopener noreferrer">
-                          {client.website}
-                        </a>
-                      </div>
-                    </div>
-                  )}
-                </Card>
-              </Col>
-            </Row>
-            
-            <div style={{ marginTop: 24 }}>
-              <Card title="Address" bordered={false}>
-                <Row gutter={[24, 16]}>
-                  <Col xs={24} sm={12} md={6}>
-                    <Text type="secondary">Country</Text>
-                    <div>
-                      <HomeOutlined style={{ marginRight: 8 }} />
-                      <Text strong>{client.country}</Text>
-                    </div>
-                  </Col>
-                  
-                  <Col xs={24} sm={12} md={6}>
-                    <Text type="secondary">State/Province</Text>
-                    <div>
-                      <Text strong>{client.state}</Text>
-                    </div>
-                  </Col>
-                  
-                  <Col xs={24} sm={12} md={6}>
-                    <Text type="secondary">District</Text>
-                    <div>
-                      <Text strong>{client.district}</Text>
-                    </div>
-                  </Col>
-                  
-                  <Col xs={24} sm={12} md={6}>
-                    <Text type="secondary">Local Jurisdiction</Text>
-                    <div>
-                      <Text strong>{client.localJurisdiction}</Text>
-                    </div>
-                  </Col>
-                  
-                  {client.wardNo && (
-                    <Col xs={24} sm={12} md={6}>
-                      <Text type="secondary">Ward No</Text>
-                      <div>
-                        <Text strong>{client.wardNo}</Text>
-                      </div>
-                    </Col>
-                  )}
-                  
-                  <Col xs={24} sm={12} md={6}>
-                    <Text type="secondary">Locality</Text>
-                    <div>
-                      <Text strong>{client.locality}</Text>
-                    </div>
-                  </Col>
-                </Row>
-              </Card>
-            </div>
-          </TabPane>
-
-          <TabPane tab="Portal Credentials" key="credentials">
-            <PortalCredentialsForm clientId={id!} readOnly={true} />
-          </TabPane>
-
-          <TabPane tab="Projects" key="projects">
-            <ClientProjects clientId={id!} />
-          </TabPane>
-        </Tabs>
       </Card>
-    </>
+
+      {/* Main Tabs Container */}
+      <Card className="shadow-sm border-slate-200" style={{ borderRadius: 12 }}>
+        <Tabs
+          activeKey={activeTab}
+          onChange={setActiveTab}
+          size="large"
+          items={[
+            {
+              key: 'basic',
+              label: (
+                <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <AppstoreOutlined />
+                  Basic Information
+                </span>
+              ),
+              children: (
+                <Space direction="vertical" size={20} style={{ width: '100%', paddingTop: 8 }}>
+                  <Row gutter={[20, 20]}>
+                    {/* Business & Industry Details Card */}
+                    <Col xs={24} md={12}>
+                      <Card
+                        title={
+                          <Space>
+                            <SafetyCertificateOutlined style={{ color: '#1677ff' }} />
+                            <span>Business & Industry Details</span>
+                          </Space>
+                        }
+                        size="small"
+                        bordered
+                        className="bg-slate-50/50"
+                        style={{ height: '100%', borderRadius: 8 }}
+                      >
+                        <Space direction="vertical" size={14} style={{ width: '100%' }}>
+                          <div>
+                            <Text type="secondary" style={{ fontSize: 12 }}>Company Full Name</Text>
+                            <div style={{ fontSize: 14, fontWeight: 600, color: '#1e293b' }}>{client.name}</div>
+                          </div>
+
+                          <div>
+                            <Text type="secondary" style={{ fontSize: 12 }}>Industry / Business Nature</Text>
+                            <div style={{ fontSize: 14, fontWeight: 600, color: '#1e293b' }}>
+                              {client.industryNature?.name || formatText(client.industryNatureEnum)}
+                            </div>
+                          </div>
+
+                          <div>
+                            <Text type="secondary" style={{ fontSize: 12 }}>PAN / Permanent Account Number</Text>
+                            <div style={{ fontSize: 14, fontWeight: 600, color: '#1677ff', fontFamily: 'monospace' }}>
+                              {client.panNo || '-'}
+                            </div>
+                          </div>
+                        </Space>
+                      </Card>
+                    </Col>
+
+                    {/* Contact Information Card */}
+                    <Col xs={24} md={12}>
+                      <Card
+                        title={
+                          <Space>
+                            <PhoneOutlined style={{ color: '#52c41a' }} />
+                            <span>Contact Details</span>
+                          </Space>
+                        }
+                        size="small"
+                        bordered
+                        className="bg-slate-50/50"
+                        style={{ height: '100%', borderRadius: 8 }}
+                      >
+                        <Space direction="vertical" size={14} style={{ width: '100%' }}>
+                          <div>
+                            <Text type="secondary" style={{ fontSize: 12 }}>Email Address</Text>
+                            <div style={{ fontSize: 14, fontWeight: 600, color: '#1e293b' }}>
+                              {client.email ? (
+                                <a href={`mailto:${client.email}`} className="flex items-center gap-1 text-blue-600">
+                                  <MailOutlined /> {client.email}
+                                </a>
+                              ) : (
+                                '-'
+                              )}
+                            </div>
+                          </div>
+
+                          <div>
+                            <Text type="secondary" style={{ fontSize: 12 }}>Telephone / Mobile</Text>
+                            <div style={{ fontSize: 14, fontWeight: 600, color: '#1e293b' }}>
+                              {client.mobileNo || client.telephoneNo || client.phone ? (
+                                <span className="flex items-center gap-1">
+                                  <PhoneOutlined /> {client.mobileNo || client.telephoneNo || client.phone}
+                                </span>
+                              ) : (
+                                '-'
+                              )}
+                            </div>
+                          </div>
+
+                          <div>
+                            <Text type="secondary" style={{ fontSize: 12 }}>Website URL</Text>
+                            <div style={{ fontSize: 14, fontWeight: 600 }}>
+                              {client.website ? (
+                                <a
+                                  href={client.website.startsWith('http') ? client.website : `http://${client.website}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex items-center gap-1 text-blue-600"
+                                >
+                                  <GlobalOutlined /> {client.website}
+                                </a>
+                              ) : (
+                                '-'
+                              )}
+                            </div>
+                          </div>
+                        </Space>
+                      </Card>
+                    </Col>
+                  </Row>
+
+                  {/* Address & Location Card */}
+                  <Card
+                    title={
+                      <Space>
+                        <EnvironmentOutlined style={{ color: '#fa8c16' }} />
+                        <span>Registered Location & Address</span>
+                      </Space>
+                    }
+                    size="small"
+                    bordered
+                    className="bg-slate-50/50"
+                    style={{ borderRadius: 8 }}
+                  >
+                    <Row gutter={[20, 16]}>
+                      <Col xs={12} sm={8} md={4}>
+                        <Text type="secondary" style={{ fontSize: 11 }}>COUNTRY</Text>
+                        <div style={{ fontSize: 14, fontWeight: 600, color: '#1e293b' }}>
+                          <HomeOutlined style={{ marginRight: 6, color: '#94a3b8' }} />
+                          {formatText(client.country)}
+                        </div>
+                      </Col>
+
+                      <Col xs={12} sm={8} md={4}>
+                        <Text type="secondary" style={{ fontSize: 11 }}>STATE / PROVINCE</Text>
+                        <div style={{ fontSize: 14, fontWeight: 600, color: '#1e293b' }}>
+                          {formatText(client.state)}
+                        </div>
+                      </Col>
+
+                      <Col xs={12} sm={8} md={4}>
+                        <Text type="secondary" style={{ fontSize: 11 }}>DISTRICT</Text>
+                        <div style={{ fontSize: 14, fontWeight: 600, color: '#1e293b' }}>
+                          {formatText(client.district)}
+                        </div>
+                      </Col>
+
+                      <Col xs={12} sm={8} md={6}>
+                        <Text type="secondary" style={{ fontSize: 11 }}>LOCAL JURISDICTION</Text>
+                        <div style={{ fontSize: 14, fontWeight: 600, color: '#1e293b' }}>
+                          <CompassOutlined style={{ marginRight: 6, color: '#94a3b8' }} />
+                          {formatText(client.localJurisdiction)}
+                        </div>
+                      </Col>
+
+                      <Col xs={12} sm={8} md={3}>
+                        <Text type="secondary" style={{ fontSize: 11 }}>WARD NO.</Text>
+                        <div style={{ fontSize: 14, fontWeight: 600, color: '#1e293b' }}>
+                          {client.wardNo || '-'}
+                        </div>
+                      </Col>
+
+                      <Col xs={12} sm={8} md={3}>
+                        <Text type="secondary" style={{ fontSize: 11 }}>LOCALITY</Text>
+                        <div style={{ fontSize: 14, fontWeight: 600, color: '#1e293b' }}>
+                          {formatText(client.locality)}
+                        </div>
+                      </Col>
+                    </Row>
+                  </Card>
+                </Space>
+              )
+            },
+            {
+              key: 'users',
+              label: (
+                <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <UsergroupAddOutlined />
+                  Client Contact Users
+                </span>
+              ),
+              children: <ClientUsersTab clientId={id!} clientName={client.name} />
+            },
+            {
+              key: 'credentials',
+              label: (
+                <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <KeyOutlined />
+                  Portal & IRD Credentials
+                </span>
+              ),
+              children: <PortalCredentialsForm clientId={id!} readOnly={true} />
+            },
+            {
+              key: 'projects',
+              label: (
+                <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <ProjectOutlined />
+                  Associated Projects
+                </span>
+              ),
+              children: <ClientProjects clientId={id!} />
+            }
+          ]}
+        />
+      </Card>
+    </div>
   );
 };
 

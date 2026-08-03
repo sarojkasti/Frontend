@@ -1,6 +1,6 @@
 import React from 'react';
-import { Button, Form, Input, Modal, Table, Space, Switch, Tooltip } from 'antd';
-import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons';
+import { Button, Form, Input, Modal, Table, Space, Switch, Tooltip, AutoComplete } from 'antd';
+import { DeleteOutlined, EditOutlined, PlusOutlined, KeyOutlined } from '@ant-design/icons';
 import { usePortalCredentials } from '@/hooks/client/usePortalCredentials';
 import { useCreatePortalCredential } from '@/hooks/client/useCreatePortalCredential';
 import { useUpdatePortalCredential } from '@/hooks/client/useUpdatePortalCredential';
@@ -11,11 +11,19 @@ interface PortalCredentialFormProps {
   readOnly?: boolean;
 }
 
+const PORTAL_NAME_PRESETS = [
+  { value: "IRD Portal (Inland Revenue PAN)" },
+  { value: "OCR Portal (Office of Company Registrar)" },
+  { value: "SSF Portal (Social Security Fund)" },
+  { value: "Customs Portal (Department of Customs)" },
+  { value: "Client Self-Service Portal" }
+];
+
 const PortalCredentialsForm: React.FC<PortalCredentialFormProps> = ({ clientId, readOnly = false }) => {
   const [form] = Form.useForm();
   const [isModalVisible, setIsModalVisible] = React.useState(false);
   const [editingCredential, setEditingCredential] = React.useState<any>(null);
-  
+
   const { data: portalCredentials, isLoading } = usePortalCredentials(clientId);
   const createMutation = useCreatePortalCredential(clientId);
   const updateMutation = useUpdatePortalCredential(clientId, editingCredential?.id || '');
@@ -51,13 +59,13 @@ const PortalCredentialsForm: React.FC<PortalCredentialFormProps> = ({ clientId, 
         ...values,
         status: values.status ? 'active' : 'inactive'
       };
-      
+
       if (editingCredential) {
         updateMutation.mutate(payload);
       } else {
         createMutation.mutate(payload);
       }
-      
+
       setIsModalVisible(false);
       form.resetFields();
     });
@@ -152,11 +160,10 @@ const PortalCredentialsForm: React.FC<PortalCredentialFormProps> = ({ clientId, 
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-        <h3>Web Portal Credentials</h3>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         {!readOnly && (
-          <Button 
-            type="primary" 
+          <Button
+            type="primary"
             icon={<PlusOutlined />}
             onClick={showAddModal}
           >
@@ -174,16 +181,16 @@ const PortalCredentialsForm: React.FC<PortalCredentialFormProps> = ({ clientId, 
       />
 
       <Modal
-        title={editingCredential ? "Edit Portal Credential" : "Add Portal Credential"}
+        title={editingCredential ? "Edit Portal / IRD Credential" : "Add Portal / IRD Credential"}
         open={isModalVisible}
         onCancel={handleCancel}
         footer={[
           <Button key="cancel" onClick={handleCancel}>
             Cancel
           </Button>,
-          <Button 
-            key="submit" 
-            type="primary" 
+          <Button
+            key="submit"
+            type="primary"
             loading={createMutation.isPending || updateMutation.isPending}
             onClick={handleSubmit}
           >
@@ -197,10 +204,16 @@ const PortalCredentialsForm: React.FC<PortalCredentialFormProps> = ({ clientId, 
         >
           <Form.Item
             name="portalName"
-            label="Portal Name"
-            rules={[{ required: true, message: 'Please enter portal name' }]}
+            label="Portal Name (e.g. IRD, OCR, SSF)"
+            rules={[{ required: true, message: 'Please select or enter portal name' }]}
           >
-            <Input />
+            <AutoComplete
+              options={PORTAL_NAME_PRESETS}
+              placeholder="Select or type (e.g. IRD Portal (Inland Revenue PAN))"
+              filterOption={(inputValue, option) =>
+                option!.value.toUpperCase().indexOf(inputValue.toUpperCase()) !== -1
+              }
+            />
           </Form.Item>
           <Form.Item
             name="website"

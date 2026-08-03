@@ -92,7 +92,7 @@ const ProjectExportPage: React.FC<ProjectExportPageProps> = ({
           description="You do not have permission to export project data. Please contact your administrator."
           action={
             <Button icon={<ArrowLeftOutlined />} onClick={onBack} type="primary" style={{ marginTop: 12 }}>
-              Back to Projects Table
+              Back
             </Button>
           }
         />
@@ -483,11 +483,10 @@ const ProjectExportPage: React.FC<ProjectExportPageProps> = ({
       <div className="flex justify-between items-center bg-white p-4 rounded-lg shadow-sm border border-slate-200 mb-6">
         <Space size={12}>
           <Button icon={<ArrowLeftOutlined />} onClick={onBack} size="large">
-            Back to Projects Table
+            Back
           </Button>
           <div>
             <h1 className="text-xl font-bold text-slate-800 m-0 flex items-center gap-2">
-              <DownloadOutlined className="text-blue-600" />
               Project Export & Download Helper
             </h1>
             <p className="text-xs text-slate-500 m-0">
@@ -496,15 +495,6 @@ const ProjectExportPage: React.FC<ProjectExportPageProps> = ({
           </div>
         </Space>
 
-        <Button
-          type="primary"
-          size="large"
-          icon={<DownloadOutlined />}
-          onClick={handleExportExcel}
-          style={{ backgroundColor: "#1677ff", paddingLeft: 24, paddingRight: 24, height: 44, fontWeight: 600 }}
-        >
-          Export Excel ({finalExportProjects.length} Projects)
-        </Button>
       </div>
 
       <Row gutter={[20, 20]}>
@@ -531,9 +521,8 @@ const ProjectExportPage: React.FC<ProjectExportPageProps> = ({
                   <Col span={12}>
                     <Card
                       size="small"
-                      className={`cursor-pointer transition-all ${
-                        exportScope === "selected" ? "border-blue-500 bg-blue-50/50" : "border-slate-200"
-                      }`}
+                      className={`cursor-pointer transition-all ${exportScope === "selected" ? "border-blue-500 bg-blue-50/50" : "border-slate-200"
+                        }`}
                       onClick={() => hasSelected && setExportScope("selected")}
                     >
                       <Radio value="selected" disabled={!hasSelected}>
@@ -551,9 +540,8 @@ const ProjectExportPage: React.FC<ProjectExportPageProps> = ({
                   <Col span={12}>
                     <Card
                       size="small"
-                      className={`cursor-pointer transition-all ${
-                        exportScope === "filtered" ? "border-blue-500 bg-blue-50/50" : "border-slate-200"
-                      }`}
+                      className={`cursor-pointer transition-all ${exportScope === "filtered" ? "border-blue-500 bg-blue-50/50" : "border-slate-200"
+                        }`}
                       onClick={() => setExportScope("filtered")}
                     >
                       <Radio value="filtered">

@@ -80,18 +80,15 @@ const ProjectPage: React.FC = () => {
           lower === "all" ||
           lower.includes("export") ||
           lower.includes("/projects/export") ||
-          lower.includes("/projects/:id/export") ||
-          lower === "projects"
+          lower.includes("/projects/:id/export")
         );
       }
       if (typeof perm === "object" && perm !== null) {
         const path = String(perm.path || perm.route || "").toLowerCase();
-        const name = String(perm.name || perm.description || perm.resource || "").toLowerCase();
+        const description = String(perm.description || perm.name || "").toLowerCase();
         return (
           path.includes("export") ||
-          name.includes("export") ||
-          path.includes("/projects/export") ||
-          name === "projects"
+          description.includes("export")
         );
       }
       return false;

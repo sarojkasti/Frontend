@@ -1,32 +1,21 @@
 import React from 'react';
-import { Table, Spin, Tag } from 'antd';
+import { Table, Spin, Tag, Progress } from 'antd';
 import { useQuery } from '@tanstack/react-query';
 import { fetchProjectsByCustomer } from '@/service/clientReport.service';
-import { fetchProject } from '@/service/project.service';
 
 interface ClientProjectsProps {
   clientId: string;
 }
 
 const ClientProjects: React.FC<ClientProjectsProps> = ({ clientId }) => {
-  const { data: baseProjects, isLoading: isBaseLoading } = useQuery({
+  const { data: projects, isLoading } = useQuery({
     queryKey: ['client-projects', clientId],
     queryFn: () => fetchProjectsByCustomer(clientId),
     enabled: !!clientId,
   });
 
-  const { data: fullProjects, isLoading: isFullLoading } = useQuery({
-    queryKey: ['client-projects-full', clientId, baseProjects],
-    queryFn: async () => {
-      if (!baseProjects) return [];
-      const promises = baseProjects.map((p: any) => fetchProject({ id: p.id }));
-      return Promise.all(promises);
-    },
-    enabled: !!baseProjects && baseProjects.length > 0,
-  });
-
-  if (isBaseLoading || (baseProjects?.length && isFullLoading)) {
-    return <div style={{ padding: 24, textAlign: 'center' }}><Spin /></div>;
+  if (isLoading) {
+    return <div style={{ padding: 24, textAlign: 'center' }}><Spin size="large" /></div>;
   }
 
   const columns = [
@@ -34,13 +23,22 @@ const ClientProjects: React.FC<ClientProjectsProps> = ({ clientId }) => {
       title: 'Project Name',
       dataIndex: 'name',
       key: 'name',
+      render: (name: string) => <strong style={{ color: '#1e293b' }}>{name}</strong>
+    },
+    {
+      title: 'Nature of Work',
+      dataIndex: 'natureOfWork',
+      key: 'natureOfWork',
+      render: (val: any) => typeof val === 'object' ? val?.name || '-' : val || '-'
     },
     {
       title: 'Status',
       dataIndex: 'status',
       key: 'status',
       render: (status: string) => (
-        <Tag color={status === 'active' ? 'green' : 'default'}>{status?.toUpperCase()}</Tag>
+        <Tag color={status === 'active' ? 'green' : status === 'completed' ? 'blue' : 'default'}>
+          {status?.toUpperCase() || 'ACTIVE'}
+        </Tag>
       ),
     },
     {
@@ -51,15 +49,25 @@ const ClientProjects: React.FC<ClientProjectsProps> = ({ clientId }) => {
         if (record.isPaymentTemporarilyEnabled) return <Tag color="orange">Temporarily Enabled</Tag>;
         return <Tag color="red">Pending</Tag>;
       }
+    },
+    {
+      title: 'Progress',
+      key: 'progress',
+      render: (_: any, record: any) => {
+        const total = record.totalTasks || 0;
+        const completed = record.completedTasks || 0;
+        const percent = record.progress ?? (total > 0 ? Math.round((completed / total) * 100) : 0);
+        return <Progress percent={percent} size="small" style={{ maxWidth: 140 }} />;
+      }
     }
   ];
 
   return (
     <Table 
       columns={columns} 
-      dataSource={fullProjects || []} 
+      dataSource={projects || []} 
       rowKey="id" 
-      pagination={false}
+      pagination={{ pageSize: 10 }}
     />
   );
 };
