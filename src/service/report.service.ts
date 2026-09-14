@@ -22,12 +22,20 @@ export const fetchWorklogReportData = async (filters: ReportFilterParams = {}) =
       status: filters.status,
     }),
     fetchProjects({ status: "all" }),
-    axios.get(`${backendURI}/users`).then((res) => res.data).catch(() => ({ results: [] })),
+    axios
+      .get(`${backendURI}/users/list-active`)
+      .then((res) => res.data)
+      .catch(() =>
+        axios
+          .get(`${backendURI}/users?limit=1000`)
+          .then((res) => res.data?.results || res.data || [])
+          .catch(() => [])
+      ),
   ]);
 
   const worklogs = worklogsRes?.results || worklogsRes || [];
   const projects = projectsRes?.results || projectsRes || [];
-  const users = usersRes?.results || usersRes || [];
+  const users = Array.isArray(usersRes) ? usersRes : usersRes?.results || [];
 
   return {
     worklogs,

@@ -51,6 +51,7 @@ import {
 import dayjs from "dayjs";
 import * as XLSX from "xlsx";
 import { fetchWorklogReportData, fetchManagerReportData } from "@/service/report.service";
+import { listActiveUsers } from "@/service/user.service";
 
 const { Title, Text } = Typography;
 const { RangePicker } = DatePicker;
@@ -72,6 +73,12 @@ const ReportsPage: React.FC = () => {
   const [selectedProjectId, setSelectedProjectId] = useState<string>("all");
   const [selectedUserId, setSelectedUserId] = useState<string>("all");
   const [dateRange, setDateRange] = useState<[dayjs.Dayjs | null, dayjs.Dayjs | null] | null>(null);
+
+  // Fetch full active users list for the filter dropdown
+  const { data: activeUsersData } = useQuery({
+    queryKey: ["report-filter-active-users"],
+    queryFn: () => listActiveUsers().catch(() => []),
+  });
 
   // Fetch Worklog Report Data (Real Backend Worklogs, Projects & Users)
   const { data: worklogData } = useQuery({
@@ -162,6 +169,38 @@ const ReportsPage: React.FC = () => {
       .sort((a, b) => b.value - a.value)
       .slice(0, 6);
 
+    // Build comprehensive employee list: merge active users from API with any users from worklogs
+    const apiUsers = Array.isArray(activeUsersData) && activeUsersData.length > 0
+      ? activeUsersData
+      : users;
+
+    const allUsersMap = new Map<string, { id: string; name: string; email?: string }>();
+
+    apiUsers.forEach((u: any) => {
+      if (u?.id) {
+        allUsersMap.set(String(u.id), {
+          id: String(u.id),
+          name: u.name || u.username || u.email || "Employee",
+          email: u.email || "",
+        });
+      }
+    });
+
+    rawWorklogs.forEach((wl: any) => {
+      const uId = wl.userId || wl.user?.id;
+      if (uId && !allUsersMap.has(String(uId))) {
+        allUsersMap.set(String(uId), {
+          id: String(uId),
+          name: wl.user?.name || wl.user?.username || wl.user?.email || "Team Member",
+          email: wl.user?.email || "",
+        });
+      }
+    });
+
+    const comprehensiveUsersList = Array.from(allUsersMap.values()).sort((a, b) =>
+      a.name.localeCompare(b.name)
+    );
+
     return {
       totalWorklogs: rawWorklogs.length,
       totalHours: (totalMinutes / 60).toFixed(1),
@@ -171,9 +210,9 @@ const ReportsPage: React.FC = () => {
       projectChartData,
       userPieData,
       projectsList: projects,
-      usersList: users,
+      usersList: comprehensiveUsersList,
     };
-  }, [worklogData]);
+  }, [worklogData, activeUsersData]);
 
   // -------------------------------------------------------------
   // Manager Report Calculations (100% Real API Data)
@@ -449,6 +488,13 @@ const ReportsPage: React.FC = () => {
                 value={selectedProjectId}
                 onChange={setSelectedProjectId}
                 style={{ width: "100%" }}
+                showSearch
+                optionFilterProp="children"
+                filterOption={(input, option) =>
+                  String(option?.children ?? "")
+                    .toLowerCase()
+                    .includes(input.toLowerCase())
+                }
               >
                 <Select.Option value="all">All Projects</Select.Option>
                 {worklogAnalytics.projectsList.map((p: any) => (
@@ -469,8 +515,17 @@ const ReportsPage: React.FC = () => {
                 value={selectedUserId}
                 onChange={setSelectedUserId}
                 style={{ width: "100%" }}
+                showSearch
+                optionFilterProp="children"
+                filterOption={(input, option) =>
+                  String(option?.children ?? "")
+                    .toLowerCase()
+                    .includes(input.toLowerCase())
+                }
               >
-                <Select.Option value="all">All Team Members</Select.Option>
+                <Select.Option value="all">
+                  All Team Members ({worklogAnalytics.usersList.length})
+                </Select.Option>
                 {worklogAnalytics.usersList.map((u: any) => (
                   <Select.Option key={u.id} value={u.id}>
                     {u.name}
