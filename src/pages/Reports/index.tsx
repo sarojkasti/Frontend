@@ -104,47 +104,6 @@ const ReportsPage: React.FC = () => {
     const projects = worklogData?.projects || [];
     const users = worklogData?.users || [];
 
-    let totalMinutes = 0;
-    let approvedMinutes = 0;
-    let pendingMinutes = 0;
-
-    const userMap: Record<string, { name: string; email: string; totalWorks: number; totalMinutes: number; approvedMinutes: number; projects: Set<string> }> = {};
-    const projectMap: Record<string, { name: string; totalWorks: number; totalMinutes: number }> = {};
-
-    rawWorklogs.forEach((wl: any) => {
-      let minutes = 0;
-      if (wl.startTime && wl.endTime) {
-        const start = dayjs(wl.startTime);
-        const end = dayjs(wl.endTime);
-        minutes = Math.max(0, end.diff(start, "minutes"));
-      } else if (wl.duration) {
-        minutes = Number(wl.duration) * 60;
-      }
-
-      totalMinutes += minutes;
-      if (wl.status === "approved") approvedMinutes += minutes;
-      else pendingMinutes += minutes;
-
-      const uId = wl.userId || wl.user?.id || "unknown";
-      const uName = wl.user?.name || "Unknown User";
-      const uEmail = wl.user?.email || "";
-      if (!userMap[uId]) {
-        userMap[uId] = { name: uName, email: uEmail, totalWorks: 0, totalMinutes: 0, approvedMinutes: 0, projects: new Set() };
-      }
-      userMap[uId].totalWorks += 1;
-      userMap[uId].totalMinutes += minutes;
-      if (wl.status === "approved") userMap[uId].approvedMinutes += minutes;
-      if (wl.projectId || wl.project?.name) userMap[uId].projects.add(wl.project?.name || wl.projectId);
-
-      const pId = wl.projectId || wl.project?.id || "unknown";
-      const pName = wl.project?.name || "General Task";
-      if (!projectMap[pId]) {
-        projectMap[pId] = { name: pName, totalWorks: 0, totalMinutes: 0 };
-      }
-      projectMap[pId].totalWorks += 1;
-      projectMap[pId].totalMinutes += minutes;
-    });
-
     // Strictly filter for only ACTIVE users
     const activeApiUsers = (
       Array.isArray(activeUsersData) && activeUsersData.length > 0
@@ -168,8 +127,160 @@ const ReportsPage: React.FC = () => {
       a.name.localeCompare(b.name)
     );
 
+    // Apply date range filter if selected
+    let filteredWorklogs = rawWorklogs;
+    if (dateRange && dateRange[0] && dateRange[1]) {
+      const start = dateRange[0].startOf("day");
+      const end = dateRange[1].endOf("day");
+      filteredWorklogs = rawWorklogs.filter((wl: any) => {
+        const wlDate = dayjs(wl.startTime || wl.createdAt);
+        return (wlDate.isAfter(start) || wlDate.isSame(start)) && (wlDate.isBefore(end) || wlDate.isSame(end));
+      });
+    }
+
+    let totalMinutes = 0;
+    let approvedMinutes = 0;
+    let pendingMinutes = 0;
+
+    // Initialize userMap with ALL active users so every active employee is listed in breakdown & summary
+    const userMap: Record<
+      string,
+      {
+        name: string;
+        email: string;
+        totalWorks: number;
+        totalMinutes: number;
+        approvedMinutes: number;
+        projects: Set<string>;
+      }
+    > = {};
+
+    activeUsersList.forEach((u) => {
+      userMap[u.id] = {
+        name: u.name,
+        email: u.email || "",
+        totalWorks: 0,
+        totalMinutes: 0,
+        approvedMinutes: 0,
+        projects: new Set(),
+      };
+    });
+
+    const projectMap: Record<string, { name: string; totalWorks: number; totalMinutes: number }> = {};
+    const detailedWorklogs: any[] = [];
+
+    filteredWorklogs.forEach((wl: any) => {
+      const uId = String(wl.userId || wl.user?.id || "");
+      // Strictly process only active users
+      if (!uId || !activeUsersMap.has(uId)) {
+        return;
+      }
+
+      const pId = String(
+        wl.projectId || wl.project?.id || wl.task?.project?.id || wl.task?.projectId || "unknown"
+      );
+      if (
+        selectedProjectId !== "all" &&
+        pId !== selectedProjectId &&
+        wl.projectId !== selectedProjectId &&
+        wl.project?.id !== selectedProjectId &&
+        wl.task?.project?.id !== selectedProjectId
+      ) {
+        return;
+      }
+
+      if (selectedUserId !== "all" && uId !== selectedUserId) {
+        return;
+      }
+
+      let minutes = 0;
+      if (wl.startTime && wl.endTime) {
+        const start = dayjs(wl.startTime);
+        const end = dayjs(wl.endTime);
+        minutes = Math.max(0, end.diff(start, "minutes"));
+      } else if (wl.duration) {
+        minutes = Number(wl.duration) * 60;
+      }
+
+      totalMinutes += minutes;
+      if (wl.status === "approved") approvedMinutes += minutes;
+      else pendingMinutes += minutes;
+
+      const uName = wl.user?.name || activeUsersMap.get(uId)?.name || "Unknown User";
+      const uEmail = wl.user?.email || activeUsersMap.get(uId)?.email || "";
+
+      if (!userMap[uId]) {
+        userMap[uId] = {
+          name: uName,
+          email: uEmail,
+          totalWorks: 0,
+          totalMinutes: 0,
+          approvedMinutes: 0,
+          projects: new Set(),
+        };
+      }
+      userMap[uId].totalWorks += 1;
+      userMap[uId].totalMinutes += minutes;
+      if (wl.status === "approved") userMap[uId].approvedMinutes += minutes;
+      if (wl.projectId || wl.project?.name || wl.task?.project?.name) {
+        userMap[uId].projects.add(wl.project?.name || wl.task?.project?.name || wl.projectId);
+      }
+
+      const pName = wl.project?.name || wl.task?.project?.name || "General Task";
+      if (!projectMap[pId]) {
+        projectMap[pId] = { name: pName, totalWorks: 0, totalMinutes: 0 };
+      }
+      projectMap[pId].totalWorks += 1;
+      projectMap[pId].totalMinutes += minutes;
+
+      // Map detailed work item with project, task, dates, and descriptions
+      const projectName = wl.project?.name || wl.task?.project?.name || "General Project";
+      const projectCode = wl.project?.code || wl.task?.project?.code || "-";
+      const taskName = wl.task?.name || wl.task?.title || "-";
+      const taskCode = wl.task?.code || "-";
+      const taskStatus = wl.task?.status ? String(wl.task.status).toUpperCase() : "-";
+      const workDate = wl.startTime
+        ? dayjs(wl.startTime).format("YYYY-MM-DD")
+        : wl.createdAt
+        ? dayjs(wl.createdAt).format("YYYY-MM-DD")
+        : "-";
+      const startTime = wl.startTime ? dayjs(wl.startTime).format("hh:mm A") : "-";
+      const endTime = wl.endTime ? dayjs(wl.endTime).format("hh:mm A") : "-";
+      const loggedHours = Number((minutes / 60).toFixed(2));
+      const status = wl.status ? String(wl.status).toUpperCase() : "OPEN";
+      const description = wl.description || "-";
+      const approvedBy = wl.approvedByUser?.name || "-";
+      const remarks = wl.remark || wl.rejectedRemark || "-";
+
+      detailedWorklogs.push({
+        id: wl.id,
+        date: workDate,
+        employeeId: uId,
+        employeeName: uName,
+        employeeEmail: uEmail,
+        projectId: pId,
+        projectName,
+        projectCode,
+        taskId: wl.taskId || wl.task?.id || "-",
+        taskName,
+        taskCode,
+        taskStatus,
+        description,
+        startTime,
+        endTime,
+        loggedHours,
+        status,
+        approvedBy,
+        remarks,
+      });
+    });
+
     const userTableData = Object.entries(userMap)
-      .filter(([id]) => activeUsersMap.has(id))
+      .filter(([id]) => {
+        if (!activeUsersMap.has(id)) return false;
+        if (selectedUserId !== "all" && id !== selectedUserId) return false;
+        return true;
+      })
       .map(([id, val]) => ({
         id,
         name: val.name,
@@ -178,7 +289,8 @@ const ReportsPage: React.FC = () => {
         totalHours: (val.totalMinutes / 60).toFixed(1),
         approvedHours: (val.approvedMinutes / 60).toFixed(1),
         projectsCount: val.projects.size,
-      }));
+      }))
+      .sort((a, b) => Number(b.totalHours) - Number(a.totalHours) || a.name.localeCompare(b.name));
 
     const projectChartData = Object.values(projectMap).map((val) => ({
       name: val.name.length > 18 ? `${val.name.slice(0, 18)}...` : val.name,
@@ -187,6 +299,7 @@ const ReportsPage: React.FC = () => {
     }));
 
     const userPieData = userTableData
+      .filter((u) => Number(u.totalHours) > 0)
       .map((u) => ({
         name: u.name,
         value: Number(u.totalHours),
@@ -195,7 +308,7 @@ const ReportsPage: React.FC = () => {
       .slice(0, 6);
 
     return {
-      totalWorklogs: rawWorklogs.length,
+      totalWorklogs: detailedWorklogs.length,
       totalHours: (totalMinutes / 60).toFixed(1),
       approvedHours: (approvedMinutes / 60).toFixed(1),
       pendingHours: (pendingMinutes / 60).toFixed(1),
@@ -204,8 +317,9 @@ const ReportsPage: React.FC = () => {
       userPieData,
       projectsList: projects,
       usersList: activeUsersList,
+      detailedWorklogs,
     };
-  }, [worklogData, activeUsersData]);
+  }, [worklogData, activeUsersData, dateRange, selectedProjectId, selectedUserId]);
 
   // -------------------------------------------------------------
   // Manager Report Calculations (100% Real API Data)
@@ -312,14 +426,54 @@ const ReportsPage: React.FC = () => {
     };
   }, [managerData, worklogData]);
 
+  // Helper to create sheet with formatted auto column widths
+  const createSheetWithColWidths = (data: any[], fallbackHeaders?: string[]) => {
+    let ws: XLSX.WorkSheet;
+    if (!data || data.length === 0) {
+      ws = XLSX.utils.json_to_sheet(
+        fallbackHeaders ? [fallbackHeaders.reduce((acc, h) => ({ ...acc, [h]: "" }), {})] : []
+      );
+    } else {
+      ws = XLSX.utils.json_to_sheet(data);
+      const colWidths = Object.keys(data[0]).map((key) => {
+        const maxContentLength = data.reduce(
+          (max, row) => Math.max(max, String(row[key] ?? "").length),
+          key.length
+        );
+        return { wch: Math.min(Math.max(maxContentLength + 4, 12), 60) };
+      });
+      ws["!cols"] = colWidths;
+    }
+    return ws;
+  };
+
   // Excel Exporter
   const handleExportExcel = () => {
-    let sheetData: any[] = [];
-    let fileName = "";
-
     if (activeTab === "worklog") {
-      fileName = `Worklog_Report_${dayjs().format("YYYYMMDD")}.xlsx`;
-      sheetData = worklogAnalytics.userTableData.map((u, idx) => ({
+      const fileName = `Worklog_Report_${dayjs().format("YYYYMMDD")}.xlsx`;
+
+      // 1. Detailed Works Log sheet: every work entry mapped with Project and Task details
+      const detailedSheetData = worklogAnalytics.detailedWorklogs.map((item, idx) => ({
+        "S.N.": idx + 1,
+        "Work Date": item.date,
+        "Employee Name": item.employeeName,
+        "Email Address": item.employeeEmail,
+        "Project Name": item.projectName,
+        "Project Code": item.projectCode,
+        "Task Name": item.taskName,
+        "Task Code": item.taskCode,
+        "Task Status": item.taskStatus,
+        "Work Description": item.description,
+        "Start Time": item.startTime,
+        "End Time": item.endTime,
+        "Logged Hours (hrs)": item.loggedHours,
+        "Worklog Status": item.status,
+        "Approved / Verified By": item.approvedBy,
+        "Remarks": item.remarks,
+      }));
+
+      // 2. Employee Summary sheet
+      const summarySheetData = worklogAnalytics.userTableData.map((u, idx) => ({
         "S.N.": idx + 1,
         "Employee Name": u.name,
         "Email Address": u.email,
@@ -328,9 +482,45 @@ const ReportsPage: React.FC = () => {
         "Approved Hours (hrs)": Number(u.approvedHours),
         "Assigned Projects Count": u.projectsCount,
       }));
-    } else if (activeTab === "manager") {
-      fileName = `Manager_Project_Cost_Report_${dayjs().format("YYYYMMDD")}.xlsx`;
-      sheetData = managerAnalytics.projectReports.map((p, idx) => ({
+
+      const workbook = XLSX.utils.book_new();
+      const detailedWorksheet = createSheetWithColWidths(detailedSheetData, [
+        "S.N.",
+        "Work Date",
+        "Employee Name",
+        "Email Address",
+        "Project Name",
+        "Project Code",
+        "Task Name",
+        "Task Code",
+        "Task Status",
+        "Work Description",
+        "Start Time",
+        "End Time",
+        "Logged Hours (hrs)",
+        "Worklog Status",
+        "Approved / Verified By",
+        "Remarks",
+      ]);
+      const summaryWorksheet = createSheetWithColWidths(summarySheetData, [
+        "S.N.",
+        "Employee Name",
+        "Email Address",
+        "Submissions Count",
+        "Total Logged Hours (hrs)",
+        "Approved Hours (hrs)",
+        "Assigned Projects Count",
+      ]);
+
+      XLSX.utils.book_append_sheet(workbook, detailedWorksheet, "Detailed Works Log");
+      XLSX.utils.book_append_sheet(workbook, summaryWorksheet, "Employee Summary");
+      XLSX.writeFile(workbook, fileName);
+      return;
+    }
+
+    if (activeTab === "manager") {
+      const fileName = `Manager_Project_Cost_Report_${dayjs().format("YYYYMMDD")}.xlsx`;
+      const sheetData = managerAnalytics.projectReports.map((p, idx) => ({
         "S.N.": idx + 1,
         "Project Name": p.name,
         "Project Code": p.code,
@@ -339,39 +529,38 @@ const ReportsPage: React.FC = () => {
         "Completion Progress (%)": `${p.completionPercent}%`,
         "Estimated Budget (NPR)": `NPR ${p.budget.toLocaleString("en-IN")}`,
         "Completion Cost (NPR)": `NPR ${p.completionCost.toLocaleString("en-IN")}`,
-        "Cost Variance (NPR)": p.costVariance > 0 ? `+NPR ${p.costVariance.toLocaleString("en-IN")} (Over)` : `-NPR ${Math.abs(p.costVariance).toLocaleString("en-IN")} (Saved)`,
+        "Cost Variance (NPR)":
+          p.costVariance > 0
+            ? `+NPR ${p.costVariance.toLocaleString("en-IN")} (Over)`
+            : `-NPR ${Math.abs(p.costVariance).toLocaleString("en-IN")} (Saved)`,
         "Estimated Time (hrs)": p.estimatedHours,
         "Actual Time Spent (hrs)": p.actualLoggedHours,
         "Time Variance": p.timeVariance > 0 ? `+${p.timeVariance}h Overtime` : `${p.timeVariance}h On Schedule`,
       }));
-    } else {
-      fileName = `Attendance_Discrepancy_Report_${dayjs().format("YYYYMMDD")}.xlsx`;
-      sheetData = (managerData?.workingTimeStats?.userStats || []).map((u: any, idx: number) => ({
-        "S.N.": idx + 1,
-        "Employee Name": u.name,
-        "Role": u.roleName,
-        "Expected Daily Hours": `${u.expectedDailyHours || 8} hrs`,
-        "Total Worklog Hours": `${(u.totalWorklogMinutes / 60).toFixed(1)} hrs`,
-        "Total Attendance Hours": `${(u.totalAttendanceMinutes / 60).toFixed(1)} hrs`,
-        "Overtime Days": u.overtimeDays,
-        "Worklog Exceeds Attendance Days": u.worklogExceedsAttendanceDays,
-      }));
+
+      const workbook = XLSX.utils.book_new();
+      const worksheet = createSheetWithColWidths(sheetData);
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Project Cost & Variance");
+      XLSX.writeFile(workbook, fileName);
+      return;
     }
 
-    const worksheet = XLSX.utils.json_to_sheet(sheetData);
-    if (sheetData.length > 0) {
-      const colWidths = Object.keys(sheetData[0]).map((key) => {
-        const maxContentLength = sheetData.reduce(
-          (max, row) => Math.max(max, String(row[key] || "").length),
-          key.length
-        );
-        return { wch: Math.max(maxContentLength + 4, 15) };
-      });
-      worksheet["!cols"] = colWidths;
-    }
+    // Attendance Discrepancy report
+    const fileName = `Attendance_Discrepancy_Report_${dayjs().format("YYYYMMDD")}.xlsx`;
+    const sheetData = (managerData?.workingTimeStats?.userStats || []).map((u: any, idx: number) => ({
+      "S.N.": idx + 1,
+      "Employee Name": u.name,
+      "Role": u.roleName,
+      "Expected Daily Hours": `${u.expectedDailyHours || 8} hrs`,
+      "Total Worklog Hours": `${(u.totalWorklogMinutes / 60).toFixed(1)} hrs`,
+      "Total Attendance Hours": `${(u.totalAttendanceMinutes / 60).toFixed(1)} hrs`,
+      "Overtime Days": u.overtimeDays,
+      "Worklog Exceeds Attendance Days": u.worklogExceedsAttendanceDays,
+    }));
 
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Report Summary");
+    const worksheet = createSheetWithColWidths(sheetData);
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Attendance Discrepancy");
     XLSX.writeFile(workbook, fileName);
   };
 
@@ -710,6 +899,158 @@ const ReportsPage: React.FC = () => {
                         key: "projectsCount",
                         align: "center",
                         render: (val: number) => <Badge count={val} style={{ backgroundColor: "#722ed1" }} />,
+                      },
+                    ]}
+                  />
+
+                  <Divider
+                    orientation="left"
+                    style={{ margin: "32px 0 16px 0", color: "#64748b", fontSize: 14 }}
+                  >
+                    Detailed Works & Tasks Log ({worklogAnalytics.detailedWorklogs.length} entries)
+                  </Divider>
+
+                  <Table
+                    dataSource={worklogAnalytics.detailedWorklogs}
+                    rowKey="id"
+                    pagination={{
+                      pageSize: 10,
+                      showSizeChanger: true,
+                      pageSizeOptions: ["10", "20", "50", "100"],
+                      showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} entries`,
+                    }}
+                    size="small"
+                    scroll={{ x: 1200 }}
+                    columns={[
+                      {
+                        title: "Date",
+                        dataIndex: "date",
+                        key: "date",
+                        width: 110,
+                        render: (text: string) => <Text style={{ fontSize: 12 }}>{text}</Text>,
+                      },
+                      {
+                        title: "Employee",
+                        dataIndex: "employeeName",
+                        key: "employeeName",
+                        width: 170,
+                        render: (text: string, record: any) => (
+                          <div>
+                            <Text strong style={{ display: "block", fontSize: 12 }}>
+                              {text}
+                            </Text>
+                            <Text type="secondary" style={{ fontSize: 11 }}>
+                              {record.employeeEmail}
+                            </Text>
+                          </div>
+                        ),
+                      },
+                      {
+                        title: "Project",
+                        dataIndex: "projectName",
+                        key: "projectName",
+                        width: 180,
+                        render: (text: string, record: any) => (
+                          <div>
+                            <Text strong style={{ display: "block", fontSize: 12 }}>
+                              {text}
+                            </Text>
+                            {record.projectCode && record.projectCode !== "-" && (
+                              <Tag color="cyan" style={{ fontSize: 10 }}>
+                                {record.projectCode}
+                              </Tag>
+                            )}
+                          </div>
+                        ),
+                      },
+                      {
+                        title: "Task",
+                        dataIndex: "taskName",
+                        key: "taskName",
+                        width: 180,
+                        render: (text: string, record: any) => (
+                          <div>
+                            <Text style={{ display: "block", fontSize: 12 }}>{text}</Text>
+                            <Space size={4} wrap>
+                              {record.taskCode && record.taskCode !== "-" && (
+                                <Tag color="purple" style={{ fontSize: 10 }}>
+                                  {record.taskCode}
+                                </Tag>
+                              )}
+                              {record.taskStatus && record.taskStatus !== "-" && (
+                                <Tag color="blue" style={{ fontSize: 10 }}>
+                                  {record.taskStatus}
+                                </Tag>
+                              )}
+                            </Space>
+                          </div>
+                        ),
+                      },
+                      {
+                        title: "Work Description",
+                        dataIndex: "description",
+                        key: "description",
+                        ellipsis: { tooltip: true },
+                        render: (text: string) => <Text style={{ fontSize: 12 }}>{text}</Text>,
+                      },
+                      {
+                        title: "Time",
+                        key: "time",
+                        width: 150,
+                        render: (_: any, record: any) => (
+                          <Text style={{ fontSize: 11 }}>
+                            {record.startTime} - {record.endTime}
+                          </Text>
+                        ),
+                      },
+                      {
+                        title: "Hours",
+                        dataIndex: "loggedHours",
+                        key: "loggedHours",
+                        align: "right",
+                        width: 90,
+                        render: (val: number) => (
+                          <Text strong style={{ color: "#1677ff" }}>
+                            {val} hrs
+                          </Text>
+                        ),
+                      },
+                      {
+                        title: "Status",
+                        dataIndex: "status",
+                        key: "status",
+                        align: "center",
+                        width: 110,
+                        render: (st: string) => {
+                          let color = "default";
+                          if (st === "APPROVED") color = "success";
+                          else if (st === "REJECTED") color = "error";
+                          else if (st === "PENDING" || st === "REQUESTED") color = "warning";
+                          return <Tag color={color}>{st}</Tag>;
+                        },
+                      },
+                      {
+                        title: "Approved By",
+                        dataIndex: "approvedBy",
+                        key: "approvedBy",
+                        width: 130,
+                        render: (text: string) => (
+                          <Text type="secondary" style={{ fontSize: 12 }}>
+                            {text}
+                          </Text>
+                        ),
+                      },
+                      {
+                        title: "Remarks",
+                        dataIndex: "remarks",
+                        key: "remarks",
+                        width: 140,
+                        ellipsis: { tooltip: true },
+                        render: (text: string) => (
+                          <Text type="secondary" style={{ fontSize: 11 }}>
+                            {text}
+                          </Text>
+                        ),
                       },
                     ]}
                   />
