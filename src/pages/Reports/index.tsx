@@ -145,15 +145,40 @@ const ReportsPage: React.FC = () => {
       projectMap[pId].totalMinutes += minutes;
     });
 
-    const userTableData = Object.entries(userMap).map(([id, val]) => ({
-      id,
-      name: val.name,
-      email: val.email,
-      totalWorks: val.totalWorks,
-      totalHours: (val.totalMinutes / 60).toFixed(1),
-      approvedHours: (val.approvedMinutes / 60).toFixed(1),
-      projectsCount: val.projects.size,
-    }));
+    // Strictly filter for only ACTIVE users
+    const activeApiUsers = (
+      Array.isArray(activeUsersData) && activeUsersData.length > 0
+        ? activeUsersData
+        : users
+    ).filter((u: any) => !u.status || u.status.toLowerCase() === "active");
+
+    const activeUsersMap = new Map<string, { id: string; name: string; email?: string }>();
+
+    activeApiUsers.forEach((u: any) => {
+      if (u?.id) {
+        activeUsersMap.set(String(u.id), {
+          id: String(u.id),
+          name: u.name || u.username || u.email || "Employee",
+          email: u.email || "",
+        });
+      }
+    });
+
+    const activeUsersList = Array.from(activeUsersMap.values()).sort((a, b) =>
+      a.name.localeCompare(b.name)
+    );
+
+    const userTableData = Object.entries(userMap)
+      .filter(([id]) => activeUsersMap.has(id))
+      .map(([id, val]) => ({
+        id,
+        name: val.name,
+        email: val.email,
+        totalWorks: val.totalWorks,
+        totalHours: (val.totalMinutes / 60).toFixed(1),
+        approvedHours: (val.approvedMinutes / 60).toFixed(1),
+        projectsCount: val.projects.size,
+      }));
 
     const projectChartData = Object.values(projectMap).map((val) => ({
       name: val.name.length > 18 ? `${val.name.slice(0, 18)}...` : val.name,
@@ -169,38 +194,6 @@ const ReportsPage: React.FC = () => {
       .sort((a, b) => b.value - a.value)
       .slice(0, 6);
 
-    // Build comprehensive employee list: merge active users from API with any users from worklogs
-    const apiUsers = Array.isArray(activeUsersData) && activeUsersData.length > 0
-      ? activeUsersData
-      : users;
-
-    const allUsersMap = new Map<string, { id: string; name: string; email?: string }>();
-
-    apiUsers.forEach((u: any) => {
-      if (u?.id) {
-        allUsersMap.set(String(u.id), {
-          id: String(u.id),
-          name: u.name || u.username || u.email || "Employee",
-          email: u.email || "",
-        });
-      }
-    });
-
-    rawWorklogs.forEach((wl: any) => {
-      const uId = wl.userId || wl.user?.id;
-      if (uId && !allUsersMap.has(String(uId))) {
-        allUsersMap.set(String(uId), {
-          id: String(uId),
-          name: wl.user?.name || wl.user?.username || wl.user?.email || "Team Member",
-          email: wl.user?.email || "",
-        });
-      }
-    });
-
-    const comprehensiveUsersList = Array.from(allUsersMap.values()).sort((a, b) =>
-      a.name.localeCompare(b.name)
-    );
-
     return {
       totalWorklogs: rawWorklogs.length,
       totalHours: (totalMinutes / 60).toFixed(1),
@@ -210,7 +203,7 @@ const ReportsPage: React.FC = () => {
       projectChartData,
       userPieData,
       projectsList: projects,
-      usersList: comprehensiveUsersList,
+      usersList: activeUsersList,
     };
   }, [worklogData, activeUsersData]);
 
