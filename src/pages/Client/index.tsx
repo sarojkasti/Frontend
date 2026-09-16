@@ -13,8 +13,6 @@ import {
 } from "@/components/Client/clientColumnsConfig";
 import { SortableColumnCustomizer } from "@/components/Table/SortableColumnCustomizer";
 
-const { TabPane } = Tabs;
-
 const ClientPage: React.FC = () => {
   const navigate = useNavigate();
   const { profile, permissions } = useSession();
@@ -108,7 +106,7 @@ const ClientPage: React.FC = () => {
         activeKey={activeKey} 
         onChange={handleTabChange}
         tabBarExtraContent={
-          <Space size={10}>
+          <div className="flex flex-wrap gap-2">
             <Popover
               content={columnPopoverContent}
               trigger="click"
@@ -124,34 +122,47 @@ const ClientPage: React.FC = () => {
             <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
               Create Client
             </Button>
-          </Space>
+          </div>
         }
-      >
-        <TabPane tab="Active" key="active">
-          <ClientTable
-            status="active"
-            selectedClients={selectedClients}
-            setSelectedClients={setSelectedClients}
-            visibleColumnKeys={visibleColumnKeys}
-          />
-        </TabPane>
-        <TabPane tab="Suspended" key="suspended">
-          <ClientTable
-            status="suspended"
-            selectedClients={selectedClients}
-            setSelectedClients={setSelectedClients}
-            visibleColumnKeys={visibleColumnKeys}
-          />
-        </TabPane>
-        <TabPane tab="Archived" key="archive">
-          <ClientTable
-            status="archive"
-            selectedClients={selectedClients}
-            setSelectedClients={setSelectedClients}
-            visibleColumnKeys={visibleColumnKeys}
-          />
-        </TabPane>
-      </Tabs>
+        items={[
+          {
+            key: "active",
+            label: "Active",
+            children: (
+              <ClientTable
+                status="active"
+                selectedClients={selectedClients}
+                setSelectedClients={setSelectedClients}
+                visibleColumnKeys={visibleColumnKeys}
+              />
+            ),
+          },
+          {
+            key: "suspended",
+            label: "Suspended",
+            children: (
+              <ClientTable
+                status="suspended"
+                selectedClients={selectedClients}
+                setSelectedClients={setSelectedClients}
+                visibleColumnKeys={visibleColumnKeys}
+              />
+            ),
+          },
+          {
+            key: "archive",
+            label: "Archived",
+            children: (
+              <ClientTable
+                status="archive"
+                selectedClients={selectedClients}
+                setSelectedClients={setSelectedClients}
+                visibleColumnKeys={visibleColumnKeys}
+              />
+            ),
+          },
+        ]}
+      />
     </>
   );
 };

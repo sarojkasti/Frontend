@@ -40,7 +40,6 @@ dayjs.extend(isoWeek);
 dayjs.extend(advancedFormat);
 
 const { Title, Text } = Typography;
-const { TabPane } = Tabs;
 
 // Helper function to format minutes to hours and minutes
 const formatMinutesToHours = (minutes: number): string => {
@@ -426,129 +425,134 @@ const WorkingTimeDashboard: React.FC = () => {
       )}
 
       {/* Performance Tabs */}
+      {/* Performance Tabs */}
       <Card>
-        <Tabs defaultActiveKey="top">
-          <TabPane
-            tab={
-              <span>
-                <TrophyOutlined /> Top Performers
-              </span>
-            }
-            key="top"
-          >
-            <List
-              size="small"
-              dataSource={topPerformers}
-              renderItem={(user: any, index: number) => (
-                <List.Item>
-                  <Space style={{ width: '100%', justifyContent: 'space-between' }}>
-                    <Space>
-                      <Badge
-                        count={index + 1}
-                        style={{
-                          backgroundColor: index === 0 ? '#faad14' : index === 1 ? '#d9d9d9' : index === 2 ? '#cd7f32' : '#1890ff'
-                        }}
-                      />
-                      <Text strong>{user.name}</Text>
-                      <Tag color="blue">{user.roleName}</Tag>
-                    </Space>
-                    <Space>
-                      <RiseOutlined style={{ color: '#52c41a' }} />
-                      <Text strong style={{ color: '#52c41a' }}>
-                        {formatMinutesToHours(user.totalWorklogMinutes)}
-                      </Text>
-                      <Text type="secondary">
-                        ({user.daysWithWorklog} days)
-                      </Text>
-                    </Space>
-                  </Space>
-                </List.Item>
-              )}
-              locale={{ emptyText: 'No data available' }}
-            />
-          </TabPane>
+        <Tabs
+          defaultActiveKey="top"
+          items={[
+            {
+              key: "top",
+              label: (
+                <span>
+                  <TrophyOutlined /> Top Performers
+                </span>
+              ),
+              children: (
+                <List
+                  size="small"
+                  dataSource={topPerformers}
+                  renderItem={(user: any, index: number) => (
+                    <List.Item>
+                      <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+                        <Space>
+                          <Badge
+                            count={index + 1}
+                            style={{
+                              backgroundColor: index === 0 ? '#faad14' : index === 1 ? '#d9d9d9' : index === 2 ? '#cd7f32' : '#1890ff'
+                            }}
+                          />
+                          <Text strong>{user.name}</Text>
+                          <Tag color="blue">{user.roleName}</Tag>
+                        </Space>
+                        <Space>
+                          <RiseOutlined style={{ color: '#52c41a' }} />
+                          <Text strong style={{ color: '#52c41a' }}>
+                            {formatMinutesToHours(user.totalWorklogMinutes)}
+                          </Text>
+                          <Text type="secondary">
+                            ({user.daysWithWorklog} days)
+                          </Text>
+                        </Space>
+                      </Space>
+                    </List.Item>
+                  )}
+                  locale={{ emptyText: 'No data available' }}
+                />
+              ),
+            },
+            {
+              key: "under",
+              label: (
+                <span>
+                  <FallOutlined /> Under Performers
+                </span>
+              ),
+              children: (
+                <List
+                  size="small"
+                  dataSource={underPerformers}
+                  renderItem={(user: any) => {
+                    const worklogHours = user.totalWorklogMinutes / 60;
+                    const expectedHours = user.expectedDailyHours * summary.totalDays;
+                    const percentage = expectedHours > 0 ? (worklogHours / expectedHours) * 100 : 0;
 
-          <TabPane
-            tab={
-              <span>
-                <FallOutlined /> Under Performers
-              </span>
-            }
-            key="under"
-          >
-            <List
-              size="small"
-              dataSource={underPerformers}
-              renderItem={(user: any) => {
-                const worklogHours = user.totalWorklogMinutes / 60;
-                const expectedHours = user.expectedDailyHours * summary.totalDays;
-                const percentage = expectedHours > 0 ? (worklogHours / expectedHours) * 100 : 0;
-
-                return (
-                  <List.Item>
-                    <div style={{ width: '100%' }}>
-                      <Space style={{ width: '100%', justifyContent: 'space-between', marginBottom: 8 }}>
+                    return (
+                      <List.Item>
+                        <div style={{ width: '100%' }}>
+                          <Space style={{ width: '100%', justifyContent: 'space-between', marginBottom: 8 }}>
+                            <Space>
+                              <UserOutlined />
+                              <Text strong>{user.name}</Text>
+                              <Tag color="blue">{user.roleName}</Tag>
+                            </Space>
+                            <Space>
+                              <Text type="danger">
+                                {formatMinutesToHours(user.totalWorklogMinutes)} / {expectedHours}h
+                              </Text>
+                              <Tag color="red">{Math.round(percentage)}%</Tag>
+                            </Space>
+                          </Space>
+                          <Progress
+                            percent={Math.round(percentage)}
+                            size="small"
+                            status={percentage < 50 ? 'exception' : 'normal'}
+                            strokeColor={getPerformanceColor(worklogHours, expectedHours)}
+                          />
+                        </div>
+                      </List.Item>
+                    );
+                  }}
+                  locale={{ emptyText: 'No under performers - great job!' }}
+                />
+              ),
+            },
+            {
+              key: "overtime",
+              label: (
+                <span>
+                  <FireOutlined /> Overtime Users
+                </span>
+              ),
+              children: (
+                <List
+                  size="small"
+                  dataSource={usersWithOvertime}
+                  renderItem={(user: any) => (
+                    <List.Item>
+                      <Space style={{ width: '100%', justifyContent: 'space-between' }}>
                         <Space>
                           <UserOutlined />
                           <Text strong>{user.name}</Text>
                           <Tag color="blue">{user.roleName}</Tag>
                         </Space>
                         <Space>
-                          <Text type="danger">
-                            {formatMinutesToHours(user.totalWorklogMinutes)} / {expectedHours}h
+                          <FireOutlined style={{ color: '#faad14' }} />
+                          <Text strong style={{ color: '#faad14' }}>
+                            {user.overtimeDays} {user.overtimeDays === 1 ? 'day' : 'days'}
                           </Text>
-                          <Tag color="red">{Math.round(percentage)}%</Tag>
+                          <Text type="secondary">
+                            ({formatMinutesToHours(user.totalWorklogMinutes)} total)
+                          </Text>
                         </Space>
                       </Space>
-                      <Progress
-                        percent={Math.round(percentage)}
-                        size="small"
-                        status={percentage < 50 ? 'exception' : 'normal'}
-                        strokeColor={getPerformanceColor(worklogHours, expectedHours)}
-                      />
-                    </div>
-                  </List.Item>
-                );
-              }}
-              locale={{ emptyText: 'No under performers - great job!' }}
-            />
-          </TabPane>
-
-          <TabPane
-            tab={
-              <span>
-                <FireOutlined /> Overtime Users
-              </span>
-            }
-            key="overtime"
-          >
-            <List
-              size="small"
-              dataSource={usersWithOvertime}
-              renderItem={(user: any) => (
-                <List.Item>
-                  <Space style={{ width: '100%', justifyContent: 'space-between' }}>
-                    <Space>
-                      <UserOutlined />
-                      <Text strong>{user.name}</Text>
-                      <Tag color="blue">{user.roleName}</Tag>
-                    </Space>
-                    <Space>
-                      <FireOutlined style={{ color: '#faad14' }} />
-                      <Text strong style={{ color: '#faad14' }}>
-                        {user.overtimeDays} {user.overtimeDays === 1 ? 'day' : 'days'}
-                      </Text>
-                      <Text type="secondary">
-                        ({formatMinutesToHours(user.totalWorklogMinutes)} total)
-                      </Text>
-                    </Space>
-                  </Space>
-                </List.Item>
-              )}
-              locale={{ emptyText: 'No overtime recorded' }}
-            />
-          </TabPane>
-        </Tabs>
+                    </List.Item>
+                  )}
+                  locale={{ emptyText: 'No overtime recorded' }}
+                />
+              ),
+            },
+          ]}
+        />
       </Card>
     </div>
   );

@@ -2,6 +2,7 @@ import { UserMenu } from "@/components/Layout/UserMenu";
 import { Card, Col, Menu, Row } from "antd";
 import { Link } from "react-router-dom";
 import { useParams } from "react-router-dom";
+import { useIsMobile } from "@/hooks/useIsMobile";
 
 interface ProfileProps {
     // Component may accept a userId prop (and others). Use a generic record to allow props.
@@ -11,6 +12,7 @@ interface ProfileProps {
 
 const Profile: React.FC<ProfileProps> = ({ component: Component }) => {
     const { id } = useParams();
+    const isMobile = useIsMobile();
 
     return (
         <Card>
@@ -18,7 +20,7 @@ const Profile: React.FC<ProfileProps> = ({ component: Component }) => {
                 <Col span={24}>
                     {/* Horizontal Menu for Profile Submenu */}
                     <Menu 
-                        mode="horizontal" 
+                        mode={isMobile ? "inline" : "horizontal"} 
                         className="mb-4"
                         style={{ 
                             borderBottom: '1px solid #f0f0f0',

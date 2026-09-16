@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import { Card, List, Badge, Typography, Tag, Space, Button, Tabs } from "antd";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -254,3 +254,5 @@ const DocumentVerificationStatus: React.FC<DocumentVerificationStatusProps> = ({
 };
 
 export default DocumentVerificationStatus;
+
+

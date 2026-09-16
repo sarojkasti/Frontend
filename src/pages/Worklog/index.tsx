@@ -19,9 +19,7 @@ const Worklog: React.FC = () => {
 
   return (
     <>
-      <PageTitle
-        title="Worklog"
-      />
+      <PageTitle title="Worklog" />
       <Card>
         <WorklogTable data={data} />
       </Card>

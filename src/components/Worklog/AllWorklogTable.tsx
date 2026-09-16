@@ -8,6 +8,8 @@ import { useDeleteWorklog } from "@/hooks/worklog/useDeleteWorklog";
 import { useState, useRef } from "react";
 import { SearchOutlined, EditOutlined, DeleteOutlined } from "@ant-design/icons";
 import Highlighter from "react-highlight-words";
+import ResponsiveTable from "@/components/ui/MobileCardList";
+import { Tag } from "antd";
 
 const columns = (
   status: string, 
@@ -423,27 +425,63 @@ const AllWorklogTable = ({ status }: { status: string }) => {
     };
   };
 
-  return (
-    <Card>
+  const renderWorklogCard = (record: any) => {
+    const dateStr = record?.startTime ? new Date(record.startTime).toLocaleDateString() : '-';
+    const projectName = record?.task?.project?.name || '-';
+    const taskName = record?.task?.name || '-';
+    const duration = record?.time || '-';
+    const reason = record?.reason || '';
 
-      <Table
-        loading={isPending || isEditPending}
-        dataSource={worklogs || []}
-        columns={columns(status, deleteWorklog, navigate, getColumnSearchProps, sortedInfo) as any}
-        expandable={{
-          expandedRowRender,
-          expandedRowKeys: expandedRows,
-          expandIcon: customExpandIcon,
+    return (
+      <div className="flex flex-col gap-2">
+        <div className="flex justify-between items-start gap-2 border-b border-gray-100 pb-2">
+          <div className="min-w-0">
+            <div className="font-semibold text-gray-900 text-sm truncate">{projectName}</div>
+            <div className="text-xs text-gray-500 truncate">{taskName}</div>
+          </div>
+          <Tag color={status === 'approved' ? 'green' : status === 'rejected' ? 'red' : 'blue'} className="shrink-0">
+            {status.toUpperCase()}
+          </Tag>
+        </div>
+        <div className="grid grid-cols-2 gap-2 text-xs py-1">
+          <div><span className="text-gray-500">Date:</span> <span className="font-medium text-gray-800">{dateStr}</span></div>
+          <div><span className="text-gray-500">Duration:</span> <span className="font-medium text-gray-800">{duration} hrs</span></div>
+        </div>
+        {reason && (
+          <div className="text-xs text-gray-600 bg-gray-50 p-2 rounded break-words">
+            {reason}
+          </div>
+        )}
+        <div className="flex justify-end gap-2 pt-1 border-t border-gray-100">
+          <Button size="small" icon={<EditOutlined />} onClick={() => navigate(`/worklogs/edit/${record.id}`)}>Edit</Button>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <Card styles={{ body: { padding: '12px' } }}>
+      <ResponsiveTable
+        tableProps={{
+          loading: isPending || isEditPending,
+          dataSource: worklogs || [],
+          columns: columns(status, deleteWorklog, navigate, getColumnSearchProps, sortedInfo) as any,
+          expandable: {
+            expandedRowRender,
+            expandedRowKeys: expandedRows,
+            expandIcon: customExpandIcon,
+          },
+          onChange: handleTableChange,
+          rowKey: "id",
+          bordered: true,
+          pagination: {
+            showSizeChanger: true,
+            showQuickJumper: true,
+            pageSizeOptions: [5, 10, 20, 50],
+            showTotal: (total: number, range: [number, number]) => `${range[0]}-${range[1]} of ${total} items`,
+          },
         }}
-        onChange={handleTableChange}
-        rowKey="id"
-        bordered
-        pagination={{
-          showSizeChanger: true,
-          showQuickJumper: true,
-          pageSizeOptions: [5, 10, 20, 50],
-          showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} items`,
-        }}
+        renderMobileCard={renderWorklogCard}
       />
     </Card>
   );

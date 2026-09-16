@@ -60,6 +60,7 @@ import {
   getNepaliFiscalYearOptions
 } from "@/utils/fiscalYear";
 import { formatDistanceToNow, format } from "date-fns";
+import { useIsMobile } from "@/hooks/useIsMobile";
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -68,6 +69,7 @@ const { TextArea } = Input;
 const backendURI = import.meta.env.VITE_BACKEND_URI;
 
 const ClientReportsAdmin: React.FC = () => {
+  const isMobile = useIsMobile();
   const [filterStatus, setFilterStatus] = useState<ReportAccessStatus | undefined>();
   const [filterCustomerId, setFilterCustomerId] = useState<string | undefined>();
   const [filterDocumentTypeId, setFilterDocumentTypeId] = useState<string | undefined>();
@@ -471,10 +473,10 @@ const ClientReportsAdmin: React.FC = () => {
 
       {/* Filters and Bulk Actions */}
       <Card className="mb-4">
-        <div className="flex flex-wrap gap-4 justify-between items-center">
-          <Space wrap>
+        <div className="flex flex-wrap gap-2 justify-between items-center">
+          <Space wrap className={isMobile ? "w-full" : ""}>
             <Select
-              style={{ width: 200 }}
+              style={{ width: isMobile ? '100%' : 200 }}
               placeholder="Filter by Client"
               allowClear
               showSearch
@@ -490,7 +492,7 @@ const ClientReportsAdmin: React.FC = () => {
               ))}
             </Select>
             <Select
-              style={{ width: 180 }}
+              style={{ width: isMobile ? '100%' : 180 }}
               placeholder="Filter by Document Type"
               allowClear
               showSearch
@@ -506,7 +508,7 @@ const ClientReportsAdmin: React.FC = () => {
               ))}
             </Select>
             <Select
-              style={{ width: 150 }}
+              style={{ width: isMobile ? '100%' : 150 }}
               placeholder="Filter by Status"
               allowClear
               onChange={setFilterStatus}
@@ -516,7 +518,7 @@ const ClientReportsAdmin: React.FC = () => {
               <Option value={ReportAccessStatus.REVOKED}>Revoked</Option>
             </Select>
           </Space>
-          <Space>
+          <Space className={isMobile ? "w-full justify-end mt-2" : ""}>
             {selectedRowKeys.length > 0 && (
               <Space>
                 <Text type="secondary">{selectedRowKeys.length} selected</Text>
@@ -554,6 +556,7 @@ const ClientReportsAdmin: React.FC = () => {
           rowKey="id"
           loading={isLoading}
           pagination={{ pageSize: 10 }}
+          scroll={{ x: 'max-content' }}
         />
       </Card>
 
@@ -569,7 +572,7 @@ const ClientReportsAdmin: React.FC = () => {
           setSelectedCustomerForForm(undefined);
         }}
         footer={null}
-        width={1100}
+        width={isMobile ? '95vw' : 1100}
         bodyStyle={{ overflow: "hidden" }}
       >
         <Form
@@ -789,7 +792,7 @@ const ClientReportsAdmin: React.FC = () => {
           setSelectedCustomerForForm(undefined);
         }}
         footer={null}
-        width={1100}
+        width={isMobile ? '95vw' : 1100}
         bodyStyle={{ overflow: "hidden" }}
       >
         <Form

@@ -23,7 +23,7 @@ const UserAuthDetail = ({ initialValues }: { initialValues?: UserType }) => {
         </Paragraph>
       </div>
       <Row gutter={10}>
-        <Col span={12}>
+        <Col xs={24} sm={12}>
           <FormInputWrapper
             id="name"
             name="name"
@@ -32,7 +32,7 @@ const UserAuthDetail = ({ initialValues }: { initialValues?: UserType }) => {
             rules={[{ required: true, message: "Please input the name!" }]}
           />
         </Col>
-        <Col span={12}>
+        <Col xs={24} sm={12}>
           <FormInputWrapper
             disabled={!!initialValues?.id}
             id="username"
@@ -42,7 +42,7 @@ const UserAuthDetail = ({ initialValues }: { initialValues?: UserType }) => {
             rules={[{ required: true, message: "Please input the username!" }]}
           />
         </Col>
-        <Col span={12}>
+        <Col xs={24} sm={12}>
           <FormInputWrapper
             disabled={!!initialValues?.email}
             id="email"
@@ -55,7 +55,7 @@ const UserAuthDetail = ({ initialValues }: { initialValues?: UserType }) => {
             ]}
           />
         </Col>
-        <Col span={12}>
+        <Col xs={24} sm={12}>
           <FormSelectWrapper
             id="status"
             name="status"
@@ -70,7 +70,7 @@ const UserAuthDetail = ({ initialValues }: { initialValues?: UserType }) => {
           />
         </Col>
 
-        <Col span={12}>
+        <Col xs={24} sm={12}>
           <FormSelectWrapper
             id="role"
             name="roleId"
@@ -87,7 +87,7 @@ const UserAuthDetail = ({ initialValues }: { initialValues?: UserType }) => {
           />
         </Col>
         
-        <Col span={12}>
+        <Col xs={24} sm={12}>
           <FormNumberWrapper
             id="hourlyRate"
             name="hourlyRate"
@@ -106,3 +106,4 @@ const UserAuthDetail = ({ initialValues }: { initialValues?: UserType }) => {
 };
 
 export default UserAuthDetail;
+

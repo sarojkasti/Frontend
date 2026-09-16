@@ -36,7 +36,7 @@ const FormInputWrapper = (props: FormInputWrapperProps) => {
     passwordInput = false,
     name,
     id,
-    classname = "py-3 bg-[#eee]",
+    classname = "py-3 bg-gray-200",
     type,
     value,
     disabled = false,

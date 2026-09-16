@@ -40,7 +40,7 @@ const SearchBarWithPopover = () => {
   );
 
   return (
-    <div style={{ maxWidth: 400, minWidth: 200 }}>
+    <div className="w-full md:min-w-[200px] md:max-w-[400px]">
       <Popover
         content={content}
         title="Search Results"

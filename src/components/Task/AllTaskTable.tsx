@@ -21,10 +21,12 @@ import {
   Modal,
   Collapse,
   Empty,
-  Typography
+  Typography,
+  Checkbox
 } from "antd";
 import { useMemo, useState, useRef, useCallback } from "react";
 import { Link } from "react-router-dom";
+import ResponsiveTable from "@/components/ui/MobileCardList";
 import _ from "lodash";
 
 const AllTaskTable = ({ status, userRole, onEdit, externalSearchText = '' }: { status: string, userRole?: string, onEdit?: (task: TaskType) => void, externalSearchText?: string }) => {
@@ -417,20 +419,61 @@ const AllTaskTable = ({ status, userRole, onEdit, externalSearchText = '' }: { s
                                 overflow: 'hidden',
                               }}
                             >
-                              <Table
-                                columns={columns}
-                                dataSource={groupItem.tasks}
-                                rowSelection={rowSelection}
-                                rowKey="id"
-                                size="small"
-                                bordered={false}
-                                pagination={false}
-                                expandable={{
-                                  defaultExpandAllRows: true,
-                                  expandRowByClick: false,
-                                  indentSize: 20,
-                                  rowExpandable: (record: any) => Array.isArray(record.children) && record.children.length > 0
+                              <ResponsiveTable
+                                tableProps={{
+                                  columns: columns,
+                                  dataSource: groupItem.tasks,
+                                  rowSelection: rowSelection,
+                                  rowKey: "id",
+                                  size: "small",
+                                  bordered: false,
+                                  pagination: false,
+                                  expandable: {
+                                    defaultExpandAllRows: true,
+                                    expandRowByClick: false,
+                                    indentSize: 20,
+                                    rowExpandable: (record: any) => Array.isArray(record.children) && record.children.length > 0
+                                  }
                                 }}
+                                renderMobileCard={(record: any) => (
+                                  <div className="flex flex-col gap-2">
+                                    <div className="flex items-start justify-between gap-2">
+                                      <div className="flex items-start gap-2 flex-1 min-w-0">
+                                        <Checkbox
+                                          checked={selectedRowKeys.includes(record.id)}
+                                          onChange={(e) => {
+                                            const next = e.target.checked
+                                              ? [...selectedRowKeys, record.id]
+                                              : selectedRowKeys.filter((k) => k !== record.id);
+                                            setSelectedRowKeys(next);
+                                          }}
+                                        />
+                                        <div className="font-semibold text-gray-900 text-sm break-words">
+                                          {record.isSubTask && <span className="text-gray-400 mr-1">↳</span>}
+                                          {record.name}
+                                        </div>
+                                      </div>
+                                      <Tag color={record.taskType === 'story' ? 'blue' : 'green'} className="shrink-0 text-xs">
+                                        {record.taskType === 'story' ? 'Task' : 'Subtask'}
+                                      </Tag>
+                                    </div>
+                                    <div className="flex items-center justify-between text-xs text-gray-500 pt-1 border-t border-gray-100">
+                                      <div>Priority: <Tag color={record.priority === 'high' ? 'red' : record.priority === 'medium' ? 'orange' : 'default'}>{record.priority || 'Normal'}</Tag></div>
+                                      {record.assignees && record.assignees.length > 0 && (
+                                        <Avatar.Group max={{ count: 2 }}>
+                                          {record.assignees.map((user: any) => (
+                                            <Avatar key={user.id} size="small" style={{ backgroundColor: "#87d068" }}>
+                                              {user.username ? user.username.charAt(0).toUpperCase() : "?"}
+                                            </Avatar>
+                                          ))}
+                                        </Avatar.Group>
+                                      )}
+                                    </div>
+                                    <div className="flex justify-end pt-1">
+                                      <Button icon={<EditOutlined />} size="small" onClick={() => onEdit?.(record)}>Edit</Button>
+                                    </div>
+                                  </div>
+                                )}
                               />
                             </Collapse.Panel>
                           ))}

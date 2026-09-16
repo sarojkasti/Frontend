@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { Table, Input, InputNumber, Button, Popconfirm, message, Upload, Row, Col, Modal } from 'antd';
 import { UploadOutlined, PlusOutlined, EyeOutlined } from '@ant-design/icons';
 import { useCreateUserDetail } from '@/hooks/user/userCreateuserDetail';
@@ -282,3 +282,5 @@ const TrainingDetailForm = ({ initialValues }: { initialValues: any }) => {
 };
 
 export default TrainingDetailForm;
+
+

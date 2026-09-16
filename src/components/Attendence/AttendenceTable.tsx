@@ -7,6 +7,8 @@ import { SearchOutlined, EnvironmentOutlined } from "@ant-design/icons";
 import moment from "moment";
 import { useState, useRef } from "react";
 import Highlighter from 'react-highlight-words';
+import ResponsiveTable from "@/components/ui/MobileCardList";
+import { Tag } from "antd";
 
 interface AttendenceTableProps {
   viewType?: 'my' | 'all-users' | 'today-all' | 'by-user' | 'date-wise';
@@ -504,26 +506,75 @@ const AttendenceTable = ({
     );
   };
 
+  const renderAttendenceCard = (record: any) => {
+    const duration = calculateDuration(record.clockIn, record.clockOut);
+    const isClockedIn = !!record.clockIn && !record.clockOut;
+
+    return (
+      <div className="flex flex-col gap-2.5">
+        <div className="flex justify-between items-start gap-2 border-b border-gray-100 pb-2">
+          <div>
+            <div className="font-semibold text-gray-900 text-sm">
+              {record.user?.name || record.date}
+            </div>
+            {record.user?.name && (
+              <div className="text-xs text-gray-500">{record.date}</div>
+            )}
+          </div>
+          <Tag color={isClockedIn ? "green" : record.clockOut ? "blue" : "default"}>
+            {isClockedIn ? "Working" : record.clockOut ? "Completed" : "Inactive"}
+          </Tag>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2 text-xs py-1">
+          <div className="bg-gray-50 p-2 rounded">
+            <span className="text-gray-500 block">Clock In</span>
+            <span className="font-medium text-gray-800">{record.clockIn || "-"}</span>
+          </div>
+          <div className="bg-gray-50 p-2 rounded">
+            <span className="text-gray-500 block">Clock Out</span>
+            <span className="font-medium text-gray-800">{record.clockOut || (isClockedIn ? "Active now" : "-")}</span>
+          </div>
+        </div>
+
+        <div className="flex justify-between items-center text-xs text-gray-600 pt-1">
+          <span>Duration: <strong className="text-gray-900">{duration}</strong></span>
+          {record.overtime && <span>OT: <strong className="text-blue-600">{record.overtime}</strong></span>}
+        </div>
+
+        {record.inLocation && (
+          <div className="text-xs text-gray-500 flex items-center gap-1 pt-1 border-t border-gray-100">
+            <EnvironmentOutlined className="text-blue-500" />
+            <span className="truncate">{record.inLocation}</span>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="card-container">
-      <Table
-        loading={isPending}
-        dataSource={updatedAttendence}
-        columns={columns}
-        size="middle"
-        rowKey="id"
-        bordered
-        expandable={{
-          expandedRowRender,
-          rowExpandable: (record) => record.history && record.history.length > 0,
+      <ResponsiveTable
+        tableProps={{
+          loading: isPending,
+          dataSource: updatedAttendence,
+          columns: columns,
+          size: "middle",
+          rowKey: "id",
+          bordered: true,
+          expandable: {
+            expandedRowRender,
+            rowExpandable: (record: any) => record.history && record.history.length > 0,
+          },
+          onChange: handleTableChange,
+          pagination: {
+            showSizeChanger: true,
+            showQuickJumper: true,
+            pageSizeOptions: [5, 10, 20, 50],
+            showTotal: (total: number, range: [number, number]) => `${range[0]}-${range[1]} of ${total} items`,
+          },
         }}
-        onChange={handleTableChange}
-        pagination={{
-          showSizeChanger: true,
-          showQuickJumper: true,
-          pageSizeOptions: [5, 10, 20, 50],
-          showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} items`,
-        }}
+        renderMobileCard={renderAttendenceCard}
       />
     </div>
   );

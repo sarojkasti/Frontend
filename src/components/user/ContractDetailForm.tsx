@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { Table, Input, Button, Popconfirm, message, Upload, Row, Col, Modal, DatePicker, Space, Tag, Tooltip } from 'antd';
 import { UploadOutlined, PlusOutlined, EyeOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
 import { useCreateUserDetail } from '@/hooks/user/userCreateuserDetail';
@@ -390,3 +390,5 @@ const ContractDetailForm: React.FC<ContractDetailFormProps> = ({ initialValues }
 };
 
 export default ContractDetailForm;
+
+

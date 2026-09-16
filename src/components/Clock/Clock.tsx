@@ -6,8 +6,10 @@ import moment from "moment";
 import { useEffect, useState } from "react";
 
 import { useSession } from "@/context/SessionContext";
+import useIsMobile from "@/hooks/useIsMobile";
 
 const Clock = () => {
+  const { isMobile } = useIsMobile();
   const { profile } = useSession();
   const { data, refetch } = useGetMyAttendence();
   const { mutate: createAttendance, isPending: createPending } = useCreateAttendence();
@@ -238,34 +240,39 @@ const Clock = () => {
 
   return (
     <>
-      <div>
+      <div className="flex items-center">
         {!isClockedIn ? (
           <Button 
             type="primary" 
             shape="round" 
+            size={isMobile ? "small" : "middle"}
             onClick={handleClockIn}
             loading={createPending || isProcessingClockIn}
             disabled={createPending || isProcessingClockIn}
+            className="text-xs sm:text-sm font-medium"
           >
-            Clock In {moment().format("HH:mm:ss a")}
+            Clock In {moment().format(isMobile ? "hh:mm A" : "HH:mm:ss a")}
           </Button>
         ) : (
-          <div>
+          <div className="flex items-center gap-1 sm:gap-2">
             <Button
               type={isClockedOut ? "default" : "primary"}
               shape="round"
+              size={isMobile ? "small" : "middle"}
               onClick={handleClockOut}
               loading={createPending || isProcessingClockOut}
               disabled={createPending || updatePending || isProcessingClockOut || isProcessingFinalClockOut}
+              className="text-xs sm:text-sm font-medium"
             >
-              {isClockedOut ? "Clocked Out" : "Clock Out"} {moment().format("HH:mm:ss a")}
+              {isClockedOut ? "Clocked Out" : "Clock Out"} {moment().format(isMobile ? "hh:mm A" : "HH:mm:ss a")}
             </Button>
             {!isClockedOut && (
               <Button
                 type="default"
                 shape="round"
+                size={isMobile ? "small" : "middle"}
                 onClick={handleSetFinalClockOut}
-                style={{ marginLeft: 10 }}
+                className="hidden sm:inline-flex"
                 loading={updatePending || isProcessingFinalClockOut}
                 disabled={createPending || updatePending || isProcessingClockOut || isProcessingFinalClockOut}
               >

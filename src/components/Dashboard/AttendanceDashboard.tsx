@@ -213,11 +213,11 @@ const AttendanceDashboard: React.FC = () => {
 
   return (
     <div style={{ padding: '0 0 24px 0' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
         <Title level={4} style={{ margin: 0 }}>
           <ClockCircleOutlined /> Attendance Overview
         </Title>
-        <Space>
+        <Space wrap>
           <CalendarOutlined style={{ fontSize: 16 }} />
           <DatePicker
             value={dayjs(selectedDate)}
@@ -225,16 +225,17 @@ const AttendanceDashboard: React.FC = () => {
             format="YYYY-MM-DD"
             allowClear={false}
             disabledDate={(current) => current && current > dayjs().endOf('day')}
-            style={{ width: 200 }}
+            style={{ width: 150 }}
           />
         </Space>
       </div>
 
       {/* Summary Statistics Row */}
-      <Row gutter={[8, 16]} style={{ marginBottom: 24 }}>
-        <Col xs={24} sm={12} md={8} lg={Math.floor(24/5)} xl={Math.floor(24/5)}>
+      <Row gutter={[8, 8]} style={{ marginBottom: 20 }}>
+        <Col xs={12} sm={12} md={8} lg={Math.floor(24/5)} xl={Math.floor(24/5)}>
           <Card 
             hoverable 
+            size="small"
             onClick={() => setShowTotalDetails(!showTotalDetails)}
             style={{ 
               cursor: 'pointer',
@@ -245,16 +246,17 @@ const AttendanceDashboard: React.FC = () => {
             <Statistic
               title={<Text type="secondary" style={{ fontSize: 12 }}>Total Employees</Text>}
               value={summary.totalUsers}
-              prefix={<UserOutlined style={{ color: '#1890ff', fontSize: 20 }} />}
-              valueStyle={{ color: '#1890ff', fontSize: 24 }}
+              prefix={<UserOutlined style={{ color: '#1890ff', fontSize: 18 }} />}
+              valueStyle={{ color: '#1890ff', fontSize: 20 }}
             />
             <Text type="secondary" style={{ fontSize: 10 }}>Click to view details</Text>
           </Card>
         </Col>
 
-        <Col xs={24} sm={12} md={8} lg={Math.floor(24/5)} xl={Math.floor(24/5)}>
+        <Col xs={12} sm={12} md={8} lg={Math.floor(24/5)} xl={Math.floor(24/5)}>
           <Card 
             hoverable
+            size="small"
             onClick={() => setShowClockedInDetails(!showClockedInDetails)}
             style={{ 
               cursor: 'pointer',
@@ -265,17 +267,18 @@ const AttendanceDashboard: React.FC = () => {
             <Statistic
               title={<Text type="secondary" style={{ fontSize: 12 }}>Clocked In</Text>}
               value={summary.usersWithClockIn}
-              prefix={<CheckCircleOutlined style={{ color: '#52c41a', fontSize: 20 }} />}
-              valueStyle={{ color: '#52c41a', fontSize: 24 }}
-              suffix={<Text type="secondary" style={{ fontSize: 14 }}>/ {summary.totalUsers}</Text>}
+              prefix={<CheckCircleOutlined style={{ color: '#52c41a', fontSize: 18 }} />}
+              valueStyle={{ color: '#52c41a', fontSize: 20 }}
+              suffix={<Text type="secondary" style={{ fontSize: 13 }}>/ {summary.totalUsers}</Text>}
             />
             <Text type="secondary" style={{ fontSize: 10 }}>Click to view details</Text>
           </Card>
         </Col>
 
-        <Col xs={24} sm={12} md={8} lg={Math.floor(24/5)} xl={Math.floor(24/5)}>
+        <Col xs={12} sm={12} md={8} lg={Math.floor(24/5)} xl={Math.floor(24/5)}>
           <Card 
             hoverable
+            size="small"
             onClick={() => setShowClockedOutDetails(!showClockedOutDetails)}
             style={{ 
               cursor: 'pointer',
@@ -286,16 +289,17 @@ const AttendanceDashboard: React.FC = () => {
             <Statistic
               title={<Text type="secondary" style={{ fontSize: 12 }}>Clocked Out</Text>}
               value={clockedOutUsers.length}
-              prefix={<LogoutOutlined style={{ color: '#13c2c2', fontSize: 20 }} />}
-              valueStyle={{ color: '#13c2c2', fontSize: 24 }}
+              prefix={<LogoutOutlined style={{ color: '#13c2c2', fontSize: 18 }} />}
+              valueStyle={{ color: '#13c2c2', fontSize: 20 }}
             />
             <Text type="secondary" style={{ fontSize: 10 }}>Click to view details</Text>
           </Card>
         </Col>
 
-        <Col xs={24} sm={12} md={8} lg={Math.floor(24/5)} xl={Math.floor(24/5)}>
+        <Col xs={12} sm={12} md={8} lg={Math.floor(24/5)} xl={Math.floor(24/5)}>
           <Card
             hoverable
+            size="small"
             onClick={() => setShowPendingDetails(!showPendingDetails)}
             style={{ 
               cursor: 'pointer',
@@ -306,8 +310,8 @@ const AttendanceDashboard: React.FC = () => {
             <Statistic
               title={<Text type="secondary" style={{ fontSize: 12 }}>Pending Clock-Out</Text>}
               value={summary.usersWithoutClockOut}
-              prefix={<WarningOutlined style={{ color: '#faad14', fontSize: 20 }} />}
-              valueStyle={{ color: '#faad14', fontSize: 24 }}
+              prefix={<WarningOutlined style={{ color: '#faad14', fontSize: 18 }} />}
+              valueStyle={{ color: '#faad14', fontSize: 20 }}
             />
             <Text type="secondary" style={{ fontSize: 10 }}>Click to view details</Text>
           </Card>
@@ -316,6 +320,7 @@ const AttendanceDashboard: React.FC = () => {
         <Col xs={24} sm={12} md={8} lg={Math.floor(24/5)} xl={Math.floor(24/5)}>
           <Card
             hoverable
+            size="small"
             style={{ 
               cursor: 'default',
               transition: 'all 0.3s ease'
@@ -324,8 +329,8 @@ const AttendanceDashboard: React.FC = () => {
             <Statistic
               title={<Text type="secondary" style={{ fontSize: 12 }}>Early Clock-Ins</Text>}
               value={summary.earlyClockIns || 0}
-              prefix={<ThunderboltOutlined style={{ color: '#52c41a', fontSize: 20 }} />}
-              valueStyle={{ color: '#52c41a', fontSize: 24 }}
+              prefix={<ThunderboltOutlined style={{ color: '#52c41a', fontSize: 18 }} />}
+              valueStyle={{ color: '#52c41a', fontSize: 20 }}
             />
             <Text type="secondary" style={{ fontSize: 10 }}>15+ min early</Text>
           </Card>

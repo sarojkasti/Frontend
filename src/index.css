@@ -77,3 +77,125 @@
 .ant-layout-sider::-webkit-scrollbar-track {
     background: transparent;
 }
+
+/* ========================= */
+/* MOBILE RESPONSIVE OVERRIDES */
+/* ========================= */
+
+/* Modal: constrain width on mobile */
+@media (max-width: 767px) {
+  .ant-modal {
+    max-width: calc(100vw - 32px) !important;
+    margin: 16px auto !important;
+    top: 24px !important;
+  }
+  .ant-modal-wrap {
+    padding: 0 !important;
+  }
+
+  /* Full-screen modal variant for complex forms */
+  .ant-modal.mobile-fullscreen {
+    max-width: 100vw !important;
+    width: 100vw !important;
+    margin: 0 !important;
+    top: 0 !important;
+    padding: 0 !important;
+  }
+  .ant-modal.mobile-fullscreen .ant-modal-content {
+    min-height: 100vh;
+    border-radius: 0;
+  }
+
+  /* Tables: horizontal scroll on mobile */
+  .ant-table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .ant-table {
+    min-width: 600px;
+  }
+
+  /* Drawers: full-width on mobile */
+  .notification-drawer .ant-drawer-content-wrapper {
+    width: 100% !important;
+  }
+
+  /* Touch-friendly form controls: minimum 44px tap target */
+  .ant-input,
+  .ant-select-selector,
+  .ant-picker,
+  .ant-btn {
+    min-height: 44px !important;
+  }
+  .ant-select-selector {
+    padding-top: 6px !important;
+    padding-bottom: 6px !important;
+  }
+
+  /* Cards: reduce padding on mobile */
+  .ant-card-body {
+    padding: 12px !important;
+  }
+  .ant-card-head {
+    padding: 0 12px !important;
+    min-height: 40px !important;
+  }
+
+  /* Page content: tighter padding on mobile */
+  .ant-layout-content {
+    padding: 8px !important;
+  }
+
+  /* Mobile sidebar drawer styles */
+  .mobile-sidebar-drawer .ant-drawer-body {
+    padding: 0 !important;
+  }
+
+  /* Form layout: stack labels on mobile */
+  .ant-form-item .ant-form-item-label {
+    padding-bottom: 4px !important;
+  }
+  .ant-form-horizontal .ant-form-item-label {
+    flex: 0 0 100% !important;
+    max-width: 100% !important;
+    text-align: left !important;
+  }
+  .ant-form-horizontal .ant-form-item-control {
+    flex: 0 0 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* Tabs: scrollable on mobile */
+  .ant-tabs-nav-list {
+    flex-wrap: nowrap !important;
+  }
+  .ant-tabs-nav {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Stat cards: smaller on mobile */
+  .ant-statistic-title {
+    font-size: 12px !important;
+  }
+  .ant-statistic-content-value {
+    font-size: 20px !important;
+  }
+
+  /* Pagination: compact on mobile */
+  .ant-pagination {
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+    gap: 4px !important;
+  }
+  .ant-pagination-options {
+    display: none !important;
+  }
+}
+
+/* Tablet adjustments (768px - 1023px) */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .ant-modal {
+    max-width: calc(100vw - 64px) !important;
+  }
+}

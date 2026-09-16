@@ -31,6 +31,7 @@ import {
 import { useDeleteProject } from "@/hooks/project/useDeleteProject";
 import { useSession } from "@/context/SessionContext";
 import { useProject } from "@/hooks/project/useProject";
+import useIsMobile from "@/hooks/useIsMobile";
 import {
   ALL_PROJECT_COLUMNS,
   getSavedVisibleColumns,
@@ -38,6 +39,7 @@ import {
 } from "@/components/project/projectColumnsConfig";
 
 const ProjectPage: React.FC = () => {
+  const { isMobile } = useIsMobile();
   const [open, setOpen] = useState(false);
   const [editTaskGroupData, setEditTaskGroupData] = useState<ProjectType | undefined>(undefined);
 
@@ -327,6 +329,50 @@ const ProjectPage: React.FC = () => {
 
   return (
     <>
+      {/* Mobile Actions Toolbar */}
+      {isMobile && (
+        <div className="flex flex-wrap items-center gap-2 mb-3 pb-2 border-b border-gray-100">
+          {!hideCreateDelete && (
+            <Button type="primary" size="small" onClick={() => showModal()}>
+              + Create Project
+            </Button>
+          )}
+          <Button
+            size="small"
+            icon={<FilterOutlined />}
+            onClick={() => {
+              if (showFilters) resetFilters();
+              setShowFilters(!showFilters);
+            }}
+            type={showFilters ? "primary" : "default"}
+          >
+            Filters
+          </Button>
+          <Popover
+            content={columnPopoverContent}
+            trigger="click"
+            placement="bottomRight"
+            open={columnPopoverOpen}
+            onOpenChange={setColumnPopoverOpen}
+          >
+            <Button size="small" icon={<SettingOutlined />}>Columns</Button>
+          </Popover>
+          {canExportProject && (
+            <Button size="small" icon={<DownloadOutlined />} onClick={() => setIsExportViewOpen(true)} />
+          )}
+          {!hideCreateDelete && selectedProjects.length > 0 && (
+            <Button
+              danger
+              size="small"
+              loading={deleteProjectMutation.isPending}
+              onClick={handleDeleteSelected}
+            >
+              Delete ({selectedProjects.length})
+            </Button>
+          )}
+        </div>
+      )}
+
       <Tabs
         activeKey={activeTabKey}
         onChange={(key) => {
@@ -336,19 +382,27 @@ const ProjectPage: React.FC = () => {
             resetFilters();
           }
         }}
+        tabBarStyle={{
+          overflowX: "auto",
+          whiteSpace: "nowrap",
+          maxWidth: "100%",
+        }}
+        className="project-tabs"
         renderTabBar={(props, DefaultTabBar) => (
           <>
-            <DefaultTabBar {...props} />
+            <div className="overflow-x-auto whitespace-nowrap">
+              <DefaultTabBar {...props} />
+            </div>
             {showFilters && (
               <Card className="mb-4">
                 <Form form={form} layout="vertical" onFinish={applyFilters} initialValues={{}}>
-                  <Row gutter={16}>
-                    <Col span={8}>
+                  <Row gutter={[12, 12]}>
+                    <Col xs={24} sm={12} md={8}>
                       <Form.Item name="dateRange" label="Date Range">
                         <DatePicker.RangePicker style={{ width: "100%" }} />
                       </Form.Item>
                     </Col>
-                    <Col span={8}>
+                    <Col xs={24} sm={12} md={8}>
                       <Form.Item name="clientId" label="Client">
                         <Select
                           placeholder="Select client"
@@ -365,7 +419,7 @@ const ProjectPage: React.FC = () => {
                         />
                       </Form.Item>
                     </Col>
-                    <Col span={8}>
+                    <Col xs={24} sm={12} md={8}>
                       <Form.Item name="projectLeadId" label="Project Lead">
                         <Select
                           placeholder="Select project lead"
@@ -382,9 +436,7 @@ const ProjectPage: React.FC = () => {
                         />
                       </Form.Item>
                     </Col>
-                  </Row>
-                  <Row gutter={16} className="mt-4">
-                    <Col span={8}>
+                    <Col xs={24} sm={12} md={8}>
                       <Form.Item name="projectManagerId" label="Project Manager">
                         <Select
                           placeholder="Select project manager"
@@ -401,7 +453,7 @@ const ProjectPage: React.FC = () => {
                         />
                       </Form.Item>
                     </Col>
-                    <Col span={8}>
+                    <Col xs={24} sm={12} md={8}>
                       <Form.Item name="natureOfWork" label="Nature of Work">
                         <Select
                           placeholder="Select nature of work"
@@ -410,12 +462,12 @@ const ProjectPage: React.FC = () => {
                             ?.map((p: any) => {
                               const name =
                                 typeof p.natureOfWork === "object"
-                                  ? p.natureOfWork?.name
-                                  : p.natureOfWork;
+                                    ? p.natureOfWork?.name
+                                    : p.natureOfWork;
                               const id =
                                 typeof p.natureOfWork === "object"
-                                  ? p.natureOfWork?.id
-                                  : p.natureOfWork;
+                                    ? p.natureOfWork?.id
+                                    : p.natureOfWork;
                               return { label: name, value: id };
                             })
                             .filter(
@@ -425,7 +477,7 @@ const ProjectPage: React.FC = () => {
                         />
                       </Form.Item>
                     </Col>
-                    <Col span={8}>
+                    <Col xs={24} sm={12} md={8}>
                       <Form.Item name="status" label="Status">
                         <Select
                           placeholder="Select status"
@@ -456,52 +508,54 @@ const ProjectPage: React.FC = () => {
         )}
         defaultActiveKey="1"
         tabBarExtraContent={
-          <Space size={10}>
-            {/* Edit Columns Button alongside Advanced Filters */}
-            <Popover
-              content={columnPopoverContent}
-              trigger="click"
-              placement="bottomRight"
-              open={columnPopoverOpen}
-              onOpenChange={setColumnPopoverOpen}
-            >
-              <Button icon={<SettingOutlined />}>Edit Columns</Button>
-            </Popover>
-
-            <Button
-              icon={<FilterOutlined />}
-              onClick={() => {
-                if (showFilters) resetFilters();
-                setShowFilters(!showFilters);
-              }}
-              type={showFilters ? "primary" : "default"}
-            >
-              Advanced Filters
-            </Button>
-
-            {!hideCreateDelete && (
-              <Button
-                danger
-                loading={deleteProjectMutation.isPending}
-                disabled={selectedProjects.length === 0}
-                onClick={handleDeleteSelected}
+          isMobile ? undefined : (
+            <Space size={10}>
+              {/* Edit Columns Button alongside Advanced Filters */}
+              <Popover
+                content={columnPopoverContent}
+                trigger="click"
+                placement="bottomRight"
+                open={columnPopoverOpen}
+                onOpenChange={setColumnPopoverOpen}
               >
-                Delete
+                <Button icon={<SettingOutlined />}>Edit Columns</Button>
+              </Popover>
+
+              <Button
+                icon={<FilterOutlined />}
+                onClick={() => {
+                  if (showFilters) resetFilters();
+                  setShowFilters(!showFilters);
+                }}
+                type={showFilters ? "primary" : "default"}
+              >
+                Advanced Filters
               </Button>
-            )}
-            {canExportProject && (
-              <Tooltip title="Download / Export Helper">
-                <Button onClick={() => setIsExportViewOpen(true)}>
-                  <DownloadOutlined />
+
+              {!hideCreateDelete && (
+                <Button
+                  danger
+                  loading={deleteProjectMutation.isPending}
+                  disabled={selectedProjects.length === 0}
+                  onClick={handleDeleteSelected}
+                >
+                  Delete
                 </Button>
-              </Tooltip>
-            )}
-            {!hideCreateDelete && (
-              <Button type="primary" onClick={() => showModal()}>
-                Create Project
-              </Button>
-            )}
-          </Space>
+              )}
+              {canExportProject && (
+                <Tooltip title="Download / Export Helper">
+                  <Button onClick={() => setIsExportViewOpen(true)}>
+                    <DownloadOutlined />
+                  </Button>
+                </Tooltip>
+              )}
+              {!hideCreateDelete && (
+                <Button type="primary" onClick={() => showModal()}>
+                  Create Project
+                </Button>
+              )}
+            </Space>
+          )
         }
         items={[
           {

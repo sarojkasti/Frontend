@@ -11,14 +11,16 @@ const PageTitle = ({
   extra?: JSX.Element;
   description?: string
 }) => (
-  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-    <div>
-      {typeof title === 'string' ? <Title level={4}>{title}</Title> : title}
-      {description && <p>{description}</p>}
+  <div className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-center mb-4">
+    <div className="min-w-0">
+      {typeof title === 'string' ? <Title level={4} className="!text-lg sm:!text-xl !mb-0">{title}</Title> : title}
+      {description && <p className="text-sm text-gray-500 mt-1">{description}</p>}
     </div>
-    <div>
-      {extra || element}
-    </div>
+    {(extra || element) && (
+      <div className="flex-shrink-0">
+        {extra || element}
+      </div>
+    )}
   </div>
 );
 

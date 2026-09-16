@@ -4,6 +4,7 @@ import UserTable from "@/components/user/UserTable";
 import { UserStatus } from "@/types/userStatus";
 import { Modal, Tabs, Button } from "antd";
 import React, { useCallback } from "react";
+import { useIsMobile } from "@/hooks/useIsMobile";
 
 const User: React.FC = () => {
   const [open, setOpen] = React.useState(false);
@@ -18,6 +19,7 @@ const User: React.FC = () => {
     setEditUserData(undefined);
     setOpen(false);
   }, []);
+  const { isMobile } = useIsMobile();
   return (
     <>
       {/* <PageTitle
@@ -26,9 +28,11 @@ const User: React.FC = () => {
       <Tabs
         defaultActiveKey="1"
         tabBarExtraContent={
-            <Button type="primary" onClick={() => showModal()}>
-                Create User
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button type="primary" onClick={() => showModal()}>
+                  Create User
+              </Button>
+            </div>
         }
         items={[
           {
@@ -50,7 +54,7 @@ const User: React.FC = () => {
       />
 
       {open && (
-        <Modal title={editUserData ? "Edit User" : "Add User"} footer={null} open={open} onCancel={handleCancel}>
+        <Modal width={isMobile ? '95vw' : 500} title={editUserData ? "Edit User" : "Add User"} footer={null} open={open} onCancel={handleCancel}>
           <UserForm initialValues={editUserData} handleCancel={handleCancel} />
         </Modal>
       )}

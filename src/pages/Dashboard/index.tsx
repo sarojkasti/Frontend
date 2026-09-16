@@ -13,14 +13,15 @@ const Dashboard: React.FC = () => {
   const canViewAvailability = canViewUserAvailability(permissions || []);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "16px", height: "calc(100vh - 120px)" }}>
-      <Row gutter={8} style={{ flex: "0 0 auto" }}>
-        <Col span={17}>
+    <div className="flex flex-col gap-4" style={{ minHeight: 0 }}>
+      <Row gutter={[8, 8]} style={{ flex: "0 0 auto" }}>
+        <Col xs={24} lg={17}>
           <Suspense fallback={<Spin size="large" />}>
             <Analytic />
           </Suspense>
         </Col>
-        <Col span={7}>
+        {/* Hidden on mobile view, shown on desktop */}
+        <Col xs={0} lg={7} className="hidden lg:block">
           <Suspense fallback={<Spin size="large" />}>
             <Card 
               title="Notifications" 
@@ -29,10 +30,12 @@ const Dashboard: React.FC = () => {
                 display: "flex",
                 flexDirection: "column"
               }}
-              bodyStyle={{
-                flex: 1,
-                overflow: "auto",
-                maxHeight: "calc(100vh - 200px)"
+              styles={{
+                body: {
+                  flex: 1,
+                  overflow: "auto",
+                  maxHeight: "calc(100vh - 200px)"
+                }
               }}
             >
               <Notification />

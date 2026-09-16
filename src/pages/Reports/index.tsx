@@ -18,7 +18,7 @@ import {
   Divider,
   Statistic,
   Breadcrumb,
-  Alert
+  Alert,
 } from "antd";
 import {
   BarChartOutlined,
@@ -31,7 +31,7 @@ import {
   WarningOutlined,
   FileTextOutlined,
   RiseOutlined,
-  PieChartOutlined
+  PieChartOutlined,
 } from "@ant-design/icons";
 import {
   BarChart,
@@ -46,11 +46,14 @@ import {
   Pie,
   Cell,
   AreaChart,
-  Area
+  Area,
 } from "recharts";
 import dayjs from "dayjs";
 import * as XLSX from "xlsx";
-import { fetchWorklogReportData, fetchManagerReportData } from "@/service/report.service";
+import {
+  fetchWorklogReportData,
+  fetchManagerReportData,
+} from "@/service/report.service";
 import { listActiveUsers } from "@/service/user.service";
 
 const { Title, Text } = Typography;
@@ -65,14 +68,16 @@ const CHART_COLORS = [
   "#13c2c2",
   "#eb2f96",
   "#faad14",
-  "#2f54eb"
+  "#2f54eb",
 ];
 
 const ReportsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState("worklog");
   const [selectedProjectId, setSelectedProjectId] = useState<string>("all");
   const [selectedUserId, setSelectedUserId] = useState<string>("all");
-  const [dateRange, setDateRange] = useState<[dayjs.Dayjs | null, dayjs.Dayjs | null] | null>(null);
+  const [dateRange, setDateRange] = useState<
+    [dayjs.Dayjs | null, dayjs.Dayjs | null] | null
+  >(null);
 
   // Fetch full active users list for the filter dropdown
   const { data: activeUsersData } = useQuery({
@@ -111,7 +116,10 @@ const ReportsPage: React.FC = () => {
         : users
     ).filter((u: any) => !u.status || u.status.toLowerCase() === "active");
 
-    const activeUsersMap = new Map<string, { id: string; name: string; email?: string }>();
+    const activeUsersMap = new Map<
+      string,
+      { id: string; name: string; email?: string }
+    >();
 
     activeApiUsers.forEach((u: any) => {
       if (u?.id) {
@@ -124,7 +132,7 @@ const ReportsPage: React.FC = () => {
     });
 
     const activeUsersList = Array.from(activeUsersMap.values()).sort((a, b) =>
-      a.name.localeCompare(b.name)
+      a.name.localeCompare(b.name),
     );
 
     // Apply date range filter if selected
@@ -134,7 +142,10 @@ const ReportsPage: React.FC = () => {
       const end = dateRange[1].endOf("day");
       filteredWorklogs = rawWorklogs.filter((wl: any) => {
         const wlDate = dayjs(wl.startTime || wl.createdAt);
-        return (wlDate.isAfter(start) || wlDate.isSame(start)) && (wlDate.isBefore(end) || wlDate.isSame(end));
+        return (
+          (wlDate.isAfter(start) || wlDate.isSame(start)) &&
+          (wlDate.isBefore(end) || wlDate.isSame(end))
+        );
       });
     }
 
@@ -166,7 +177,10 @@ const ReportsPage: React.FC = () => {
       };
     });
 
-    const projectMap: Record<string, { name: string; totalWorks: number; totalMinutes: number }> = {};
+    const projectMap: Record<
+      string,
+      { name: string; totalWorks: number; totalMinutes: number }
+    > = {};
     const detailedWorklogs: any[] = [];
 
     filteredWorklogs.forEach((wl: any) => {
@@ -177,7 +191,11 @@ const ReportsPage: React.FC = () => {
       }
 
       const pId = String(
-        wl.projectId || wl.project?.id || wl.task?.project?.id || wl.task?.projectId || "unknown"
+        wl.projectId ||
+          wl.project?.id ||
+          wl.task?.project?.id ||
+          wl.task?.projectId ||
+          "unknown",
       );
       if (
         selectedProjectId !== "all" &&
@@ -206,7 +224,8 @@ const ReportsPage: React.FC = () => {
       if (wl.status === "approved") approvedMinutes += minutes;
       else pendingMinutes += minutes;
 
-      const uName = wl.user?.name || activeUsersMap.get(uId)?.name || "Unknown User";
+      const uName =
+        wl.user?.name || activeUsersMap.get(uId)?.name || "Unknown User";
       const uEmail = wl.user?.email || activeUsersMap.get(uId)?.email || "";
 
       if (!userMap[uId]) {
@@ -223,10 +242,13 @@ const ReportsPage: React.FC = () => {
       userMap[uId].totalMinutes += minutes;
       if (wl.status === "approved") userMap[uId].approvedMinutes += minutes;
       if (wl.projectId || wl.project?.name || wl.task?.project?.name) {
-        userMap[uId].projects.add(wl.project?.name || wl.task?.project?.name || wl.projectId);
+        userMap[uId].projects.add(
+          wl.project?.name || wl.task?.project?.name || wl.projectId,
+        );
       }
 
-      const pName = wl.project?.name || wl.task?.project?.name || "General Task";
+      const pName =
+        wl.project?.name || wl.task?.project?.name || "General Task";
       if (!projectMap[pId]) {
         projectMap[pId] = { name: pName, totalWorks: 0, totalMinutes: 0 };
       }
@@ -234,17 +256,22 @@ const ReportsPage: React.FC = () => {
       projectMap[pId].totalMinutes += minutes;
 
       // Map detailed work item with project, task, dates, and descriptions
-      const projectName = wl.project?.name || wl.task?.project?.name || "General Project";
+      const projectName =
+        wl.project?.name || wl.task?.project?.name || "General Project";
       const projectCode = wl.project?.code || wl.task?.project?.code || "-";
       const taskName = wl.task?.name || wl.task?.title || "-";
       const taskCode = wl.task?.code || "-";
-      const taskStatus = wl.task?.status ? String(wl.task.status).toUpperCase() : "-";
+      const taskStatus = wl.task?.status
+        ? String(wl.task.status).toUpperCase()
+        : "-";
       const workDate = wl.startTime
         ? dayjs(wl.startTime).format("YYYY-MM-DD")
         : wl.createdAt
-        ? dayjs(wl.createdAt).format("YYYY-MM-DD")
+          ? dayjs(wl.createdAt).format("YYYY-MM-DD")
+          : "-";
+      const startTime = wl.startTime
+        ? dayjs(wl.startTime).format("hh:mm A")
         : "-";
-      const startTime = wl.startTime ? dayjs(wl.startTime).format("hh:mm A") : "-";
       const endTime = wl.endTime ? dayjs(wl.endTime).format("hh:mm A") : "-";
       const loggedHours = Number((minutes / 60).toFixed(2));
       const status = wl.status ? String(wl.status).toUpperCase() : "OPEN";
@@ -290,7 +317,11 @@ const ReportsPage: React.FC = () => {
         approvedHours: (val.approvedMinutes / 60).toFixed(1),
         projectsCount: val.projects.size,
       }))
-      .sort((a, b) => Number(b.totalHours) - Number(a.totalHours) || a.name.localeCompare(b.name));
+      .sort(
+        (a, b) =>
+          Number(b.totalHours) - Number(a.totalHours) ||
+          a.name.localeCompare(b.name),
+      );
 
     const projectChartData = Object.values(projectMap).map((val) => ({
       name: val.name.length > 18 ? `${val.name.slice(0, 18)}...` : val.name,
@@ -319,7 +350,13 @@ const ReportsPage: React.FC = () => {
       usersList: activeUsersList,
       detailedWorklogs,
     };
-  }, [worklogData, activeUsersData, dateRange, selectedProjectId, selectedUserId]);
+  }, [
+    worklogData,
+    activeUsersData,
+    dateRange,
+    selectedProjectId,
+    selectedUserId,
+  ]);
 
   // -------------------------------------------------------------
   // Manager Report Calculations (100% Real API Data)
@@ -336,7 +373,7 @@ const ReportsPage: React.FC = () => {
     const projectReports = rawProjects.map((proj: any) => {
       // 1. REAL Actual Logged Hours from Database Worklogs
       const projWorklogs = rawWorklogs.filter(
-        (wl: any) => wl.projectId === proj.id || wl.project?.id === proj.id
+        (wl: any) => wl.projectId === proj.id || wl.project?.id === proj.id,
       );
       let realProjectMinutes = 0;
       projWorklogs.forEach((wl: any) => {
@@ -353,17 +390,27 @@ const ReportsPage: React.FC = () => {
       // 2. REAL Estimated Hours from project starting and ending dates or fields
       let estimatedHours = proj.estimatedHours || proj.estimatedTime || 0;
       if (!estimatedHours && proj.startingDate && proj.endingDate) {
-        const days = Math.max(1, dayjs(proj.endingDate).diff(dayjs(proj.startingDate), "day"));
+        const days = Math.max(
+          1,
+          dayjs(proj.endingDate).diff(dayjs(proj.startingDate), "day"),
+        );
         estimatedHours = Math.round(days * 8);
       }
       if (!estimatedHours) estimatedHours = 80;
 
       // 3. REAL Financials: Budget & Billing / Completion Cost
-      const budget = proj.budget || proj.estimatedCost || proj.cost || (estimatedHours * 500);
-      
-      const projBillings = rawBillings.filter((b: any) => b.projectId === proj.id || b.project?.id === proj.id);
-      const billingTotal = projBillings.reduce((sum: number, b: any) => sum + Number(b.amount || b.totalAmount || 0), 0);
-      const completionCost = billingTotal > 0 ? billingTotal : actualLoggedHours * 500;
+      const budget =
+        proj.budget || proj.estimatedCost || proj.cost || estimatedHours * 500;
+
+      const projBillings = rawBillings.filter(
+        (b: any) => b.projectId === proj.id || b.project?.id === proj.id,
+      );
+      const billingTotal = projBillings.reduce(
+        (sum: number, b: any) => sum + Number(b.amount || b.totalAmount || 0),
+        0,
+      );
+      const completionCost =
+        billingTotal > 0 ? billingTotal : actualLoggedHours * 500;
 
       totalBudget += budget;
       totalCompletionCost += completionCost;
@@ -371,16 +418,26 @@ const ReportsPage: React.FC = () => {
       // 4. REAL Progress % calculation from tasks or status
       let completionPercent = proj.progress || 0;
       if (!completionPercent) {
-        if (proj.status === "completed" || proj.status === "signed_off") completionPercent = 100;
+        if (proj.status === "completed" || proj.status === "signed_off")
+          completionPercent = 100;
         else if (proj.tasks && proj.tasks.length > 0) {
-          const doneTasks = proj.tasks.filter((t: any) => t.status === "completed" || t.status === "done").length;
+          const doneTasks = proj.tasks.filter(
+            (t: any) => t.status === "completed" || t.status === "done",
+          ).length;
           completionPercent = Math.round((doneTasks / proj.tasks.length) * 100);
         } else if (estimatedHours > 0) {
-          completionPercent = Math.min(100, Math.round((actualLoggedHours / estimatedHours) * 100));
+          completionPercent = Math.min(
+            100,
+            Math.round((actualLoggedHours / estimatedHours) * 100),
+          );
         }
       }
 
-      if (completionPercent >= 100 || proj.status === "completed" || proj.status === "signed_off") {
+      if (
+        completionPercent >= 100 ||
+        proj.status === "completed" ||
+        proj.status === "signed_off"
+      ) {
         completedCount++;
       }
 
@@ -392,7 +449,11 @@ const ReportsPage: React.FC = () => {
         name: proj.name,
         code: proj.code || `PRJ-${String(proj.id).slice(0, 5)}`,
         status: proj.status || "active",
-        manager: proj.projectManager?.name || proj.projectLead?.name || proj.manager?.name || "N/A",
+        manager:
+          proj.projectManager?.name ||
+          proj.projectLead?.name ||
+          proj.manager?.name ||
+          "N/A",
         completionPercent,
         estimatedHours,
         actualLoggedHours,
@@ -403,17 +464,21 @@ const ReportsPage: React.FC = () => {
       };
     });
 
-    const costChartData = projectReports.map((p: any) => ({
-      name: p.name.length > 15 ? `${p.name.slice(0, 15)}...` : p.name,
-      Budget: p.budget,
-      CompletionCost: p.completionCost,
-    })).slice(0, 8);
+    const costChartData = projectReports
+      .map((p: any) => ({
+        name: p.name.length > 15 ? `${p.name.slice(0, 15)}...` : p.name,
+        Budget: p.budget,
+        CompletionCost: p.completionCost,
+      }))
+      .slice(0, 8);
 
-    const timeChartData = projectReports.map((p: any) => ({
-      name: p.name.length > 15 ? `${p.name.slice(0, 15)}...` : p.name,
-      Estimated: p.estimatedHours,
-      ActualSpent: p.actualLoggedHours,
-    })).slice(0, 8);
+    const timeChartData = projectReports
+      .map((p: any) => ({
+        name: p.name.length > 15 ? `${p.name.slice(0, 15)}...` : p.name,
+        Estimated: p.estimatedHours,
+        ActualSpent: p.actualLoggedHours,
+      }))
+      .slice(0, 8);
 
     return {
       totalProjects: rawProjects.length,
@@ -427,18 +492,23 @@ const ReportsPage: React.FC = () => {
   }, [managerData, worklogData]);
 
   // Helper to create sheet with formatted auto column widths
-  const createSheetWithColWidths = (data: any[], fallbackHeaders?: string[]) => {
+  const createSheetWithColWidths = (
+    data: any[],
+    fallbackHeaders?: string[],
+  ) => {
     let ws: XLSX.WorkSheet;
     if (!data || data.length === 0) {
       ws = XLSX.utils.json_to_sheet(
-        fallbackHeaders ? [fallbackHeaders.reduce((acc, h) => ({ ...acc, [h]: "" }), {})] : []
+        fallbackHeaders
+          ? [fallbackHeaders.reduce((acc, h) => ({ ...acc, [h]: "" }), {})]
+          : [],
       );
     } else {
       ws = XLSX.utils.json_to_sheet(data);
       const colWidths = Object.keys(data[0]).map((key) => {
         const maxContentLength = data.reduce(
           (max, row) => Math.max(max, String(row[key] ?? "").length),
-          key.length
+          key.length,
         );
         return { wch: Math.min(Math.max(maxContentLength + 4, 12), 60) };
       });
@@ -453,24 +523,26 @@ const ReportsPage: React.FC = () => {
       const fileName = `Worklog_Report_${dayjs().format("YYYYMMDD")}.xlsx`;
 
       // 1. Detailed Works Log sheet: every work entry mapped with Project and Task details
-      const detailedSheetData = worklogAnalytics.detailedWorklogs.map((item, idx) => ({
-        "S.N.": idx + 1,
-        "Work Date": item.date,
-        "Employee Name": item.employeeName,
-        "Email Address": item.employeeEmail,
-        "Project Name": item.projectName,
-        "Project Code": item.projectCode,
-        "Task Name": item.taskName,
-        "Task Code": item.taskCode,
-        "Task Status": item.taskStatus,
-        "Work Description": item.description,
-        "Start Time": item.startTime,
-        "End Time": item.endTime,
-        "Logged Hours (hrs)": item.loggedHours,
-        "Worklog Status": item.status,
-        "Approved / Verified By": item.approvedBy,
-        "Remarks": item.remarks,
-      }));
+      const detailedSheetData = worklogAnalytics.detailedWorklogs.map(
+        (item, idx) => ({
+          "S.N.": idx + 1,
+          "Work Date": item.date,
+          "Employee Name": item.employeeName,
+          "Email Address": item.employeeEmail,
+          "Project Name": item.projectName,
+          "Project Code": item.projectCode,
+          "Task Name": item.taskName,
+          "Task Code": item.taskCode,
+          "Task Status": item.taskStatus,
+          "Work Description": item.description,
+          "Start Time": item.startTime,
+          "End Time": item.endTime,
+          "Logged Hours (hrs)": item.loggedHours,
+          "Worklog Status": item.status,
+          "Approved / Verified By": item.approvedBy,
+          Remarks: item.remarks,
+        }),
+      );
 
       // 2. Employee Summary sheet
       const summarySheetData = worklogAnalytics.userTableData.map((u, idx) => ({
@@ -512,8 +584,16 @@ const ReportsPage: React.FC = () => {
         "Assigned Projects Count",
       ]);
 
-      XLSX.utils.book_append_sheet(workbook, detailedWorksheet, "Detailed Works Log");
-      XLSX.utils.book_append_sheet(workbook, summaryWorksheet, "Employee Summary");
+      XLSX.utils.book_append_sheet(
+        workbook,
+        detailedWorksheet,
+        "Detailed Works Log",
+      );
+      XLSX.utils.book_append_sheet(
+        workbook,
+        summaryWorksheet,
+        "Employee Summary",
+      );
       XLSX.writeFile(workbook, fileName);
       return;
     }
@@ -525,7 +605,7 @@ const ReportsPage: React.FC = () => {
         "Project Name": p.name,
         "Project Code": p.code,
         "Project Manager": p.manager,
-        "Status": p.status.toUpperCase(),
+        Status: p.status.toUpperCase(),
         "Completion Progress (%)": `${p.completionPercent}%`,
         "Estimated Budget (NPR)": `NPR ${p.budget.toLocaleString("en-IN")}`,
         "Completion Cost (NPR)": `NPR ${p.completionCost.toLocaleString("en-IN")}`,
@@ -535,28 +615,37 @@ const ReportsPage: React.FC = () => {
             : `-NPR ${Math.abs(p.costVariance).toLocaleString("en-IN")} (Saved)`,
         "Estimated Time (hrs)": p.estimatedHours,
         "Actual Time Spent (hrs)": p.actualLoggedHours,
-        "Time Variance": p.timeVariance > 0 ? `+${p.timeVariance}h Overtime` : `${p.timeVariance}h On Schedule`,
+        "Time Variance":
+          p.timeVariance > 0
+            ? `+${p.timeVariance}h Overtime`
+            : `${p.timeVariance}h On Schedule`,
       }));
 
       const workbook = XLSX.utils.book_new();
       const worksheet = createSheetWithColWidths(sheetData);
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Project Cost & Variance");
+      XLSX.utils.book_append_sheet(
+        workbook,
+        worksheet,
+        "Project Cost & Variance",
+      );
       XLSX.writeFile(workbook, fileName);
       return;
     }
 
     // Attendance Discrepancy report
     const fileName = `Attendance_Discrepancy_Report_${dayjs().format("YYYYMMDD")}.xlsx`;
-    const sheetData = (managerData?.workingTimeStats?.userStats || []).map((u: any, idx: number) => ({
-      "S.N.": idx + 1,
-      "Employee Name": u.name,
-      "Role": u.roleName,
-      "Expected Daily Hours": `${u.expectedDailyHours || 8} hrs`,
-      "Total Worklog Hours": `${(u.totalWorklogMinutes / 60).toFixed(1)} hrs`,
-      "Total Attendance Hours": `${(u.totalAttendanceMinutes / 60).toFixed(1)} hrs`,
-      "Overtime Days": u.overtimeDays,
-      "Worklog Exceeds Attendance Days": u.worklogExceedsAttendanceDays,
-    }));
+    const sheetData = (managerData?.workingTimeStats?.userStats || []).map(
+      (u: any, idx: number) => ({
+        "S.N.": idx + 1,
+        "Employee Name": u.name,
+        Role: u.roleName,
+        "Expected Daily Hours": `${u.expectedDailyHours || 8} hrs`,
+        "Total Worklog Hours": `${(u.totalWorklogMinutes / 60).toFixed(1)} hrs`,
+        "Total Attendance Hours": `${(u.totalAttendanceMinutes / 60).toFixed(1)} hrs`,
+        "Overtime Days": u.overtimeDays,
+        "Worklog Exceeds Attendance Days": u.worklogExceedsAttendanceDays,
+      }),
+    );
 
     const workbook = XLSX.utils.book_new();
     const worksheet = createSheetWithColWidths(sheetData);
@@ -567,18 +656,26 @@ const ReportsPage: React.FC = () => {
   return (
     <div style={{ padding: "0 4px 24px 4px" }}>
       {/* Top Breadcrumb Navigation */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: 16,
+        }}
+      >
         <Breadcrumb
-          items={[
-            { title: "Home" },
-            { title: "Analytics & Reports Hub" },
-          ]}
+          items={[{ title: "Home" }, { title: "Analytics & Reports Hub" }]}
         />
         <Button
           type="primary"
           icon={<FileExcelOutlined style={{ color: "#ffffff" }} />}
           onClick={handleExportExcel}
-          style={{ borderRadius: "6px", backgroundColor: "#21a366", borderColor: "#21a366" }}
+          style={{
+            borderRadius: "6px",
+            backgroundColor: "#21a366",
+            borderColor: "#21a366",
+          }}
         >
           Export Report Excel
         </Button>
@@ -591,7 +688,7 @@ const ReportsPage: React.FC = () => {
           marginBottom: 16,
           background: "#ffffff",
           border: "1px solid #f0f0f0",
-          boxShadow: "0 1px 4px rgba(0,0,0,0.03)"
+          boxShadow: "0 1px 4px rgba(0,0,0,0.03)",
         }}
         bodyStyle={{ padding: "20px 24px" }}
       >
@@ -604,15 +701,19 @@ const ReportsPage: React.FC = () => {
                 style={{
                   backgroundColor: "#e6f4ff",
                   color: "#1677ff",
-                  border: "1px solid #91caff"
+                  border: "1px solid #91caff",
                 }}
               />
               <div>
-                <Title level={3} style={{ color: "#1e293b", margin: 0, fontWeight: 600 }}>
+                <Title
+                  level={3}
+                  style={{ color: "#1e293b", margin: 0, fontWeight: 600 }}
+                >
                   Analytics & Reports Hub
                 </Title>
                 <Text type="secondary" style={{ fontSize: "13px" }}>
-                  Real-time intelligence from your database on worklogs, project costs (NPR), and team output
+                  Real-time intelligence from your database on worklogs, project
+                  costs (NPR), and team output
                 </Text>
               </div>
             </Space>
@@ -620,26 +721,84 @@ const ReportsPage: React.FC = () => {
 
           <Col xs={24} md={12}>
             <Row gutter={[12, 12]}>
-              <Col span={8}>
-                <div style={{ background: "#f8fafc", padding: "10px 14px", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
-                  <Text type="secondary" style={{ fontSize: "11px", textTransform: "uppercase", fontWeight: 600 }}>Total Logged Hours</Text>
-                  <Title level={4} style={{ color: "#1677ff", margin: "2px 0 0 0" }}>
+              <Col xs={24} sm={8}>
+                <div
+                  style={{
+                    background: "#f8fafc",
+                    padding: "10px 14px",
+                    borderRadius: "8px",
+                    border: "1px solid #e2e8f0",
+                  }}
+                >
+                  <Text
+                    type="secondary"
+                    style={{
+                      fontSize: "11px",
+                      textTransform: "uppercase",
+                      fontWeight: 600,
+                    }}
+                  >
+                    Total Logged Hours
+                  </Text>
+                  <Title
+                    level={4}
+                    style={{ color: "#1677ff", margin: "2px 0 0 0" }}
+                  >
                     {worklogAnalytics.totalHours}h
                   </Title>
                 </div>
               </Col>
-              <Col span={8}>
-                <div style={{ background: "#f8fafc", padding: "10px 14px", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
-                  <Text type="secondary" style={{ fontSize: "11px", textTransform: "uppercase", fontWeight: 600 }}>Active Projects</Text>
-                  <Title level={4} style={{ color: "#52c41a", margin: "2px 0 0 0" }}>
+              <Col xs={24} sm={8}>
+                <div
+                  style={{
+                    background: "#f8fafc",
+                    padding: "10px 14px",
+                    borderRadius: "8px",
+                    border: "1px solid #e2e8f0",
+                  }}
+                >
+                  <Text
+                    type="secondary"
+                    style={{
+                      fontSize: "11px",
+                      textTransform: "uppercase",
+                      fontWeight: 600,
+                    }}
+                  >
+                    Active Projects
+                  </Text>
+                  <Title
+                    level={4}
+                    style={{ color: "#52c41a", margin: "2px 0 0 0" }}
+                  >
                     {managerAnalytics.totalProjects}
                   </Title>
                 </div>
               </Col>
-              <Col span={8}>
-                <div style={{ background: "#f8fafc", padding: "10px 14px", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
-                  <Text type="secondary" style={{ fontSize: "11px", textTransform: "uppercase", fontWeight: 600 }}>Completion Cost</Text>
-                  <Title level={4} style={{ color: "#722ed1", margin: "2px 0 0 0" }} ellipsis={{ tooltip: true }}>
+              <Col xs={24} sm={8}>
+                <div
+                  style={{
+                    background: "#f8fafc",
+                    padding: "10px 14px",
+                    borderRadius: "8px",
+                    border: "1px solid #e2e8f0",
+                  }}
+                >
+                  <Text
+                    type="secondary"
+                    style={{
+                      fontSize: "11px",
+                      textTransform: "uppercase",
+                      fontWeight: 600,
+                    }}
+                  >
+                    Completion Cost
+                  </Text>
+                  <Title
+                    level={4}
+                    style={{ color: "#722ed1", margin: "2px 0 0 0" }}
+                    ellipsis={{ tooltip: true }}
+                  >
                     NPR {managerAnalytics.totalCompletionCost}
                   </Title>
                 </div>
@@ -656,7 +815,7 @@ const ReportsPage: React.FC = () => {
           borderRadius: "8px",
           marginBottom: 16,
           border: "1px solid #f0f0f0",
-          boxShadow: "0 1px 3px rgba(0,0,0,0.02)"
+          boxShadow: "0 1px 3px rgba(0,0,0,0.02)",
         }}
         bodyStyle={{ padding: "14px 18px" }}
       >
@@ -736,7 +895,7 @@ const ReportsPage: React.FC = () => {
         style={{
           borderRadius: "8px",
           border: "1px solid #f0f0f0",
-          boxShadow: "0 1px 3px rgba(0,0,0,0.02)"
+          boxShadow: "0 1px 3px rgba(0,0,0,0.02)",
         }}
         bodyStyle={{ padding: "20px" }}
       >
@@ -757,38 +916,88 @@ const ReportsPage: React.FC = () => {
                 <div style={{ paddingTop: 8 }}>
                   <Row gutter={[16, 16]} style={{ marginBottom: 20 }}>
                     <Col xs={12} sm={6}>
-                      <Card size="small" style={{ borderRadius: "8px", background: "#ffffff", border: "1px solid #f0f0f0" }}>
+                      <Card
+                        size="small"
+                        style={{
+                          borderRadius: "8px",
+                          background: "#ffffff",
+                          border: "1px solid #f0f0f0",
+                        }}
+                      >
                         <Statistic
-                          title={<Text style={{ color: "#64748b", fontSize: 12 }}>Total Submissions</Text>}
+                          title={
+                            <Text style={{ color: "#64748b", fontSize: 12 }}>
+                              Total Submissions
+                            </Text>
+                          }
                           value={worklogAnalytics.totalWorklogs}
-                          prefix={<FileTextOutlined style={{ color: "#1677ff" }} />}
+                          prefix={
+                            <FileTextOutlined style={{ color: "#1677ff" }} />
+                          }
                         />
                       </Card>
                     </Col>
                     <Col xs={12} sm={6}>
-                      <Card size="small" style={{ borderRadius: "8px", background: "#ffffff", border: "1px solid #f0f0f0" }}>
+                      <Card
+                        size="small"
+                        style={{
+                          borderRadius: "8px",
+                          background: "#ffffff",
+                          border: "1px solid #f0f0f0",
+                        }}
+                      >
                         <Statistic
-                          title={<Text style={{ color: "#64748b", fontSize: 12 }}>Approved Hours</Text>}
+                          title={
+                            <Text style={{ color: "#64748b", fontSize: 12 }}>
+                              Approved Hours
+                            </Text>
+                          }
                           value={worklogAnalytics.approvedHours}
                           suffix="hrs"
-                          prefix={<CheckCircleOutlined style={{ color: "#52c41a" }} />}
+                          prefix={
+                            <CheckCircleOutlined style={{ color: "#52c41a" }} />
+                          }
                         />
                       </Card>
                     </Col>
                     <Col xs={12} sm={6}>
-                      <Card size="small" style={{ borderRadius: "8px", background: "#ffffff", border: "1px solid #f0f0f0" }}>
+                      <Card
+                        size="small"
+                        style={{
+                          borderRadius: "8px",
+                          background: "#ffffff",
+                          border: "1px solid #f0f0f0",
+                        }}
+                      >
                         <Statistic
-                          title={<Text style={{ color: "#64748b", fontSize: 12 }}>Pending Hours</Text>}
+                          title={
+                            <Text style={{ color: "#64748b", fontSize: 12 }}>
+                              Pending Hours
+                            </Text>
+                          }
                           value={worklogAnalytics.pendingHours}
                           suffix="hrs"
-                          prefix={<WarningOutlined style={{ color: "#faad14" }} />}
+                          prefix={
+                            <WarningOutlined style={{ color: "#faad14" }} />
+                          }
                         />
                       </Card>
                     </Col>
                     <Col xs={12} sm={6}>
-                      <Card size="small" style={{ borderRadius: "8px", background: "#ffffff", border: "1px solid #f0f0f0" }}>
+                      <Card
+                        size="small"
+                        style={{
+                          borderRadius: "8px",
+                          background: "#ffffff",
+                          border: "1px solid #f0f0f0",
+                        }}
+                      >
                         <Statistic
-                          title={<Text style={{ color: "#64748b", fontSize: 12 }}>Active Contributors</Text>}
+                          title={
+                            <Text style={{ color: "#64748b", fontSize: 12 }}>
+                              Active Contributors
+                            </Text>
+                          }
                           value={worklogAnalytics.userTableData.length}
                           prefix={<TeamOutlined style={{ color: "#722ed1" }} />}
                         />
@@ -799,18 +1008,43 @@ const ReportsPage: React.FC = () => {
                   <Row gutter={[16, 16]} style={{ marginBottom: 20 }}>
                     <Col xs={24} lg={14}>
                       <Card
-                        title={<Space><BarChartOutlined style={{ color: "#1677ff" }} /> Work Hours per Project</Space>}
+                        title={
+                          <Space>
+                            <BarChartOutlined style={{ color: "#1677ff" }} />{" "}
+                            Work Hours per Project
+                          </Space>
+                        }
                         size="small"
-                        style={{ borderRadius: "8px", border: "1px solid #f0f0f0" }}
+                        style={{
+                          borderRadius: "8px",
+                          border: "1px solid #f0f0f0",
+                        }}
                       >
                         <div style={{ width: "100%", height: 280 }}>
                           <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={worklogAnalytics.projectChartData}>
-                              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                              <XAxis dataKey="name" stroke="#64748b" fontSize={12} />
+                              <CartesianGrid
+                                strokeDasharray="3 3"
+                                vertical={false}
+                                stroke="#f0f0f0"
+                              />
+                              <XAxis
+                                dataKey="name"
+                                stroke="#64748b"
+                                fontSize={12}
+                              />
                               <YAxis stroke="#64748b" fontSize={12} unit="h" />
-                              <RechartsTooltip formatter={(val: any) => [`${val} hours`, "Logged Time"]} />
-                              <Bar dataKey="hours" fill="#1677ff" radius={[4, 4, 0, 0]} />
+                              <RechartsTooltip
+                                formatter={(val: any) => [
+                                  `${val} hours`,
+                                  "Logged Time",
+                                ]}
+                              />
+                              <Bar
+                                dataKey="hours"
+                                fill="#1677ff"
+                                radius={[4, 4, 0, 0]}
+                              />
                             </BarChart>
                           </ResponsiveContainer>
                         </div>
@@ -819,11 +1053,27 @@ const ReportsPage: React.FC = () => {
 
                     <Col xs={24} lg={10}>
                       <Card
-                        title={<Space><PieChartOutlined style={{ color: "#722ed1" }} /> Top User Output Breakdown</Space>}
+                        title={
+                          <Space>
+                            <PieChartOutlined style={{ color: "#722ed1" }} />{" "}
+                            Top User Output Breakdown
+                          </Space>
+                        }
                         size="small"
-                        style={{ borderRadius: "8px", border: "1px solid #f0f0f0" }}
+                        style={{
+                          borderRadius: "8px",
+                          border: "1px solid #f0f0f0",
+                        }}
                       >
-                        <div style={{ width: "100%", height: 280, display: "flex", justifyContent: "center", alignItems: "center" }}>
+                        <div
+                          style={{
+                            width: "100%",
+                            height: 280,
+                            display: "flex",
+                            justifyContent: "center",
+                            alignItems: "center",
+                          }}
+                        >
                           <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
                               <Pie
@@ -835,11 +1085,25 @@ const ReportsPage: React.FC = () => {
                                 paddingAngle={3}
                                 dataKey="value"
                               >
-                                {worklogAnalytics.userPieData.map((_, index) => (
-                                  <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
-                                ))}
+                                {worklogAnalytics.userPieData.map(
+                                  (_, index) => (
+                                    <Cell
+                                      key={`cell-${index}`}
+                                      fill={
+                                        CHART_COLORS[
+                                          index % CHART_COLORS.length
+                                        ]
+                                      }
+                                    />
+                                  ),
+                                )}
                               </Pie>
-                              <RechartsTooltip formatter={(val: any) => [`${val} hrs`, "Logged Time"]} />
+                              <RechartsTooltip
+                                formatter={(val: any) => [
+                                  `${val} hrs`,
+                                  "Logged Time",
+                                ]}
+                              />
                               <Legend />
                             </PieChart>
                           </ResponsiveContainer>
@@ -848,7 +1112,10 @@ const ReportsPage: React.FC = () => {
                     </Col>
                   </Row>
 
-                  <Divider orientation="left" style={{ borderColor: "#f0f0f0" }}>
+                  <Divider
+                    orientation="left"
+                    style={{ borderColor: "#f0f0f0" }}
+                  >
                     Team Member Worklog Breakdown
                   </Divider>
 
@@ -864,10 +1131,22 @@ const ReportsPage: React.FC = () => {
                         key: "name",
                         render: (text: string, record: any) => (
                           <Space>
-                            <Avatar size="small" style={{ backgroundColor: "#1677ff" }}>{text.charAt(0)}</Avatar>
+                            <Avatar
+                              size="small"
+                              style={{ backgroundColor: "#1677ff" }}
+                            >
+                              {text.charAt(0)}
+                            </Avatar>
                             <div>
-                              <Text strong style={{ display: "block", fontSize: 13 }}>{text}</Text>
-                              <Text type="secondary" style={{ fontSize: 11 }}>{record.email}</Text>
+                              <Text
+                                strong
+                                style={{ display: "block", fontSize: 13 }}
+                              >
+                                {text}
+                              </Text>
+                              <Text type="secondary" style={{ fontSize: 11 }}>
+                                {record.email}
+                              </Text>
                             </div>
                           </Space>
                         ),
@@ -877,37 +1156,55 @@ const ReportsPage: React.FC = () => {
                         dataIndex: "totalWorks",
                         key: "totalWorks",
                         align: "center",
-                        render: (val: number) => <Tag color="blue">{val} entries</Tag>,
+                        render: (val: number) => (
+                          <Tag color="blue">{val} entries</Tag>
+                        ),
                       },
                       {
                         title: "Total Logged Hours",
                         dataIndex: "totalHours",
                         key: "totalHours",
                         align: "right",
-                        render: (val: string) => <Text strong style={{ color: "#1677ff" }}>{val} hrs</Text>,
+                        render: (val: string) => (
+                          <Text strong style={{ color: "#1677ff" }}>
+                            {val} hrs
+                          </Text>
+                        ),
                       },
                       {
                         title: "Approved Hours",
                         dataIndex: "approvedHours",
                         key: "approvedHours",
                         align: "right",
-                        render: (val: string) => <Text style={{ color: "#52c41a" }}>{val} hrs</Text>,
+                        render: (val: string) => (
+                          <Text style={{ color: "#52c41a" }}>{val} hrs</Text>
+                        ),
                       },
                       {
                         title: "Assigned Projects",
                         dataIndex: "projectsCount",
                         key: "projectsCount",
                         align: "center",
-                        render: (val: number) => <Badge count={val} style={{ backgroundColor: "#722ed1" }} />,
+                        render: (val: number) => (
+                          <Badge
+                            count={val}
+                            style={{ backgroundColor: "#722ed1" }}
+                          />
+                        ),
                       },
                     ]}
                   />
 
                   <Divider
                     orientation="left"
-                    style={{ margin: "32px 0 16px 0", color: "#64748b", fontSize: 14 }}
+                    style={{
+                      margin: "32px 0 16px 0",
+                      color: "#64748b",
+                      fontSize: 14,
+                    }}
                   >
-                    Detailed Works & Tasks Log ({worklogAnalytics.detailedWorklogs.length} entries)
+                    Detailed Works & Tasks Log (
+                    {worklogAnalytics.detailedWorklogs.length} entries)
                   </Divider>
 
                   <Table
@@ -917,7 +1214,8 @@ const ReportsPage: React.FC = () => {
                       pageSize: 10,
                       showSizeChanger: true,
                       pageSizeOptions: ["10", "20", "50", "100"],
-                      showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} entries`,
+                      showTotal: (total, range) =>
+                        `${range[0]}-${range[1]} of ${total} entries`,
                     }}
                     size="small"
                     scroll={{ x: 1200 }}
@@ -927,7 +1225,9 @@ const ReportsPage: React.FC = () => {
                         dataIndex: "date",
                         key: "date",
                         width: 110,
-                        render: (text: string) => <Text style={{ fontSize: 12 }}>{text}</Text>,
+                        render: (text: string) => (
+                          <Text style={{ fontSize: 12 }}>{text}</Text>
+                        ),
                       },
                       {
                         title: "Employee",
@@ -936,7 +1236,10 @@ const ReportsPage: React.FC = () => {
                         width: 170,
                         render: (text: string, record: any) => (
                           <div>
-                            <Text strong style={{ display: "block", fontSize: 12 }}>
+                            <Text
+                              strong
+                              style={{ display: "block", fontSize: 12 }}
+                            >
                               {text}
                             </Text>
                             <Text type="secondary" style={{ fontSize: 11 }}>
@@ -952,14 +1255,18 @@ const ReportsPage: React.FC = () => {
                         width: 180,
                         render: (text: string, record: any) => (
                           <div>
-                            <Text strong style={{ display: "block", fontSize: 12 }}>
+                            <Text
+                              strong
+                              style={{ display: "block", fontSize: 12 }}
+                            >
                               {text}
                             </Text>
-                            {record.projectCode && record.projectCode !== "-" && (
-                              <Tag color="cyan" style={{ fontSize: 10 }}>
-                                {record.projectCode}
-                              </Tag>
-                            )}
+                            {record.projectCode &&
+                              record.projectCode !== "-" && (
+                                <Tag color="cyan" style={{ fontSize: 10 }}>
+                                  {record.projectCode}
+                                </Tag>
+                              )}
                           </div>
                         ),
                       },
@@ -970,18 +1277,21 @@ const ReportsPage: React.FC = () => {
                         width: 180,
                         render: (text: string, record: any) => (
                           <div>
-                            <Text style={{ display: "block", fontSize: 12 }}>{text}</Text>
+                            <Text style={{ display: "block", fontSize: 12 }}>
+                              {text}
+                            </Text>
                             <Space size={4} wrap>
                               {record.taskCode && record.taskCode !== "-" && (
                                 <Tag color="purple" style={{ fontSize: 10 }}>
                                   {record.taskCode}
                                 </Tag>
                               )}
-                              {record.taskStatus && record.taskStatus !== "-" && (
-                                <Tag color="blue" style={{ fontSize: 10 }}>
-                                  {record.taskStatus}
-                                </Tag>
-                              )}
+                              {record.taskStatus &&
+                                record.taskStatus !== "-" && (
+                                  <Tag color="blue" style={{ fontSize: 10 }}>
+                                    {record.taskStatus}
+                                  </Tag>
+                                )}
                             </Space>
                           </div>
                         ),
@@ -991,7 +1301,9 @@ const ReportsPage: React.FC = () => {
                         dataIndex: "description",
                         key: "description",
                         ellipsis: { tooltip: true },
-                        render: (text: string) => <Text style={{ fontSize: 12 }}>{text}</Text>,
+                        render: (text: string) => (
+                          <Text style={{ fontSize: 12 }}>{text}</Text>
+                        ),
                       },
                       {
                         title: "Time",
@@ -1025,7 +1337,8 @@ const ReportsPage: React.FC = () => {
                           let color = "default";
                           if (st === "APPROVED") color = "success";
                           else if (st === "REJECTED") color = "error";
-                          else if (st === "PENDING" || st === "REQUESTED") color = "warning";
+                          else if (st === "PENDING" || st === "REQUESTED")
+                            color = "warning";
                           return <Tag color={color}>{st}</Tag>;
                         },
                       },
@@ -1068,39 +1381,92 @@ const ReportsPage: React.FC = () => {
                 <div style={{ paddingTop: 8 }}>
                   <Row gutter={[16, 16]} style={{ marginBottom: 20 }}>
                     <Col xs={12} sm={6}>
-                      <Card size="small" style={{ borderRadius: "8px", background: "#ffffff", border: "1px solid #f0f0f0" }}>
+                      <Card
+                        size="small"
+                        style={{
+                          borderRadius: "8px",
+                          background: "#ffffff",
+                          border: "1px solid #f0f0f0",
+                        }}
+                      >
                         <Statistic
-                          title={<Text style={{ color: "#64748b", fontSize: 12 }}>Projects Completed</Text>}
+                          title={
+                            <Text style={{ color: "#64748b", fontSize: 12 }}>
+                              Projects Completed
+                            </Text>
+                          }
                           value={managerAnalytics.completedCount}
                           suffix={`/ ${managerAnalytics.totalProjects}`}
-                          prefix={<CheckCircleOutlined style={{ color: "#52c41a" }} />}
+                          prefix={
+                            <CheckCircleOutlined style={{ color: "#52c41a" }} />
+                          }
                         />
                       </Card>
                     </Col>
                     <Col xs={12} sm={6}>
-                      <Card size="small" style={{ borderRadius: "8px", background: "#ffffff", border: "1px solid #f0f0f0" }}>
+                      <Card
+                        size="small"
+                        style={{
+                          borderRadius: "8px",
+                          background: "#ffffff",
+                          border: "1px solid #f0f0f0",
+                        }}
+                      >
                         <Statistic
-                          title={<Text style={{ color: "#64748b", fontSize: 12 }}>Total Budget Allocated</Text>}
+                          title={
+                            <Text style={{ color: "#64748b", fontSize: 12 }}>
+                              Total Budget Allocated
+                            </Text>
+                          }
                           value={`NPR ${managerAnalytics.totalBudget}`}
-                          prefix={<DollarOutlined style={{ color: "#1677ff" }} />}
+                          prefix={
+                            <DollarOutlined style={{ color: "#1677ff" }} />
+                          }
                         />
                       </Card>
                     </Col>
                     <Col xs={12} sm={6}>
-                      <Card size="small" style={{ borderRadius: "8px", background: "#ffffff", border: "1px solid #f0f0f0" }}>
+                      <Card
+                        size="small"
+                        style={{
+                          borderRadius: "8px",
+                          background: "#ffffff",
+                          border: "1px solid #f0f0f0",
+                        }}
+                      >
                         <Statistic
-                          title={<Text style={{ color: "#64748b", fontSize: 12 }}>Total Completion Cost</Text>}
+                          title={
+                            <Text style={{ color: "#64748b", fontSize: 12 }}>
+                              Total Completion Cost
+                            </Text>
+                          }
                           value={`NPR ${managerAnalytics.totalCompletionCost}`}
                           prefix={<RiseOutlined style={{ color: "#722ed1" }} />}
                         />
                       </Card>
                     </Col>
                     <Col xs={12} sm={6}>
-                      <Card size="small" style={{ borderRadius: "8px", background: "#ffffff", border: "1px solid #f0f0f0" }}>
+                      <Card
+                        size="small"
+                        style={{
+                          borderRadius: "8px",
+                          background: "#ffffff",
+                          border: "1px solid #f0f0f0",
+                        }}
+                      >
                         <Statistic
-                          title={<Text style={{ color: "#64748b", fontSize: 12 }}>Active Managed Projects</Text>}
-                          value={managerAnalytics.totalProjects - managerAnalytics.completedCount}
-                          prefix={<ProjectOutlined style={{ color: "#fa541c" }} />}
+                          title={
+                            <Text style={{ color: "#64748b", fontSize: 12 }}>
+                              Active Managed Projects
+                            </Text>
+                          }
+                          value={
+                            managerAnalytics.totalProjects -
+                            managerAnalytics.completedCount
+                          }
+                          prefix={
+                            <ProjectOutlined style={{ color: "#fa541c" }} />
+                          }
                         />
                       </Card>
                     </Col>
@@ -1109,20 +1475,53 @@ const ReportsPage: React.FC = () => {
                   <Row gutter={[16, 16]} style={{ marginBottom: 20 }}>
                     <Col xs={24} lg={12}>
                       <Card
-                        title={<Space><DollarOutlined style={{ color: "#52c41a" }} /> Budget vs. Completion Cost (NPR)</Space>}
+                        title={
+                          <Space>
+                            <DollarOutlined style={{ color: "#52c41a" }} />{" "}
+                            Budget vs. Completion Cost (NPR)
+                          </Space>
+                        }
                         size="small"
-                        style={{ borderRadius: "8px", border: "1px solid #f0f0f0" }}
+                        style={{
+                          borderRadius: "8px",
+                          border: "1px solid #f0f0f0",
+                        }}
                       >
                         <div style={{ width: "100%", height: 280 }}>
                           <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={managerAnalytics.costChartData}>
-                              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                              <XAxis dataKey="name" stroke="#64748b" fontSize={11} />
-                              <YAxis stroke="#64748b" fontSize={11} unit=" NPR" />
-                              <RechartsTooltip formatter={(val: any) => [`NPR ${Number(val).toLocaleString("en-IN")}`, "Cost"]} />
+                              <CartesianGrid
+                                strokeDasharray="3 3"
+                                vertical={false}
+                                stroke="#f0f0f0"
+                              />
+                              <XAxis
+                                dataKey="name"
+                                stroke="#64748b"
+                                fontSize={11}
+                              />
+                              <YAxis
+                                stroke="#64748b"
+                                fontSize={11}
+                                unit=" NPR"
+                              />
+                              <RechartsTooltip
+                                formatter={(val: any) => [
+                                  `NPR ${Number(val).toLocaleString("en-IN")}`,
+                                  "Cost",
+                                ]}
+                              />
                               <Legend />
-                              <Bar dataKey="Budget" fill="#91caff" radius={[4, 4, 0, 0]} />
-                              <Bar dataKey="CompletionCost" fill="#1677ff" radius={[4, 4, 0, 0]} />
+                              <Bar
+                                dataKey="Budget"
+                                fill="#91caff"
+                                radius={[4, 4, 0, 0]}
+                              />
+                              <Bar
+                                dataKey="CompletionCost"
+                                fill="#1677ff"
+                                radius={[4, 4, 0, 0]}
+                              />
                             </BarChart>
                           </ResponsiveContainer>
                         </div>
@@ -1131,20 +1530,51 @@ const ReportsPage: React.FC = () => {
 
                     <Col xs={24} lg={12}>
                       <Card
-                        title={<Space><ClockCircleOutlined style={{ color: "#fa8c16" }} /> Estimated Time vs. Actual Time Spent</Space>}
+                        title={
+                          <Space>
+                            <ClockCircleOutlined style={{ color: "#fa8c16" }} />{" "}
+                            Estimated Time vs. Actual Time Spent
+                          </Space>
+                        }
                         size="small"
-                        style={{ borderRadius: "8px", border: "1px solid #f0f0f0" }}
+                        style={{
+                          borderRadius: "8px",
+                          border: "1px solid #f0f0f0",
+                        }}
                       >
                         <div style={{ width: "100%", height: 280 }}>
                           <ResponsiveContainer width="100%" height="100%">
                             <AreaChart data={managerAnalytics.timeChartData}>
-                              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                              <XAxis dataKey="name" stroke="#64748b" fontSize={11} />
+                              <CartesianGrid
+                                strokeDasharray="3 3"
+                                vertical={false}
+                                stroke="#f0f0f0"
+                              />
+                              <XAxis
+                                dataKey="name"
+                                stroke="#64748b"
+                                fontSize={11}
+                              />
                               <YAxis stroke="#64748b" fontSize={11} unit="h" />
-                              <RechartsTooltip formatter={(val: any) => [`${val} hours`, "Time"]} />
+                              <RechartsTooltip
+                                formatter={(val: any) => [
+                                  `${val} hours`,
+                                  "Time",
+                                ]}
+                              />
                               <Legend />
-                              <Area type="monotone" dataKey="Estimated" stroke="#faad14" fill="#fffbe6" />
-                              <Area type="monotone" dataKey="ActualSpent" stroke="#fa541c" fill="#fff2e8" />
+                              <Area
+                                type="monotone"
+                                dataKey="Estimated"
+                                stroke="#faad14"
+                                fill="#fffbe6"
+                              />
+                              <Area
+                                type="monotone"
+                                dataKey="ActualSpent"
+                                stroke="#fa541c"
+                                fill="#fff2e8"
+                              />
                             </AreaChart>
                           </ResponsiveContainer>
                         </div>
@@ -1152,7 +1582,10 @@ const ReportsPage: React.FC = () => {
                     </Col>
                   </Row>
 
-                  <Divider orientation="left" style={{ borderColor: "#f0f0f0" }}>
+                  <Divider
+                    orientation="left"
+                    style={{ borderColor: "#f0f0f0" }}
+                  >
                     Project Progress, Completion Cost (NPR) & Time Matrix
                   </Divider>
 
@@ -1168,8 +1601,16 @@ const ReportsPage: React.FC = () => {
                         key: "name",
                         render: (text: string, record: any) => (
                           <div>
-                            <Text strong style={{ color: "#1e293b", fontSize: 13 }}>{text}</Text>
-                            <Text type="secondary" style={{ display: "block", fontSize: 11 }}>
+                            <Text
+                              strong
+                              style={{ color: "#1e293b", fontSize: 13 }}
+                            >
+                              {text}
+                            </Text>
+                            <Text
+                              type="secondary"
+                              style={{ display: "block", fontSize: 11 }}
+                            >
                               {record.code} • Manager: {record.manager}
                             </Text>
                           </div>
@@ -1194,14 +1635,19 @@ const ReportsPage: React.FC = () => {
                         dataIndex: "budget",
                         key: "budget",
                         align: "right",
-                        render: (val: number) => `NPR ${val.toLocaleString("en-IN")}`,
+                        render: (val: number) =>
+                          `NPR ${val.toLocaleString("en-IN")}`,
                       },
                       {
                         title: "Completion Cost (NPR)",
                         dataIndex: "completionCost",
                         key: "completionCost",
                         align: "right",
-                        render: (val: number) => <Text strong style={{ color: "#1677ff" }}>NPR {val.toLocaleString("en-IN")}</Text>,
+                        render: (val: number) => (
+                          <Text strong style={{ color: "#1677ff" }}>
+                            NPR {val.toLocaleString("en-IN")}
+                          </Text>
+                        ),
                       },
                       {
                         title: "Cost Variance",
@@ -1210,9 +1656,13 @@ const ReportsPage: React.FC = () => {
                         align: "center",
                         render: (val: number) =>
                           val > 0 ? (
-                            <Tag color="red">+NPR {val.toLocaleString("en-IN")} Over</Tag>
+                            <Tag color="red">
+                              +NPR {val.toLocaleString("en-IN")} Over
+                            </Tag>
                           ) : (
-                            <Tag color="green">-NPR {Math.abs(val).toLocaleString("en-IN")} Saved</Tag>
+                            <Tag color="green">
+                              -NPR {Math.abs(val).toLocaleString("en-IN")} Saved
+                            </Tag>
                           ),
                       },
                       {
@@ -1254,37 +1704,89 @@ const ReportsPage: React.FC = () => {
                   {managerData?.workingTimeStats ? (
                     <Row gutter={[16, 16]} style={{ marginBottom: 20 }}>
                       <Col xs={12} sm={6}>
-                        <Card size="small" style={{ borderRadius: "8px", border: "1px solid #f0f0f0" }}>
+                        <Card
+                          size="small"
+                          style={{
+                            borderRadius: "8px",
+                            border: "1px solid #f0f0f0",
+                          }}
+                        >
                           <Statistic
-                            title={<Text style={{ color: "#64748b", fontSize: 12 }}>Total Attendance Hours</Text>}
-                            value={managerData.workingTimeStats.summary?.totalAttendanceHours || 0}
+                            title={
+                              <Text style={{ color: "#64748b", fontSize: 12 }}>
+                                Total Attendance Hours
+                              </Text>
+                            }
+                            value={
+                              managerData.workingTimeStats.summary
+                                ?.totalAttendanceHours || 0
+                            }
                             suffix="hrs"
                           />
                         </Card>
                       </Col>
                       <Col xs={12} sm={6}>
-                        <Card size="small" style={{ borderRadius: "8px", border: "1px solid #f0f0f0" }}>
+                        <Card
+                          size="small"
+                          style={{
+                            borderRadius: "8px",
+                            border: "1px solid #f0f0f0",
+                          }}
+                        >
                           <Statistic
-                            title={<Text style={{ color: "#64748b", fontSize: 12 }}>Total Worklog Hours</Text>}
-                            value={managerData.workingTimeStats.summary?.totalWorklogHours || 0}
+                            title={
+                              <Text style={{ color: "#64748b", fontSize: 12 }}>
+                                Total Worklog Hours
+                              </Text>
+                            }
+                            value={
+                              managerData.workingTimeStats.summary
+                                ?.totalWorklogHours || 0
+                            }
                             suffix="hrs"
                           />
                         </Card>
                       </Col>
                       <Col xs={12} sm={6}>
-                        <Card size="small" style={{ borderRadius: "8px", border: "1px solid #f0f0f0" }}>
+                        <Card
+                          size="small"
+                          style={{
+                            borderRadius: "8px",
+                            border: "1px solid #f0f0f0",
+                          }}
+                        >
                           <Statistic
-                            title={<Text style={{ color: "#64748b", fontSize: 12 }}>Users with Overtime</Text>}
-                            value={managerData.workingTimeStats.summary?.usersWithOvertime || 0}
+                            title={
+                              <Text style={{ color: "#64748b", fontSize: 12 }}>
+                                Users with Overtime
+                              </Text>
+                            }
+                            value={
+                              managerData.workingTimeStats.summary
+                                ?.usersWithOvertime || 0
+                            }
                             valueStyle={{ color: "#fa8c16" }}
                           />
                         </Card>
                       </Col>
                       <Col xs={12} sm={6}>
-                        <Card size="small" style={{ borderRadius: "8px", border: "1px solid #f0f0f0" }}>
+                        <Card
+                          size="small"
+                          style={{
+                            borderRadius: "8px",
+                            border: "1px solid #f0f0f0",
+                          }}
+                        >
                           <Statistic
-                            title={<Text style={{ color: "#64748b", fontSize: 12 }}>Worklog Exceeds Attendance</Text>}
-                            value={managerData.workingTimeStats.summary?.usersWorklogExceedsAttendance || 0}
+                            title={
+                              <Text style={{ color: "#64748b", fontSize: 12 }}>
+                                Worklog Exceeds Attendance
+                              </Text>
+                            }
+                            value={
+                              managerData.workingTimeStats.summary
+                                ?.usersWorklogExceedsAttendance || 0
+                            }
                             valueStyle={{ color: "#ff4d4f" }}
                           />
                         </Card>
@@ -1297,7 +1799,11 @@ const ReportsPage: React.FC = () => {
                     rowKey="userId"
                     size="small"
                     columns={[
-                      { title: "Employee Name", dataIndex: "name", key: "name" },
+                      {
+                        title: "Employee Name",
+                        dataIndex: "name",
+                        key: "name",
+                      },
                       { title: "Role", dataIndex: "roleName", key: "roleName" },
                       {
                         title: "Expected Daily Hours",
@@ -1322,7 +1828,11 @@ const ReportsPage: React.FC = () => {
                         dataIndex: "overtimeDays",
                         key: "overtimeDays",
                         render: (val: number) =>
-                          val > 0 ? <Tag color="orange">{val} days</Tag> : <Tag color="default">0</Tag>,
+                          val > 0 ? (
+                            <Tag color="orange">{val} days</Tag>
+                          ) : (
+                            <Tag color="default">0</Tag>
+                          ),
                       },
                     ]}
                   />

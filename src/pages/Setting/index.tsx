@@ -8,8 +8,8 @@ const Setting = () => {
   
   const navigate = useNavigate();
   return (
-    <Row gutter={16}>
-      <Col span={6}>
+    <Row gutter={[16, 16]}>
+      <Col xs={24} sm={12} md={8} lg={6}>
         <Card className="h-full" onClick={() => navigate("/role")} hoverable>
           <Title level={4} className="text-blue-600">
             Roles & Permissions
@@ -19,7 +19,7 @@ const Setting = () => {
           </Paragraph>
         </Card>
       </Col>
-      <Col span={6}>
+      <Col xs={24} sm={12} md={8} lg={6}>
         <Card className="h-full" onClick={() => navigate("/permission")} hoverable>
           <Title level={4}>Permissions</Title>
           <Paragraph>
@@ -27,7 +27,7 @@ const Setting = () => {
           </Paragraph>
         </Card>
       </Col>
-      <Col span={6}>
+      <Col xs={24} sm={12} md={8} lg={6}>
         <Card className="h-full" onClick={() => navigate("/workhour-settings")} hoverable>
           <Title level={4}>Work Hour Settings</Title>
           <Paragraph>
@@ -35,7 +35,7 @@ const Setting = () => {
           </Paragraph>
         </Card>
       </Col>
-      <Col span={6}>
+      <Col xs={24} sm={12} md={8} lg={6}>
         <Card className="h-full" onClick={() => navigate("/holiday")} hoverable>
           <Title level={4}>Holiday Management</Title>
           <Paragraph>
@@ -43,7 +43,7 @@ const Setting = () => {
           </Paragraph>
         </Card>
       </Col>
-      <Col span={6}>
+      <Col xs={24} sm={12} md={8} lg={6}>
         <Card className="h-full" onClick={() => navigate("/leave-types")} hoverable>
           <Title level={4}>Leave Types</Title>
           <Paragraph>
@@ -51,7 +51,7 @@ const Setting = () => {
           </Paragraph>
         </Card>
       </Col>
-      <Col span={6}>
+      <Col xs={24} sm={12} md={8} lg={6}>
         <Card className="h-full" onClick={() => navigate("/project-setting")} hoverable>
           <Title level={4}>Project Setting</Title>
           <Paragraph>
@@ -59,7 +59,7 @@ const Setting = () => {
           </Paragraph>
         </Card>
       </Col>
-      <Col span={6}>
+      <Col xs={24} sm={12} md={8} lg={6}>
         <Card className="h-full" onClick={() => navigate("/customer-setting")} hoverable>
           <Title level={4}>Customer Setting</Title>
           <Paragraph>
@@ -67,7 +67,7 @@ const Setting = () => {
           </Paragraph>
         </Card>
       </Col>
-      <Col span={6}>
+      <Col xs={24} sm={12} md={8} lg={6}>
         <Card className="h-full" onClick={() => navigate("/department-setting")} hoverable>
           <Title level={4}>Department Management</Title>
           <Paragraph>
@@ -75,7 +75,7 @@ const Setting = () => {
           </Paragraph>
         </Card>
       </Col>
-      <Col span={6}>
+      <Col xs={24} sm={12} md={8} lg={6}>
         <Card className="h-full" onClick={() => navigate("/todotask/task-types")} hoverable>
           <Title level={4}>Task Type Settings</Title>
           <Paragraph>
@@ -83,7 +83,7 @@ const Setting = () => {
           </Paragraph>
         </Card>
       </Col>
-      <Col span={6}>
+      <Col xs={24} sm={12} md={8} lg={6}>
         <Card className="h-full" onClick={() => navigate("/mail-settings")} hoverable>
           <Title level={4}>Mail Settings</Title>
           <Paragraph>
@@ -91,7 +91,7 @@ const Setting = () => {
           </Paragraph>
         </Card>
       </Col>
-      <Col span={6}>
+      <Col xs={24} sm={12} md={8} lg={6}>
         <Card className="h-full" onClick={() => navigate("/client-report-document-types")} hoverable>
           <Title level={4}>Client Report Document Types</Title>
           <Paragraph>
@@ -99,7 +99,7 @@ const Setting = () => {
           </Paragraph>
         </Card>
       </Col>
-      <Col span={6}>
+      <Col xs={24} sm={12} md={8} lg={6}>
         <Card className="h-full">
           <svg className="admin-icon-prop">
             <use></use>
@@ -111,7 +111,7 @@ const Setting = () => {
           </Paragraph>
         </Card>
       </Col>
-      <Col span={6}>
+      <Col xs={24} sm={12} md={8} lg={6}>
         <Card className="h-full">
           <svg className="admin-icon-prop">
             <use></use>

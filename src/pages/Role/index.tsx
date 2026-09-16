@@ -3,7 +3,6 @@ import RoleTable from "@/components/Role/RoleTable";
 import { Button } from "antd";
 import { useNavigate } from "react-router-dom";
 
-
 const RolesPage = () => {
   const navigate = useNavigate();
 

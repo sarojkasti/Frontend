@@ -121,12 +121,12 @@ const Attendence = () => {
                         </Space>
                     }
                     extra={
-                        <Space>
+                        <Space wrap className="flex-wrap">
                             {/* Only show dropdown for superusers/admins */}
                             {isSuperUser && (
                                 <Select
                                     placeholder="Switch user view"
-                                    style={{ width: 250 }}
+                                    className="min-w-[150px] w-full sm:w-[250px]"
                                     value={personalViewUserId}
                                     onChange={setPersonalViewUserId}
                                     allowClear
@@ -191,12 +191,13 @@ const Attendence = () => {
                                 }
                                 style={{ marginBottom: 16 }}
                             />
-                            <Space style={{ marginBottom: 16 }}>
+                            <Space wrap style={{ marginBottom: 16 }} className="w-full">
                                 <DatePicker 
                                     onChange={handleDateChange}
                                     placeholder="Select date"
                                     format="YYYY-MM-DD"
                                     allowClear
+                                    className="w-full sm:w-auto"
                                 />
                             </Space>
                             {selectedDate && (

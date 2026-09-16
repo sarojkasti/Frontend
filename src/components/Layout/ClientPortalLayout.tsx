@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Layout, Menu, Button, Typography, Space, Avatar } from "antd";
+import React, { useState, useEffect } from "react";
+import { Layout, Menu, Button, Typography, Space, Avatar, Drawer } from "antd";
 import {
   DashboardOutlined,
   LockOutlined,
@@ -14,16 +14,25 @@ import {
 import type { MenuProps } from "antd";
 import { useNavigate, useLocation, Outlet } from "react-router-dom";
 import { useClientAuth } from "@/context/ClientAuthContext";
+import { useIsMobile } from "@/hooks/useIsMobile";
 
 const { Header, Sider, Content } = Layout;
 const { Text } = Typography;
 
 const ClientPortalLayout: React.FC = () => {
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const { clientUser, logout } = useClientAuth();
   const isDownloadLocked = !!clientUser?.isDownloadDisabled;
+  const { isMobile } = useIsMobile();
+
+  useEffect(() => {
+    if (isMobile) {
+      setMobileMenuOpen(false);
+    }
+  }, [location.pathname, isMobile]);
 
   const sidebarMenuItems: MenuProps["items"] = [
     {
@@ -61,6 +70,32 @@ const ClientPortalLayout: React.FC = () => {
     navigate(e.key);
   };
 
+  const toggleMenu = () => {
+    if (isMobile) {
+      setMobileMenuOpen(!mobileMenuOpen);
+    } else {
+      setCollapsed(!collapsed);
+    }
+  };
+
+  const getMenuIcon = () => {
+    if (isMobile) {
+      return mobileMenuOpen ? <MenuFoldOutlined /> : <MenuUnfoldOutlined />;
+    }
+    return collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />;
+  };
+
+  const menuContent = (
+    <Menu
+      mode="inline"
+      selectedKeys={[getSelectedKey()]}
+      items={sidebarMenuItems}
+      onClick={handleMenuClick}
+      className="h-full border-r-0 pt-2"
+      style={{ borderRight: "none" }}
+    />
+  );
+
   return (
     <Layout className="min-h-screen relative">
       {/* Header */}
@@ -79,8 +114,8 @@ const ClientPortalLayout: React.FC = () => {
         <div className="flex items-center gap-3">
           <Button
             type="text"
-            icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-            onClick={() => setCollapsed(!collapsed)}
+            icon={getMenuIcon()}
+            onClick={toggleMenu}
             className="text-lg"
           />
           <div className="flex items-center gap-2">
@@ -108,31 +143,37 @@ const ClientPortalLayout: React.FC = () => {
       </Header>
 
       <div className="relative flex-1 min-h-0">
-        <Layout>
-          {/* Sidebar */}
-          <Sider
-            trigger={null}
-            collapsible
-            collapsed={collapsed}
-            width={240}
-            theme="light"
-            className="border-r border-gray-100"
-            style={{
-              height: "calc(100vh - 64px)",
-              position: "sticky",
-              top: 64,
-              left: 0
-            }}
-          >
-            <Menu
-              mode="inline"
-              selectedKeys={[getSelectedKey()]}
-              items={sidebarMenuItems}
-              onClick={handleMenuClick}
-              className="h-full border-r-0 pt-2"
-              style={{ borderRight: "none" }}
-            />
-          </Sider>
+        <Layout hasSider={!isMobile}>
+          {/* Sidebar / Drawer */}
+          {isMobile ? (
+            <Drawer
+              placement="left"
+              closable={false}
+              onClose={() => setMobileMenuOpen(false)}
+              open={mobileMenuOpen}
+              width={280}
+              styles={{ body: { padding: 0 } }}
+            >
+              {menuContent}
+            </Drawer>
+          ) : (
+            <Sider
+              trigger={null}
+              collapsible
+              collapsed={collapsed}
+              width={240}
+              theme="light"
+              className="border-r border-gray-100"
+              style={{
+                height: "calc(100vh - 64px)",
+                position: "sticky",
+                top: 64,
+                left: 0
+              }}
+            >
+              {menuContent}
+            </Sider>
+          )}
 
           {/* Main Content */}
           <Content

@@ -139,8 +139,8 @@ const Analytic = () => {
                 </Card>
             </Col>
         </Row>
-        <Row gutter={8}>
-            <Col span={12}>
+        <Row gutter={[12, 12]}>
+            <Col xs={24} lg={12}>
                 <Card title="User Role Distribution" bordered>
                     {userRoleData.length > 0 ? (
                         <UserRoleChart data={userRoleData} />
@@ -149,7 +149,7 @@ const Analytic = () => {
                     )}
                 </Card>
             </Col>
-            <Col span={12}>
+            <Col xs={24} lg={12}>
                 <Card title="Project Nature Distribution" bordered>
                     {projectNatureData.length > 0 ? (
                         <ProjectNatureChart data={projectNatureData} />

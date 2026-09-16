@@ -35,11 +35,13 @@ import {
 import { useClient } from "@/hooks/client/useClient";
 import { ClientUserType, ClientUserStatus } from "@/types/clientUser";
 import { formatDistanceToNow, format } from "date-fns";
+import { useIsMobile } from "@/hooks/useIsMobile";
 
 const { Title, Text } = Typography;
 const { Option } = Select;
 
 const ClientUsersAdmin: React.FC = () => {
+  const isMobile = useIsMobile();
   const [filterCustomerId, setFilterCustomerId] = useState<string | undefined>();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -250,9 +252,9 @@ const ClientUsersAdmin: React.FC = () => {
 
       {/* Filters */}
       <Card className="mb-4">
-        <Space>
+        <Space className={isMobile ? "w-full" : ""}>
           <Select
-            style={{ width: 250 }}
+            style={{ width: isMobile ? '100%' : 250 }}
             placeholder="Filter by Client"
             allowClear
             showSearch
@@ -280,6 +282,7 @@ const ClientUsersAdmin: React.FC = () => {
           rowKey="id"
           loading={isLoading}
           pagination={{ pageSize: 10 }}
+          scroll={{ x: 'max-content' }}
         />
       </Card>
 
@@ -292,7 +295,7 @@ const ClientUsersAdmin: React.FC = () => {
           form.resetFields();
         }}
         footer={null}
-        width={500}
+        width={isMobile ? '95vw' : 500}
       >
         <Form
           form={form}
@@ -370,7 +373,7 @@ const ClientUsersAdmin: React.FC = () => {
           editForm.resetFields();
         }}
         footer={null}
-        width={500}
+        width={isMobile ? '95vw' : 500}
       >
         <Form
           form={editForm}
