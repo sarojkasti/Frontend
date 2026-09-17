@@ -1,15 +1,17 @@
 
 
-import { Table, Space, Button, Input, Tooltip, Empty } from "antd";
+import { Table, Space, Button, Input, Tooltip, Empty, Tag } from "antd";
 import moment from "moment";
 import { useState, useRef, useEffect } from "react";
-import { SearchOutlined, EditOutlined, DeleteOutlined } from "@ant-design/icons";
+import { SearchOutlined, EditOutlined, DeleteOutlined, ClockCircleOutlined, UserOutlined } from "@ant-design/icons";
 import Highlighter from 'react-highlight-words';
 import { fetchUsers } from "@/service/user.service";
 import { UserType } from "@/types/user";
-
+import useIsMobile from "@/hooks/useIsMobile";
+import { ResponsiveTable } from "@/components/ui/MobileCardList";
 
 const WorklogTable = ({ data }: { data: any }) => {
+  const { isMobile } = useIsMobile();
   const [searchText, setSearchText] = useState('');
   const [searchedColumn, setSearchedColumn] = useState('');
   const [sortedInfo, setSortedInfo] = useState<any>({});
@@ -209,14 +211,14 @@ const WorklogTable = ({ data }: { data: any }) => {
   }
 
   return (
-    <Table
+    <ResponsiveTable
       dataSource={data}
       columns={columns}
       size="small"
       rowKey={"id"}
       bordered
       onChange={handleTableChange}
-      pagination={{
+      pagination={isMobile ? false : {
         showSizeChanger: true,
         showQuickJumper: true,
         pageSizeOptions: [5, 10, 20, 50],
@@ -224,6 +226,63 @@ const WorklogTable = ({ data }: { data: any }) => {
       }}
       locale={{
         emptyText: <Empty description="No worklogs available" />
+      }}
+      renderMobileCard={(record: any) => {
+        const startTime = record?.startTime ? moment(record.startTime).format("hh:mm A") : "";
+        const endTime = record?.endTime ? moment(record.endTime).format("hh:mm A") : "";
+        const logDate = record?.startTime ? moment(record.startTime).format("MMM DD, YYYY") : "";
+        const reqTo = record?.requestTo ? (userMap[record.requestTo.toString()] || record.requestTo) : null;
+        const appBy = record?.approvedBy ? (userMap[record.approvedBy.toString()] || record.approvedBy) : null;
+        const rejBy = record?.rejectBy ? (userMap[record.rejectBy.toString()] || record.rejectBy) : null;
+
+        return (
+          <div className="flex flex-col gap-2">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <div className="font-semibold text-gray-800 text-sm">
+                  {record?.user?.name || "Unknown User"}
+                </div>
+                <div className="text-xs text-gray-500">{logDate}</div>
+              </div>
+              <div className="flex items-center gap-1.5 bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full text-xs font-medium shrink-0">
+                <ClockCircleOutlined />
+                <span>{startTime} - {endTime}</span>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-2 text-xs">
+              {reqTo && (
+                <div className="text-gray-600 bg-gray-50 px-2 py-0.5 rounded border border-gray-100">
+                  <span className="text-gray-400 mr-1">To:</span>
+                  <span className="font-medium">{reqTo}</span>
+                </div>
+              )}
+              {appBy && (
+                <Tag color="success" style={{ margin: 0 }}>
+                  Approved by: {appBy}
+                </Tag>
+              )}
+              {rejBy && (
+                <Tag color="error" style={{ margin: 0 }}>
+                  Rejected by: {rejBy}
+                </Tag>
+              )}
+            </div>
+
+            {record?.description && (
+              <div 
+                className="bg-gray-50 rounded-lg p-2.5 text-xs text-gray-700 border border-gray-100 prose prose-sm max-w-none"
+                dangerouslySetInnerHTML={{ __html: record.description }}
+              />
+            )}
+
+            {record?.status === "rejected" && record?.rejectedRemark && (
+              <div className="bg-red-50 text-red-700 rounded-lg p-2 text-xs border border-red-100">
+                <strong>Rejection Remark:</strong> {record.rejectedRemark}
+              </div>
+            )}
+          </div>
+        );
       }}
       expandable={{
         expandedRowRender: (record: any) => {

@@ -38,6 +38,7 @@ import {
 } from "@ant-design/icons";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import UserActivityStatus from "@/components/UserActivityStatus";
+import useIsMobile from "@/hooks/useIsMobile";
 import dayjs from "dayjs";
 
 const { Title, Text } = Typography;
@@ -45,6 +46,7 @@ const { Title, Text } = Typography;
 const UserDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { isMobile } = useIsMobile();
   const { data: user, isLoading } = useUserDetails(id);
   const [activeTab, setActiveTab] = useState("1");
 
@@ -117,13 +119,15 @@ const UserDetails = () => {
             { title: user.name || "User Details" },
           ]}
         />
-        <Button 
-          icon={<ArrowLeftOutlined />} 
-          onClick={() => navigate("/users")}
-          size="middle"
-        >
-          Back to Users
-        </Button>
+        {!isMobile && (
+          <Button 
+            icon={<ArrowLeftOutlined />} 
+            onClick={() => navigate("/users")}
+            size="middle"
+          >
+            Back to Users
+          </Button>
+        )}
       </div>
 
       {/* Header Profile Hero Card */}
@@ -135,17 +139,25 @@ const UserDetails = () => {
           overflow: "hidden",
           border: "1px solid #e2e8f0"
         }}
-        bodyStyle={{ padding: "24px" }}
+        styles={{ body: { padding: isMobile ? "16px" : "24px" } }}
       >
         <Row gutter={[24, 24]} align="middle">
           <Col xs={24} md={16} lg={18}>
-            <div style={{ display: "flex", alignItems: "flex-start", gap: 20, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", alignItems: "flex-start", gap: isMobile ? 12 : 20, flexWrap: "wrap" }}>
+              <Button
+                type="text"
+                shape="circle"
+                icon={<ArrowLeftOutlined style={{ fontSize: isMobile ? 18 : 20 }} />}
+                onClick={() => navigate("/users")}
+                className="flex items-center justify-center -ml-1 text-gray-600 hover:text-blue-600 hover:bg-gray-100 shrink-0"
+                title="Back to Users"
+              />
               <Avatar
-                size={88}
+                size={isMobile ? 56 : 88}
                 src={user.avatar}
                 style={{
                   backgroundColor: user.avatar ? "transparent" : "#1677ff",
-                  fontSize: "32px",
+                  fontSize: isMobile ? "22px" : "32px",
                   fontWeight: 600,
                   boxShadow: "0 4px 12px rgba(22, 119, 255, 0.25)",
                   flexShrink: 0
@@ -154,9 +166,9 @@ const UserDetails = () => {
                 {!user.avatar && getInitials(user.name)}
               </Avatar>
 
-              <div style={{ flex: 1, minWidth: 240 }}>
+              <div style={{ flex: 1, minWidth: isMobile ? 180 : 240 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-                  <Title level={2} style={{ margin: 0, color: "#1e293b" }}>
+                  <Title level={isMobile ? 4 : 2} style={{ margin: 0, color: "#1e293b" }}>
                     {user.name}
                   </Title>
                   <UserActivityStatus

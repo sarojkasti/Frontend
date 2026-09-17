@@ -4,16 +4,17 @@ import { useState } from "react";
 import WorklogCalendar from "@/components/Worklog/WorklogCalendar";
 import { useSession } from "@/context/SessionContext";
 import { useNavigate } from "react-router-dom";
+import { ArrowLeftOutlined } from "@ant-design/icons";
+import { useIsMobile } from "@/hooks/useIsMobile";
 
 const WorklogAdmin = () => {
   const { profile } = useSession();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const profilePermissions = (profile as any)?.role?.permission;
   
   // Check if user has permission to access all worklog page
-    const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
-  
-
+  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
 
   const hasAllWorklogPermission = Array.isArray(profilePermissions) && profilePermissions.some(
     (perm: any) => perm.path === '/worklogs/allworklog' && perm.method?.toLowerCase() === 'get'
@@ -34,24 +35,38 @@ const WorklogAdmin = () => {
   }
   
   const viewControls = (
-    <div className="flex gap-4">
+    <div className="flex flex-wrap items-center gap-2">
       <Radio.Group 
         value={viewMode} 
         onChange={(e) => setViewMode(e.target.value)}
         optionType="button"
         buttonStyle="solid"
+        size={isMobile ? "small" : "middle"}
       >
-        <Radio.Button value="list">List View</Radio.Button>
-        <Radio.Button value="calendar">Calendar View</Radio.Button>
+        <Radio.Button value="list">List</Radio.Button>
+        <Radio.Button value="calendar">Calendar</Radio.Button>
       </Radio.Group>
-      <Button type="primary" onClick={() => navigate("/worklogs-all")}>
-        Back to My Worklogs
-      </Button>
+      {!isMobile && (
+        <Button type="primary" onClick={() => navigate("/worklogs-all")}>
+          Back to My Worklogs
+        </Button>
+      )}
     </div>
   );
 
   return (
     <div>
+      <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
+        <div className="flex items-center gap-3">
+          <Button
+            icon={<ArrowLeftOutlined />}
+            onClick={() => navigate("/worklogs-all")}
+            title="Back to My Worklogs"
+          />
+          <h1 className="text-lg md:text-xl font-bold m-0 text-gray-800">All Worklogs Admin</h1>
+        </div>
+        {viewControls}
+      </div>
       {viewMode === 'calendar' ? (
         <div className="mb-4">
           <div className="flex justify-end mb-4">

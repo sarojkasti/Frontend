@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { 
     Table, 
     Tag, 
@@ -11,7 +11,7 @@ import {
     Tooltip, 
     Badge, 
     Dropdown, 
-    Menu,
+    Menu, 
     Typography,
     message,
     Popconfirm
@@ -29,12 +29,16 @@ import {
     PauseCircleOutlined,
     StopOutlined,
     SearchOutlined,
-    DeleteOutlined
+    DeleteOutlined,
+    DownOutlined,
+    UpOutlined
 } from "@ant-design/icons";
 import Highlighter from "react-highlight-words";
 import { useSession } from "@/context/SessionContext";
 import { TodoTask, TodoTaskStatus } from "@/types/todoTask";
 import moment from "moment";
+import ResponsiveTable from "@/components/ui/MobileCardList";
+import { useIsMobile } from "@/hooks/useIsMobile";
 
 const { Option } = Select;
 const { TextArea } = Input;
@@ -46,6 +50,7 @@ interface TodoTaskTableProps {
     isPending?: boolean;
     selectedUserId?: string;
     selectedStatus?: TodoTaskStatus;
+    searchQuery?: string;
     onViewTask?: (task: TodoTask) => void;
     onEditTask?: (task: TodoTask) => void;
     onStatusChange?: (taskId: string, status: TodoTaskStatus, remark: string) => void;
@@ -58,11 +63,13 @@ const TodoTaskTable = ({
     isPending = false,
     selectedUserId,
     selectedStatus,
+    searchQuery,
     onViewTask,
     onEditTask,
     onStatusChange,
     onDeleteTask
 }: TodoTaskTableProps) => {
+    const isMobile = useIsMobile();
     const { profile } = useSession();
     const [remarkModalVisible, setRemarkModalVisible] = useState(false);
     const [selectedTask, setSelectedTask] = useState<TodoTask | null>(null);
@@ -73,6 +80,13 @@ const TodoTaskTable = ({
     // For search functionality
     const [searchText, setSearchText] = useState('');
     const [searchedColumn, setSearchedColumn] = useState('');
+    const [expandedIds, setExpandedIds] = useState<string[]>([]);
+    const toggleExpand = (id: string | number) => {
+        const strId = String(id);
+        setExpandedIds((prev) =>
+            prev.includes(strId) ? prev.filter((i) => i !== strId) : [...prev, strId]
+        );
+    };
     const searchInput = useRef<any>(null);
 
     // Helper function to get unique values for autocomplete
@@ -557,19 +571,158 @@ const TodoTaskTable = ({
         },
     ];
 
+    const filteredTaskData = useMemo(() => {
+        if (!taskData) return [];
+        if (!searchQuery?.trim()) return taskData;
+        const q = searchQuery.toLowerCase();
+        return taskData.filter((t: TodoTask) => {
+            const title = t.title?.name || t.customTitle || "";
+            const desc = t.description || "";
+            const assigned = t.assignedUser?.name || "";
+            const creator = t.createdUser?.name || "";
+            const type = t.taskType?.name || "";
+            return (
+                title.toLowerCase().includes(q) ||
+                desc.toLowerCase().includes(q) ||
+                assigned.toLowerCase().includes(q) ||
+                creator.toLowerCase().includes(q) ||
+                type.toLowerCase().includes(q)
+            );
+        });
+    }, [taskData, searchQuery]);
+
+    const renderTodoTaskCard = (record: TodoTask) => {
+        const isExpanded = expandedIds.includes(String(record.id));
+        const priorityColor = record.priority === 'urgent' ? 'red' : record.priority === 'high' ? 'orange' : record.priority === 'medium' ? 'blue' : 'green';
+        const dueDateStr = record.dueDate ? moment(record.dueDate).format('YYYY-MM-DD') : '-';
+        const assignedName = record.assignedUser?.name || 'Unassigned';
+        const titleName = record.title?.name || record.customTitle || 'Untitled';
+        const actions = getAvailableActions(record);
+
+        return (
+            <div className="flex flex-col gap-2">
+                {/* Main Header Row */}
+                <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                        <span className="font-semibold text-gray-900 text-sm block truncate">{titleName}</span>
+                        <span className="text-xs text-gray-500 block truncate">Assigned: {assignedName}</span>
+                    </div>
+
+                    {/* Action Icons: View Details, Edit, Actions Dropdown, Toggle Details */}
+                    <div className="flex items-center gap-1 shrink-0">
+                        {onViewTask && (
+                            <Button
+                                type="text"
+                                size="small"
+                                icon={<EyeOutlined style={{ fontSize: "16px", color: "#0c66e4" }} />}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onViewTask(record);
+                                }}
+                                className="flex items-center justify-center h-8 w-8 rounded-full hover:bg-blue-50 text-blue-600"
+                                title="View Details"
+                                aria-label="View Details"
+                            />
+                        )}
+                        {onEditTask && (
+                            <Button
+                                type="text"
+                                size="small"
+                                icon={<EditOutlined style={{ fontSize: "16px", color: "#0c66e4" }} />}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onEditTask(record);
+                                }}
+                                className="flex items-center justify-center h-8 w-8 rounded-full hover:bg-blue-50 text-blue-600"
+                                title="Edit Task"
+                                aria-label="Edit Task"
+                            />
+                        )}
+                        {actions.length > 0 && (
+                            <Dropdown 
+                                overlay={<Menu items={actions} />} 
+                                trigger={['click']}
+                            >
+                                <Button 
+                                    type="text"
+                                    size="small" 
+                                    icon={<MoreOutlined style={{ fontSize: "16px" }} />} 
+                                    className="flex items-center justify-center h-8 w-8 rounded-full hover:bg-gray-100 text-gray-500"
+                                    title="More Actions"
+                                    aria-label="More Actions"
+                                />
+                            </Dropdown>
+                        )}
+                        <Button
+                            type="text"
+                            size="small"
+                            icon={isExpanded ? <UpOutlined /> : <DownOutlined />}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                toggleExpand(record.id);
+                            }}
+                            className="text-gray-500 hover:text-blue-600 flex items-center justify-center h-8 w-8 rounded-full hover:bg-gray-100"
+                            title="Toggle Details"
+                            aria-label="Toggle Details"
+                        />
+                    </div>
+                </div>
+
+                {/* Revealed Detail Card (when dropdown button clicked) */}
+                {isExpanded && (
+                    <div className="mt-2 pt-2.5 border-t border-dashed border-gray-200 flex flex-col gap-2 bg-gray-50/80 rounded-lg p-3 text-xs text-gray-600">
+                        <div className="flex items-center justify-between gap-2">
+                            <span className="text-gray-500 font-medium shrink-0">Due Date:</span>
+                            <span className="font-semibold text-gray-800 text-right">{dueDateStr}</span>
+                        </div>
+                        <div className="flex items-center justify-between gap-2">
+                            <span className="text-gray-500 font-medium shrink-0">Type:</span>
+                            <span className="font-semibold text-gray-800 text-right">{record.taskType?.name || '-'}</span>
+                        </div>
+                        {record.priority && (
+                            <div className="flex items-center justify-between gap-2">
+                                <span className="text-gray-500 font-medium shrink-0">Priority:</span>
+                                <Tag color={priorityColor} className="m-0 text-[10px]">
+                                    {record.priority.toUpperCase()}
+                                </Tag>
+                            </div>
+                        )}
+                        {record.createdUser?.name && (
+                            <div className="flex items-center justify-between gap-2">
+                                <span className="text-gray-500 font-medium shrink-0">Created By:</span>
+                                <span className="font-semibold text-gray-800 text-right">{record.createdUser.name}</span>
+                            </div>
+                        )}
+                        {record.description && (
+                            <div className="pt-1.5 border-t border-gray-200/60">
+                                <span className="text-gray-500 font-medium block mb-1">Description:</span>
+                                <div className="text-gray-700 bg-white p-2 rounded border border-gray-100 break-words">
+                                    {record.description}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
+            </div>
+        );
+    };
+
     return (
         <>
-            <Table 
-                columns={columns} 
-                dataSource={taskData} 
-                rowKey="id"
-                loading={isPending}
-                pagination={{ 
-                    pageSize: 10,
-                    showSizeChanger: true, 
-                    pageSizeOptions: ['10', '20', '50', '100'],
-                    showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} tasks`
+            <ResponsiveTable 
+                tableProps={{
+                    columns: columns, 
+                    dataSource: filteredTaskData, 
+                    rowKey: "id",
+                    loading: isPending,
+                    pagination: isMobile ? false : { 
+                        pageSize: 10,
+                        showSizeChanger: true, 
+                        pageSizeOptions: ['10', '20', '50', '100'],
+                        showTotal: (total: number, range: [number, number]) => `${range[0]}-${range[1]} of ${total} tasks`
+                    }
                 }}
+                renderMobileCard={renderTodoTaskCard}
             />
             
             <Modal

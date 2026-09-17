@@ -1,7 +1,8 @@
 import { Card, Avatar } from "antd"; // Import Avatar along with Card
-import { PlusOutlined } from '@ant-design/icons';
+import { PlusOutlined, UserOutlined } from '@ant-design/icons';
 import Meta from "antd/es/card/Meta";
 import PropTypes from 'prop-types';
+import useIsMobile from '@/hooks/useIsMobile';
 
 interface ProjectUser {
   id: string;
@@ -12,6 +13,7 @@ interface ProjectUser {
 
 interface UserCardProps {
   user: ProjectUser;
+  isMobile?: boolean;
 }
 
 interface ProjectUserCardProps {
@@ -20,7 +22,25 @@ interface ProjectUserCardProps {
 }
 
 // Component to render a single user card
-const UserCard = ({ user }: UserCardProps) => {
+const UserCard = ({ user, isMobile }: UserCardProps) => {
+  if (isMobile) {
+    return (
+      <div className="bg-white rounded-xl border border-gray-200 p-3 flex items-center gap-3 shadow-sm">
+        <Avatar
+          src={user.avatar}
+          size={44}
+          icon={<UserOutlined />}
+          alt={`${user.name}'s avatar`}
+          style={{ backgroundColor: '#1677ff' }}
+        />
+        <div className="min-w-0 flex-1">
+          <div className="font-semibold text-gray-800 text-sm truncate">{user.name}</div>
+          <div className="text-xs text-gray-500 truncate">{user.email}</div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <Card
       hoverable
@@ -28,10 +48,10 @@ const UserCard = ({ user }: UserCardProps) => {
       cover={
         <div style={{ padding: '16px', background: '#f5f5f5', textAlign: 'center' }}>
           <Avatar
-            src={user.avatar} // Will use this if provided
-            size={100} // Adjust size as needed
+            src={user.avatar}
+            size={100}
             alt={`${user.name}'s avatar`}
-            // If src is null/undefined/invalid, shows default user icon
+            icon={<UserOutlined />}
           />
         </div>
       }
@@ -44,37 +64,49 @@ const UserCard = ({ user }: UserCardProps) => {
 
 // Main component to render all user cards
 const ProjectUserCard = ({ data, onAddMember }: ProjectUserCardProps) => {
+  const { isMobile } = useIsMobile();
+
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center' }}>
+    <div className={isMobile ? "flex flex-col gap-2.5 w-full" : "flex flex-wrap justify-center"}>
       {data.map((user: ProjectUser) => (
-        <UserCard key={user.id} user={user} />
+        <UserCard key={user.id} user={user} isMobile={isMobile} />
       ))}
       {onAddMember && (
-        <Card
-          hoverable
-          className="project-user-card"
-          onClick={onAddMember}
-          style={{ width: 240, margin: '16px', cursor: 'pointer' }}
-        >
-          <div
-            style={{
-              minHeight: 160,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#1677ff'
-            }}
+        isMobile ? (
+          <button
+            onClick={onAddMember}
+            className="bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl p-3 border border-dashed border-blue-300 flex items-center justify-center gap-2 font-medium text-sm transition-colors cursor-pointer w-full"
           >
-            <Avatar
-              size={64}
-              style={{ backgroundColor: '#e6f4ff', color: '#1677ff', marginBottom: 12 }}
-              icon={<PlusOutlined />}
-            />
-            <div style={{ fontWeight: 600 }}>Add Member</div>
-            <div style={{ color: '#666', fontSize: 12, marginTop: 4 }}>Assign a user to this project</div>
-          </div>
-        </Card>
+            <PlusOutlined />
+            <span>Add Member</span>
+          </button>
+        ) : (
+          <Card
+            hoverable
+            className="project-user-card"
+            onClick={onAddMember}
+            style={{ width: 240, margin: '16px', cursor: 'pointer' }}
+          >
+            <div
+              style={{
+                minHeight: 160,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#1677ff'
+              }}
+            >
+              <Avatar
+                size={64}
+                style={{ backgroundColor: '#e6f4ff', color: '#1677ff', marginBottom: 12 }}
+                icon={<PlusOutlined />}
+              />
+              <div style={{ fontWeight: 600 }}>Add Member</div>
+              <div style={{ color: '#666', fontSize: 12, marginTop: 4 }}>Assign a user to this project</div>
+            </div>
+          </Card>
+        )
       )}
     </div>
   );

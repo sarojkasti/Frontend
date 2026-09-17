@@ -6,6 +6,8 @@ import { getDsaByProject, createDsa, approveDsa, rejectDsa, settleDsa, verifyDsa
 import { useSession } from '../../../context/SessionContext';
 import { useParams } from 'react-router-dom';
 import { useProject } from '../../../hooks/project/useProject';
+import useIsMobile from '../../../hooks/useIsMobile';
+import { ResponsiveTable } from '../../ui/MobileCardList';
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -17,6 +19,7 @@ interface DsaManagerProps {
 }
 
 const DsaManager = ({ projectId, projectUsers, isSignedOff }: DsaManagerProps) => {
+  const { isMobile } = useIsMobile();
   const { profile } = useSession();
   const queryClient = useQueryClient();
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
@@ -234,11 +237,12 @@ const DsaManager = ({ projectId, projectUsers, isSignedOff }: DsaManagerProps) =
             </Button>
         )}
       </div>
-      <Table 
+      <ResponsiveTable 
         columns={columns} 
         dataSource={dsas} 
         rowKey="id" 
         loading={isLoading}
+        pagination={isMobile ? false : undefined}
         expandable={{
           expandedRowRender: (record: any) => (
             <div style={{ margin: 0 }}>

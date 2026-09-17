@@ -1,112 +1,145 @@
-import { EditOutlined, SyncOutlined, DeleteOutlined, SearchOutlined } from '@ant-design/icons';
-import { Button, Table, Space, Tooltip, message, Popconfirm, Input } from "antd";
-import { useState, useRef } from "react";
-import { usePermission } from "../../hooks/permission/usePermission";
-import { useSyncPermissions } from "../../hooks/permission/useSyncPermissions";
-import { useDeletePermission } from "../../hooks/permission/useDeletePermission";
-import Highlighter from "react-highlight-words";
+﻿import {
+  EditOutlined,
+  SyncOutlined,
+  DeleteOutlined,
+  SearchOutlined,
+  SafetyCertificateOutlined
+} from '@ant-design/icons';
+import {
+  Button,
+  Table,
+  Space,
+  Tooltip,
+  message,
+  Popconfirm,
+  Input,
+  Tag,
+  Card
+} from 'antd';
+import { useState, useRef } from 'react';
+import { usePermission } from '../../hooks/permission/usePermission';
+import { useSyncPermissions } from '../../hooks/permission/useSyncPermissions';
+import { useDeletePermission } from '../../hooks/permission/useDeletePermission';
+import Highlighter from 'react-highlight-words';
 
-// Modified columns definition to be a function
-const columns = (showEditModal: any, handleDelete: any, getColumnSearchProps: any, sortedInfo: any) => [
+const getMethodColor = (method: string): string => {
+  const m = (method || '').toUpperCase();
+  switch (m) {
+    case 'GET':
+      return 'blue';
+    case 'POST':
+      return 'green';
+    case 'PATCH':
+      return 'orange';
+    case 'PUT':
+      return 'gold';
+    case 'DELETE':
+      return 'red';
+    default:
+      return 'default';
+  }
+};
+
+const columns = (
+  showEditModal: (record: any) => void,
+  handleDelete: (id: string) => void,
+  getColumnSearchProps: (dataIndex: string, title: string) => any,
+  sortedInfo: any
+) => [
   {
-    title: "ID",
-    dataIndex: "id",
-    key: "id",
-    width: 80,
-    ...getColumnSearchProps('id', 'ID'),
-    sorter: (a: any, b: any) => a.id.localeCompare(b.id),
-    sortOrder: sortedInfo.columnKey === 'id' && sortedInfo.order,
-    render: (id: string) => (
-      <Tooltip title={id}>
-        <span>{id.slice(0, 8)}...</span>
-      </Tooltip>
-    ),
-  },
-  {
-    title: "Description",
-    dataIndex: "description",
-    key: "description",
+    title: 'Description',
+    dataIndex: 'description',
+    key: 'description',
     ...getColumnSearchProps('description', 'Description'),
-    sorter: (a: any, b: any) => a.description.localeCompare(b.description),
+    sorter: (a: any, b: any) => (a.description || '').localeCompare(b.description || ''),
     sortOrder: sortedInfo.columnKey === 'description' && sortedInfo.order,
     ellipsis: {
-      showTitle: false,
+      showTitle: false
     },
     render: (description: string) => (
       <Tooltip placement="topLeft" title={description}>
-        {description}
+        <span className="font-medium text-slate-800">{description || '-'}</span>
       </Tooltip>
-    ),
+    )
   },
   {
-    title: "Resource",
-    dataIndex: "resource",
-    key: "resource",
+    title: 'Resource',
+    dataIndex: 'resource',
+    key: 'resource',
+    width: 160,
     ...getColumnSearchProps('resource', 'Resource'),
-    sorter: (a: any, b: any) => a.resource.localeCompare(b.resource),
+    sorter: (a: any, b: any) => (a.resource || '').localeCompare(b.resource || ''),
     sortOrder: sortedInfo.columnKey === 'resource' && sortedInfo.order,
-    filters: [
-      { text: 'User', value: 'user' },
-      { text: 'Role', value: 'role' },
-      { text: 'Permission', value: 'permission' },
-      { text: 'Projects', value: 'projects' },
-      { text: 'Tasks', value: 'tasks' },
-      { text: 'Worklogs', value: 'worklogs' },
-      { text: 'Holiday', value: 'holiday' },
-      { text: 'Leave', value: 'leave' },
-      { text: 'Work Hour', value: 'workhour' },
-      { text: 'Calendar', value: 'calendar' },
-      { text: 'Client', value: 'client' },
-      { text: 'Attendance', value: 'attendance' },
-    ],
-    onFilter: (value: any, record: any) => record.resource === value,
+    render: (resource: string) => (
+      <Tag color="geekblue" className="font-medium text-xs capitalize">
+        {resource || '-'}
+      </Tag>
+    )
   },
   {
-    title: "Method",
-    dataIndex: "method",
-    key: "method",
-    ...getColumnSearchProps('method', 'Method'),
-    sorter: (a: any, b: any) => a.method.localeCompare(b.method),
+    title: 'Method',
+    dataIndex: 'method',
+    key: 'method',
+    width: 110,
+    sorter: (a: any, b: any) => (a.method || '').localeCompare(b.method || ''),
     sortOrder: sortedInfo.columnKey === 'method' && sortedInfo.order,
     filters: [
-      { text: 'GET', value: 'GET' },
-      { text: 'POST', value: 'POST' },
-      { text: 'PUT', value: 'PUT' },
-      { text: 'PATCH', value: 'PATCH' },
-      { text: 'DELETE', value: 'DELETE' },
+      { text: 'GET', value: 'get' },
+      { text: 'POST', value: 'post' },
+      { text: 'PATCH', value: 'patch' },
+      { text: 'PUT', value: 'put' },
+      { text: 'DELETE', value: 'delete' }
     ],
-    onFilter: (value: any, record: any) => record.method === value,
+    onFilter: (value: any, record: any) =>
+      record.method?.toLowerCase() === value.toLowerCase(),
+    render: (method: string) => (
+      <Tag
+        color={getMethodColor(method)}
+        className="font-bold text-xs uppercase px-2 py-0.5 rounded"
+      >
+        {method || '-'}
+      </Tag>
+    )
   },
   {
-    title: "Path",
-    dataIndex: "path",
-    key: "path",
+    title: 'Path',
+    dataIndex: 'path',
+    key: 'path',
     ...getColumnSearchProps('path', 'Path'),
-    sorter: (a: any, b: any) => a.path.localeCompare(b.path),
+    sorter: (a: any, b: any) => (a.path || '').localeCompare(b.path || ''),
     sortOrder: sortedInfo.columnKey === 'path' && sortedInfo.order,
     ellipsis: {
-      showTitle: false,
+      showTitle: false
     },
     render: (path: string) => (
       <Tooltip placement="topLeft" title={path}>
-        <code style={{ fontSize: '12px' }}>{path}</code>
+        <code className="text-xs bg-slate-50 text-slate-700 px-2 py-1 rounded font-mono border border-slate-200 inline-block max-w-[280px] truncate">
+          {path || '-'}
+        </code>
       </Tooltip>
-    ),
+    )
   },
   {
-    title: "Created At",
-    dataIndex: "createdAt",
-    key: "createdAt",
-    render: (date: string) => new Date(date).toLocaleDateString(),
-    sorter: (a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+    title: 'Created At',
+    dataIndex: 'createdAt',
+    key: 'createdAt',
+    width: 130,
+    sorter: (a: any, b: any) =>
+      new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime(),
     sortOrder: sortedInfo.columnKey === 'createdAt' && sortedInfo.order,
+    render: (date: string) => (
+      <span className="text-gray-500 text-xs whitespace-nowrap">
+        {date ? new Date(date).toLocaleDateString() : '-'}
+      </span>
+    )
   },
   {
-    title: "Action",
-    key: "action",
-    width: 120,
+    title: 'Action',
+    key: 'action',
+    width: 130,
+    align: 'center' as const,
     render: (_: any, record: any) => (
-      <Space>
+      <Space size="small">
         <Button
           type="link"
           size="small"
@@ -122,18 +155,13 @@ const columns = (showEditModal: any, handleDelete: any, getColumnSearchProps: an
           okText="Yes"
           cancelText="No"
         >
-          <Button
-            type="link"
-            size="small"
-            danger
-            icon={<DeleteOutlined />}
-          >
+          <Button type="link" size="small" danger icon={<DeleteOutlined />}>
             Delete
           </Button>
         </Popconfirm>
       </Space>
-    ),
-  },
+    )
+  }
 ];
 
 const PermissionTable = ({ showEditModal }: { showEditModal: any }) => {
@@ -142,16 +170,13 @@ const PermissionTable = ({ showEditModal }: { showEditModal: any }) => {
   const { data: permissionData, isPending } = usePermission({ page, limit });
   const syncPermissions = useSyncPermissions();
   const deletePermission = useDeletePermission();
-  
-  // For search
+
   const [searchText, setSearchText] = useState('');
   const [searchedColumn, setSearchedColumn] = useState('');
   const searchInput = useRef<any>(null);
-  
-  // For sorting
   const [sortedInfo, setSortedInfo] = useState<any>({});
 
-  const handleTableChange = (pagination: any, filters: any, sorter: any) => {
+  const handleTableChange = (pagination: any, _filters: any, sorter: any) => {
     setPage(pagination.current);
     setLimit(pagination.pageSize);
     setSortedInfo(sorter);
@@ -160,7 +185,7 @@ const PermissionTable = ({ showEditModal }: { showEditModal: any }) => {
   const handleSyncPermissions = async () => {
     try {
       await syncPermissions.mutateAsync();
-      message.success('Permissions synced successfully from config!');
+      message.success('Permissions synced successfully from config modules!');
     } catch (error) {
       message.error('Failed to sync permissions');
     }
@@ -193,7 +218,7 @@ const PermissionTable = ({ showEditModal }: { showEditModal: any }) => {
           ref={searchInput}
           placeholder={`Search ${title}`}
           value={selectedKeys[0]}
-          onChange={e => setSelectedKeys(e.target.value ? [e.target.value] : [])}
+          onChange={(e) => setSelectedKeys(e.target.value ? [e.target.value] : [])}
           onPressEnter={() => handleSearch(selectedKeys, confirm, dataIndex)}
           style={{ marginBottom: 8, display: 'block' }}
         />
@@ -221,18 +246,8 @@ const PermissionTable = ({ showEditModal }: { showEditModal: any }) => {
       <SearchOutlined style={{ color: filtered ? '#1890ff' : undefined }} />
     ),
     onFilter: (value: string, record: any) => {
-      if (dataIndex.includes('.')) {
-        const keys = dataIndex.split('.');
-        let nestedObj = record;
-        for (const key of keys) {
-          if (!nestedObj || !nestedObj[key]) return false;
-          nestedObj = nestedObj[key];
-        }
-        return nestedObj.toString().toLowerCase().includes(value.toLowerCase());
-      }
-      return record[dataIndex]
-        ? record[dataIndex].toString().toLowerCase().includes(value.toLowerCase())
-        : '';
+      const val = record[dataIndex];
+      return val ? val.toString().toLowerCase().includes(value.toLowerCase()) : false;
     },
     onFilterDropdownOpenChange: (visible: boolean) => {
       if (visible) {
@@ -249,23 +264,31 @@ const PermissionTable = ({ showEditModal }: { showEditModal: any }) => {
         />
       ) : (
         text
-      ),
+      )
   });
+
+  const totalCount = permissionData?.totalItems || permissionData?.totalCount || 0;
 
   const paginationOptions = {
     current: page,
     pageSize: limit,
-    total: permissionData?.totalItems || permissionData?.totalCount || 0,
+    total: totalCount,
     showSizeChanger: true,
     showQuickJumper: true,
-    pageSizeOptions: [5, 10, 20, 30, 50, 100],
+    pageSizeOptions: [10, 20, 50, 100],
     showTotal: (total: number, range: number[]) =>
-      `${range[0]}-${range[1]} of ${total} permissions`,
+      `${range[0]}-${range[1]} of ${total} permissions`
   };
 
   return (
-    <>
-      <div style={{ marginBottom: 16 }}>
+    <Card className="shadow-sm rounded-lg border border-slate-200">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-4 pb-3 border-b border-slate-100">
+        <div className="flex items-center gap-2">
+          <SafetyCertificateOutlined className="text-blue-500 text-lg" />
+          <span className="font-semibold text-slate-700">Permission Endpoints</span>
+          <Tag color="blue">{totalCount} Total</Tag>
+        </div>
+
         <Button
           type="default"
           icon={<SyncOutlined />}
@@ -275,6 +298,7 @@ const PermissionTable = ({ showEditModal }: { showEditModal: any }) => {
           Sync Permissions from Config
         </Button>
       </div>
+
       <Table
         loading={isPending}
         pagination={paginationOptions}
@@ -282,9 +306,10 @@ const PermissionTable = ({ showEditModal }: { showEditModal: any }) => {
         columns={columns(showEditModal, handleDelete, getColumnSearchProps, sortedInfo)}
         onChange={handleTableChange}
         rowKey="id"
-        size="small"
+        size="middle"
+        className="overflow-x-auto"
       />
-    </>
+    </Card>
   );
 };
 

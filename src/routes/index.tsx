@@ -63,7 +63,6 @@ import RolePermision from "@/pages/Role/role-permission";
 import RolesPage from "@/pages/Role";
 import CreateRole from "@/pages/Role/new";
 import EditRole from "@/pages/Role/edit";
-import PermissionAssignmentManager from "@/pages/Permission/AssignmentManager";
 import LeaveTypeManagementPage from "@/pages/LeaveTypeManagementPage";
 import LeaveBalanceManagement from "@/pages/Admin/LeaveBalanceManagement";
 import TodoTaskPage from "@/pages/TodoTask";
@@ -89,6 +88,7 @@ import ClientPortalLayout from "@/components/Layout/ClientPortalLayout";
 import ClientReportsAdmin from "@/pages/ClientReportsAdmin";
 import ClientUsersAdmin from "@/pages/ClientUsersAdmin";
 import ReportsPage from "@/pages/Reports";
+import NotFound from "@/pages/NotFound";
 
 const Router = [
   // Client Portal Routes (public)
@@ -128,6 +128,10 @@ const Router = [
           {
             path: "reports",
             element: <ClientReports />,
+          },
+          {
+            path: "*",
+            element: <NotFound isClientPortal />,
           },
         ],
       },
@@ -319,19 +323,33 @@ const Router = [
       },
       {
         path: "/client",
-        element: <Client />,
+        element: (
+          <ProtectedRoute method="get" resource="client" component={<Client />} />
+        ),
       },
       {
         path: "/client/new",
-        element: <CreateClient />,
+        element: (
+          <ProtectedRoute method="post" resource="client" component={<CreateClient />} />
+        ),
       },
       {
         path: "/client/edit/:id",
-        element: <EditClient />,
+        element: (
+          <ProtectedRoute method="patch" resource="client" component={<EditClient />} />
+        ),
       },
       {
         path: "/client/view/:id",
-        element: <ViewClient />,
+        element: (
+          <ProtectedRoute method="get" resource="client" component={<ViewClient />} />
+        ),
+      },
+      {
+        path: "/client/:id",
+        element: (
+          <ProtectedRoute method="get" resource="client" component={<ViewClient />} />
+        ),
       },
       {
         path: "/billing",
@@ -345,7 +363,13 @@ const Router = [
       },
       {
         path: "/attendance",
-        element: <Attendence />,
+        element: (
+          <ProtectedRoute
+            method="get"
+            resource="attendance"
+            component={<Attendence />}
+          />
+        ),
       },
       {
         path: "worklogs-all",
@@ -518,33 +542,53 @@ const Router = [
       },
        {
   path: "/permission",
-  element: <Perimssion />,
-},
-{
-  path: "/permission/assign",
   element: (
     <ProtectedRoute
       method="get"
       resource="permission"
-      component={<PermissionAssignmentManager />}
+      component={<Perimssion />}
     />
   ),
 },
 {
   path: "/role",
-  element: <RolesPage />,
+  element: (
+    <ProtectedRoute
+      method="get"
+      resource="role"
+      component={<RolesPage />}
+    />
+  ),
 },
 {
   path: "/role/new",
-  element: <CreateRole />,
+  element: (
+    <ProtectedRoute
+      method="post"
+      resource="role"
+      component={<CreateRole />}
+    />
+  ),
 },
 {
   path: "/role/edit/:id",
-  element: <EditRole />,
+  element: (
+    <ProtectedRoute
+      method="put"
+      resource="role"
+      component={<EditRole />}
+    />
+  ),
 },
 {
   path: "/role/permission/:id",
-  element: <RolePermision />,
+  element: (
+    <ProtectedRoute
+      method="put"
+      resource="role"
+      component={<RolePermision />}
+    />
+  ),
 },
 {
   path: "/leave-types",
@@ -613,15 +657,33 @@ const Router = [
 },
 {
   path: "/notice-board/admin",
-  element: <NoticeBoardAdmin />,
+  element: (
+    <ProtectedRoute
+      method="get"
+      resource="notice-board"
+      component={<NoticeBoardAdmin />}
+    />
+  ),
 },
 {
   path: "/notice-board/create",
-  element: <CreateNoticePage />,
+  element: (
+    <ProtectedRoute
+      method="post"
+      resource="notice-board"
+      component={<CreateNoticePage />}
+    />
+  ),
 },
 {
   path: "/notice-board/edit/:id",
-  element: <EditNoticePage />,
+  element: (
+    <ProtectedRoute
+      method="patch"
+      resource="notice-board"
+      component={<EditNoticePage />}
+    />
+  ),
 },
 // Client Reports Admin Routes
 {
@@ -654,8 +716,15 @@ const Router = [
     />
   ),
 },
+      {
+        path: "*",
+        element: <NotFound />,
+      },
     ],
-    
+  },
+  {
+    path: "*",
+    element: <NotFound />,
   },
 ];
 

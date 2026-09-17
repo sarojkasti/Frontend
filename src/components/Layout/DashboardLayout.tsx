@@ -38,7 +38,7 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
           onMobileClose={() => setMobileOpen(false)}
         />
         <Content
-          className={isMobile ? "px-3.5 py-2 relative flex-1 min-h-0" : "p-2 relative flex-1 min-h-0"}
+          className={isMobile ? "px-3.5 pt-2 pb-16 relative flex-1 min-h-0" : "p-2 relative flex-1 min-h-0"}
           style={{ overflowY: "auto", overflowX: "hidden" }}
         >
           {children}

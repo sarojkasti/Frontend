@@ -5,11 +5,12 @@ import { Tooltip } from "antd";
 import moment from "moment";
 import { Link, useNavigate } from "react-router-dom";
 import { useDeleteWorklog } from "@/hooks/worklog/useDeleteWorklog";
-import { useState, useRef } from "react";
-import { SearchOutlined, EditOutlined, DeleteOutlined } from "@ant-design/icons";
+import { useState, useRef, useMemo } from "react";
+import { SearchOutlined, EditOutlined, DeleteOutlined, DownOutlined, UpOutlined } from "@ant-design/icons";
 import Highlighter from "react-highlight-words";
 import ResponsiveTable from "@/components/ui/MobileCardList";
 import { Tag } from "antd";
+import { useIsMobile } from "@/hooks/useIsMobile";
 
 const columns = (
   status: string, 
@@ -221,8 +222,14 @@ const columns = (
   return baseColumns;
 };
 
-const AllWorklogTable = ({ status }: { status: string }) => {
+interface AllWorklogTableProps {
+  status: string;
+  searchQuery?: string;
+}
+
+const AllWorklogTable = ({ status, searchQuery }: AllWorklogTableProps) => {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const { data: worklogs, isPending } = useWorklog(status);
   const { isPending: isEditPending } = useEditWorklog();
   const { mutate: deleteWorklog } = useDeleteWorklog();
@@ -234,6 +241,13 @@ const AllWorklogTable = ({ status }: { status: string }) => {
   
   // For sorting
   const [sortedInfo, setSortedInfo] = useState<any>({});
+  const [expandedCardIds, setExpandedCardIds] = useState<string[]>([]);
+  const toggleExpandCard = (id: string | number) => {
+    const strId = String(id);
+    setExpandedCardIds((prev) =>
+      prev.includes(strId) ? prev.filter((i) => i !== strId) : [...prev, strId]
+    );
+  };
 
   // Function to toggle description visibility
   const toggleDescription = (id: string) => {
@@ -426,45 +440,115 @@ const AllWorklogTable = ({ status }: { status: string }) => {
   };
 
   const renderWorklogCard = (record: any) => {
+    const isExpanded = expandedCardIds.includes(String(record.id));
     const dateStr = record?.startTime ? new Date(record.startTime).toLocaleDateString() : '-';
     const projectName = record?.task?.project?.name || '-';
     const taskName = record?.task?.name || '-';
     const duration = record?.time || '-';
     const reason = record?.reason || '';
+    const approverOrRejecter = record?.approvedByUser?.name || record?.rejectByUser?.name || record?.user?.name || '';
 
     return (
       <div className="flex flex-col gap-2">
-        <div className="flex justify-between items-start gap-2 border-b border-gray-100 pb-2">
-          <div className="min-w-0">
+        {/* Main Header Row */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="min-w-0 flex-1">
             <div className="font-semibold text-gray-900 text-sm truncate">{projectName}</div>
             <div className="text-xs text-gray-500 truncate">{taskName}</div>
           </div>
-          <Tag color={status === 'approved' ? 'green' : status === 'rejected' ? 'red' : 'blue'} className="shrink-0">
-            {status.toUpperCase()}
-          </Tag>
+
+          {/* Action Icons: Edit, Toggle Details */}
+          <div className="flex items-center gap-1 shrink-0">
+            <Button
+              type="text"
+              size="small"
+              icon={<EditOutlined style={{ fontSize: "16px", color: "#0c66e4" }} />}
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(`/worklogs/edit/${record.id}`);
+              }}
+              className="flex items-center justify-center h-8 w-8 rounded-full hover:bg-blue-50 text-blue-600"
+              title="Edit Worklog"
+              aria-label="Edit Worklog"
+            />
+            <Button
+              type="text"
+              size="small"
+              icon={isExpanded ? <UpOutlined /> : <DownOutlined />}
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleExpandCard(record.id);
+              }}
+              className="text-gray-500 hover:text-blue-600 flex items-center justify-center h-8 w-8 rounded-full hover:bg-gray-100"
+              title="Toggle Details"
+              aria-label="Toggle Details"
+            />
+          </div>
         </div>
-        <div className="grid grid-cols-2 gap-2 text-xs py-1">
-          <div><span className="text-gray-500">Date:</span> <span className="font-medium text-gray-800">{dateStr}</span></div>
-          <div><span className="text-gray-500">Duration:</span> <span className="font-medium text-gray-800">{duration} hrs</span></div>
-        </div>
-        {reason && (
-          <div className="text-xs text-gray-600 bg-gray-50 p-2 rounded break-words">
-            {reason}
+
+        {/* Revealed Detail Card (when dropdown button clicked) */}
+        {isExpanded && (
+          <div className="mt-2 pt-2.5 border-t border-dashed border-gray-200 flex flex-col gap-2 bg-gray-50/80 rounded-lg p-3 text-xs text-gray-600">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-gray-500 font-medium shrink-0">Date:</span>
+              <span className="font-semibold text-gray-800 text-right">{dateStr}</span>
+            </div>
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-gray-500 font-medium shrink-0">Duration:</span>
+              <span className="font-semibold text-gray-800 text-right">{duration} hrs</span>
+            </div>
+            {approverOrRejecter && (
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-gray-500 font-medium shrink-0">
+                  {status === 'approved' ? 'Approved By:' : status === 'rejected' ? 'Rejected By:' : 'Requested By:'}
+                </span>
+                <span className="font-semibold text-gray-800 text-right">{approverOrRejecter}</span>
+              </div>
+            )}
+            {record.rejectedRemark && (
+              <div className="flex items-center justify-between gap-2 text-red-600">
+                <span className="font-medium shrink-0">Remark:</span>
+                <span className="font-semibold text-right">{record.rejectedRemark}</span>
+              </div>
+            )}
+            {reason && (
+              <div className="pt-1.5 border-t border-gray-200/60">
+                <span className="text-gray-500 font-medium block mb-1">Reason / Notes:</span>
+                <div className="text-gray-700 bg-white p-2 rounded border border-gray-100 break-words">
+                  {reason}
+                </div>
+              </div>
+            )}
           </div>
         )}
-        <div className="flex justify-end gap-2 pt-1 border-t border-gray-100">
-          <Button size="small" icon={<EditOutlined />} onClick={() => navigate(`/worklogs/edit/${record.id}`)}>Edit</Button>
-        </div>
       </div>
     );
   };
+
+  const filteredWorklogs = useMemo(() => {
+    if (!worklogs) return [];
+    if (!searchQuery?.trim()) return worklogs;
+    const q = searchQuery.toLowerCase();
+    return worklogs.filter((w: any) => {
+      const projectName = w?.task?.project?.name || "";
+      const taskName = w?.task?.name || "";
+      const reason = w?.reason || "";
+      const userName = w?.user?.name || w?.approvedByUser?.name || w?.rejectByUser?.name || "";
+      return (
+        projectName.toLowerCase().includes(q) ||
+        taskName.toLowerCase().includes(q) ||
+        reason.toLowerCase().includes(q) ||
+        userName.toLowerCase().includes(q)
+      );
+    });
+  }, [worklogs, searchQuery]);
 
   return (
     <Card styles={{ body: { padding: '12px' } }}>
       <ResponsiveTable
         tableProps={{
           loading: isPending || isEditPending,
-          dataSource: worklogs || [],
+          dataSource: filteredWorklogs,
           columns: columns(status, deleteWorklog, navigate, getColumnSearchProps, sortedInfo) as any,
           expandable: {
             expandedRowRender,
@@ -474,7 +558,7 @@ const AllWorklogTable = ({ status }: { status: string }) => {
           onChange: handleTableChange,
           rowKey: "id",
           bordered: true,
-          pagination: {
+          pagination: isMobile ? false : {
             showSizeChanger: true,
             showQuickJumper: true,
             pageSizeOptions: [5, 10, 20, 50],

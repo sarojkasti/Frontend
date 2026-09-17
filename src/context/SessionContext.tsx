@@ -1,11 +1,17 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { useCookies } from "react-cookie";
 import { useProfile } from "@/hooks/user/useProfile";
-import { extractAndStoreAuthToken, isAuthenticated as checkIsAuthenticated } from "@/utils/auth";
+import { clearAuth, extractAndStoreAuthToken, isAuthenticated as checkIsAuthenticated } from "@/utils/auth";
+import { PermissionChecker, PermissionObject } from "@/lib/permissions";
 
 type Profile = {
   id?: string;
-  role?: { permission: string[] };
+  role?: {
+    id?: string;
+    name?: string;
+    displayName?: string;
+    permission: PermissionObject[];
+  };
   status?: string;
   email?: string;
   avatar?: string | null;
@@ -17,9 +23,13 @@ type SessionContextType = {
   loading: boolean;
   profile?: Profile;
   isProfilePending?: boolean;
-  permissions?: string[];
+  permissions?: PermissionObject[];
+  permissionChecker: PermissionChecker;
   refreshAuth?: () => void;
+  logoutSession?: () => void;
 };
+
+const defaultChecker = new PermissionChecker([], '');
 
 const SessionContext = createContext<SessionContextType>({
   isAuthenticated: false,
@@ -27,7 +37,9 @@ const SessionContext = createContext<SessionContextType>({
   profile: undefined,
   isProfilePending: false,
   permissions: [],
+  permissionChecker: defaultChecker,
   refreshAuth: () => {},
+  logoutSession: () => {},
 });
 
 export const SessionProvider = ({
@@ -127,6 +139,20 @@ export const SessionProvider = ({
     setLoading(false);
   };
 
+  // Function to immediately terminate session state
+  const logoutSession = () => {
+    clearAuth();
+    setIsAuthenticated(false);
+    setLoading(false);
+  };
+
+  // Memoize permission checker for high performance access control across the entire frontend
+  const permissionChecker = useMemo(() => {
+    const perms = profile?.role?.permission || [];
+    const roleName = profile?.role?.name || '';
+    return new PermissionChecker(perms, roleName);
+  }, [profile]);
+
   return (
     <SessionContext.Provider
       value={{
@@ -135,7 +161,9 @@ export const SessionProvider = ({
         profile,
         isProfilePending,
         permissions: profile?.role?.permission || [],
+        permissionChecker,
         refreshAuth,
+        logoutSession,
       }}
     >
       {children}

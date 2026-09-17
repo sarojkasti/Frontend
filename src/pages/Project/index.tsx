@@ -26,7 +26,8 @@ import {
   FilterOutlined,
   SettingOutlined,
   SearchOutlined,
-  HolderOutlined
+  HolderOutlined,
+  PlusOutlined
 } from "@ant-design/icons";
 import { useDeleteProject } from "@/hooks/project/useDeleteProject";
 import { useSession } from "@/context/SessionContext";
@@ -50,6 +51,8 @@ const ProjectPage: React.FC = () => {
   const [activeTabKey, setActiveTabKey] = useState<string>("1");
   const [downloadModalOpen, setDownloadModalOpen] = useState<boolean>(false);
   const [isExportViewOpen, setIsExportViewOpen] = useState<boolean>(false);
+  const [mobileSearchOpen, setMobileSearchOpen] = useState<boolean>(false);
+  const [mobileSearchQuery, setMobileSearchQuery] = useState<string>("");
   const [form] = Form.useForm();
 
   // Visible columns state with local storage persistence
@@ -328,51 +331,35 @@ const ProjectPage: React.FC = () => {
   }
 
   return (
-    <>
-      {/* Mobile Actions Toolbar */}
-      {isMobile && (
-        <div className="flex flex-wrap items-center gap-2 mb-3 pb-2 border-b border-gray-100">
-          {!hideCreateDelete && (
-            <Button type="primary" size="small" onClick={() => showModal()}>
-              + Create Project
-            </Button>
-          )}
-          <Button
-            size="small"
-            icon={<FilterOutlined />}
-            onClick={() => {
-              if (showFilters) resetFilters();
-              setShowFilters(!showFilters);
-            }}
-            type={showFilters ? "primary" : "default"}
-          >
-            Filters
-          </Button>
-          <Popover
-            content={columnPopoverContent}
-            trigger="click"
-            placement="bottomRight"
-            open={columnPopoverOpen}
-            onOpenChange={setColumnPopoverOpen}
-          >
-            <Button size="small" icon={<SettingOutlined />}>Columns</Button>
-          </Popover>
-          {canExportProject && (
-            <Button size="small" icon={<DownloadOutlined />} onClick={() => setIsExportViewOpen(true)} />
-          )}
-          {!hideCreateDelete && selectedProjects.length > 0 && (
+    <div className={isMobile ? "pb-24 px-2 sm:px-0" : ""}>
+      {/* Mobile Live Search Bar */}
+      {isMobile && mobileSearchOpen && (
+        <div className="mb-3 px-2 sm:px-0">
+          <div className="bg-white p-2 rounded-xl shadow-md border border-blue-200 flex items-center gap-2">
+            <Input
+              prefix={<SearchOutlined style={{ color: "#0c66e4", fontSize: 16 }} />}
+              placeholder="Search projects by name, client, manager..."
+              value={mobileSearchQuery}
+              onChange={(e) => setMobileSearchQuery(e.target.value)}
+              allowClear
+              autoFocus
+              className="text-sm border-0 focus:shadow-none"
+              style={{ backgroundColor: "transparent" }}
+            />
             <Button
-              danger
+              type="text"
               size="small"
-              loading={deleteProjectMutation.isPending}
-              onClick={handleDeleteSelected}
+              onClick={() => {
+                setMobileSearchOpen(false);
+                setMobileSearchQuery("");
+              }}
+              style={{ color: "#64748b", fontWeight: 500 }}
             >
-              Delete ({selectedProjects.length})
+              Cancel
             </Button>
-          )}
+          </div>
         </div>
       )}
-
       <Tabs
         activeKey={activeTabKey}
         onChange={(key) => {
@@ -382,16 +369,23 @@ const ProjectPage: React.FC = () => {
             resetFilters();
           }
         }}
-        tabBarStyle={{
-          overflowX: "auto",
-          whiteSpace: "nowrap",
-          maxWidth: "100%",
-        }}
+        tabBarStyle={
+          isMobile
+            ? {
+                overflowX: "auto",
+                whiteSpace: "nowrap",
+                maxWidth: "100%",
+                paddingLeft: "16px",
+                paddingRight: "16px",
+                marginBottom: 12,
+              }
+            : undefined
+        }
         className="project-tabs"
         renderTabBar={(props, DefaultTabBar) => (
           <>
-            <div className="overflow-x-auto whitespace-nowrap">
-              <DefaultTabBar {...props} />
+            <div className="overflow-x-auto whitespace-nowrap px-4 sm:px-0">
+              <DefaultTabBar {...props} style={{ marginBottom: 0 }} />
             </div>
             {showFilters && (
               <Card className="mb-4">
@@ -570,6 +564,7 @@ const ProjectPage: React.FC = () => {
                 setSelectedProjects={setSelectedProjects}
                 showFilters={showFilters}
                 visibleColumnKeys={visibleColumnKeys}
+                searchQuery={mobileSearchQuery}
               />
             ),
           },
@@ -585,6 +580,7 @@ const ProjectPage: React.FC = () => {
                 setSelectedProjects={setSelectedProjects}
                 showFilters={showFilters}
                 visibleColumnKeys={visibleColumnKeys}
+                searchQuery={mobileSearchQuery}
               />
             ),
           },
@@ -600,6 +596,7 @@ const ProjectPage: React.FC = () => {
                 setSelectedProjects={setSelectedProjects}
                 showFilters={showFilters}
                 visibleColumnKeys={visibleColumnKeys}
+                searchQuery={mobileSearchQuery}
               />
             ),
           },
@@ -615,6 +612,7 @@ const ProjectPage: React.FC = () => {
                 setSelectedProjects={setSelectedProjects}
                 showFilters={showFilters}
                 visibleColumnKeys={visibleColumnKeys}
+                searchQuery={mobileSearchQuery}
               />
             ),
           },
@@ -630,6 +628,7 @@ const ProjectPage: React.FC = () => {
                 setSelectedProjects={setSelectedProjects}
                 showFilters={showFilters}
                 visibleColumnKeys={visibleColumnKeys}
+                searchQuery={mobileSearchQuery}
               />
             ),
           },
@@ -662,7 +661,52 @@ const ProjectPage: React.FC = () => {
         showFilters={showFilters}
         advancedFilters={advancedFilters}
       />
-    </>
+
+      {/* Floating Search Button for Mobile View (Positioned above Create Project button) */}
+      {isMobile && (
+        <div className={`fixed ${!hideCreateDelete ? "bottom-20" : "bottom-6"} right-5 z-40`}>
+          <Button
+            shape="circle"
+            size="large"
+            icon={<SearchOutlined style={{ fontSize: "18px" }} />}
+            onClick={() => setMobileSearchOpen((prev) => !prev)}
+            className="shadow-xl flex items-center justify-center hover:scale-105 active:scale-95 transition-all duration-200"
+            style={{
+              width: "46px",
+              height: "46px",
+              backgroundColor: mobileSearchOpen ? "#0c66e4" : "#ffffff",
+              color: mobileSearchOpen ? "#ffffff" : "#334155",
+              borderColor: mobileSearchOpen ? "#0c66e4" : "#e2e8f0",
+              boxShadow: "0 4px 14px rgba(0, 0, 0, 0.15)",
+            }}
+          />
+        </div>
+      )}
+
+      {/* Floating Create Project Button for Mobile View */}
+      {isMobile && !hideCreateDelete && (
+        <div className="fixed bottom-6 right-5 z-40">
+          <Button
+            type="primary"
+            shape="round"
+            size="large"
+            icon={<PlusOutlined style={{ fontSize: "16px" }} />}
+            onClick={() => showModal()}
+            className="shadow-2xl flex items-center gap-1.5 font-medium hover:scale-105 active:scale-95 transition-all duration-200"
+            style={{
+              height: "46px",
+              paddingLeft: "16px",
+              paddingRight: "18px",
+              fontSize: "14px",
+              backgroundColor: "#0c66e4",
+              boxShadow: "0 6px 20px rgba(12, 102, 228, 0.4)",
+            }}
+          >
+            Create Project
+          </Button>
+        </div>
+      )}
+    </div>
   );
 };
 

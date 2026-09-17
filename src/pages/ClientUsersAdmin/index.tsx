@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Card,
   Table,
@@ -24,7 +25,12 @@ import {
   MailOutlined,
   PhoneOutlined,
   StopOutlined,
-  DownloadOutlined
+  DownloadOutlined,
+  ArrowLeftOutlined,
+  SearchOutlined,
+  CloseOutlined,
+  DownOutlined,
+  UpOutlined
 } from "@ant-design/icons";
 import {
   useClientUsers,
@@ -36,16 +42,27 @@ import { useClient } from "@/hooks/client/useClient";
 import { ClientUserType, ClientUserStatus } from "@/types/clientUser";
 import { formatDistanceToNow, format } from "date-fns";
 import { useIsMobile } from "@/hooks/useIsMobile";
+import ResponsiveTable from "@/components/ui/MobileCardList";
 
 const { Title, Text } = Typography;
 const { Option } = Select;
 
 const ClientUsersAdmin: React.FC = () => {
   const isMobile = useIsMobile();
+  const navigate = useNavigate();
+  const [showMobileSearch, setShowMobileSearch] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const [filterCustomerId, setFilterCustomerId] = useState<string | undefined>();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<ClientUserType | null>(null);
+  const [expandedCardIds, setExpandedCardIds] = useState<string[]>([]);
+  const toggleExpandCard = (id: string | number) => {
+    const strId = String(id);
+    setExpandedCardIds((prev) =>
+      prev.includes(strId) ? prev.filter((i) => i !== strId) : [...prev, strId]
+    );
+  };
   const [form] = Form.useForm();
   const [editForm] = Form.useForm();
 
@@ -235,23 +252,173 @@ const ClientUsersAdmin: React.FC = () => {
     }
   ];
 
+  const filteredUsers = useMemo(() => {
+    if (!users) return [];
+    if (!searchQuery?.trim()) return users;
+    const q = searchQuery.toLowerCase();
+    return users.filter((u: ClientUserType) => {
+      const name = u.name || "";
+      const email = u.email || "";
+      const phone = u.phoneNumber || "";
+      const customers = u.customers?.map((c: any) => c.name).join(" ") || "";
+      return (
+        name.toLowerCase().includes(q) ||
+        email.toLowerCase().includes(q) ||
+        phone.toLowerCase().includes(q) ||
+        customers.toLowerCase().includes(q)
+      );
+    });
+  }, [users, searchQuery]);
+
+  const renderClientUserCard = (record: ClientUserType) => {
+    const isExpanded = expandedCardIds.includes(String(record.id));
+    return (
+      <div className="flex flex-col gap-2">
+        {/* Main Header Row */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <Avatar icon={<UserOutlined />} className="shrink-0 bg-blue-500" />
+            <div className="min-w-0 flex-1">
+              <span className="font-semibold text-gray-900 text-sm block truncate">{record.name}</span>
+              <span className="text-xs text-gray-500 block truncate">{record.email}</span>
+            </div>
+          </div>
+
+          {/* Action Icons: Edit, Delete, Toggle Details */}
+          <div className="flex items-center gap-1 shrink-0">
+            <Button
+              type="text"
+              size="small"
+              icon={<EditOutlined style={{ fontSize: "16px", color: "#0c66e4" }} />}
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedUser(record);
+                editForm.setFieldsValue({
+                  name: record.name,
+                  phoneNumber: record.phoneNumber,
+                  status: record.status,
+                  customerIds: record.customers?.map((c: any) => c.id) || [],
+                  isDownloadDisabled: record.isDownloadDisabled || false
+                });
+                setIsEditModalOpen(true);
+              }}
+              className="flex items-center justify-center h-8 w-8 rounded-full hover:bg-blue-50 text-blue-600"
+              title="Edit User"
+              aria-label="Edit User"
+            />
+            <Popconfirm
+              title="Delete this user?"
+              description="This will permanently remove their access."
+              onConfirm={() => handleDelete(record.id)}
+              okText="Yes"
+              cancelText="No"
+            >
+              <Button 
+                type="text"
+                size="small" 
+                danger 
+                icon={<DeleteOutlined style={{ fontSize: "16px", color: "#ff4d4f" }} />} 
+                className="flex items-center justify-center h-8 w-8 rounded-full hover:bg-red-50 text-red-600"
+                title="Delete User"
+                aria-label="Delete User"
+              />
+            </Popconfirm>
+            <Button
+              type="text"
+              size="small"
+              icon={isExpanded ? <UpOutlined /> : <DownOutlined />}
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleExpandCard(record.id);
+              }}
+              className="text-gray-500 hover:text-blue-600 flex items-center justify-center h-8 w-8 rounded-full hover:bg-gray-100"
+              title="Toggle Details"
+              aria-label="Toggle Details"
+            />
+          </div>
+        </div>
+
+        {/* Revealed Detail Card (when dropdown button clicked) */}
+        {isExpanded && (
+          <div className="mt-2 pt-2.5 border-t border-dashed border-gray-200 flex flex-col gap-2 bg-gray-50/80 rounded-lg p-3 text-xs text-gray-600">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-gray-500 font-medium shrink-0">Status:</span>
+              <Tag color={record.status === ClientUserStatus.ACTIVE ? "green" : "red"} className="m-0">
+                {record.status?.toUpperCase()}
+              </Tag>
+            </div>
+            {record.phoneNumber && (
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-gray-500 font-medium shrink-0">Phone:</span>
+                <span className="font-semibold text-gray-800 text-right">{record.phoneNumber}</span>
+              </div>
+            )}
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-gray-500 font-medium shrink-0">Clients:</span>
+              <span className="font-semibold text-gray-800 text-right truncate max-w-[180px]">
+                {record.customers && record.customers.length > 0
+                  ? record.customers.map((c: any) => c.name).join(", ")
+                  : "No clients assigned"}
+              </span>
+            </div>
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-gray-500 font-medium shrink-0">Downloads:</span>
+              <span className="font-semibold text-gray-800 text-right">
+                {record.isDownloadDisabled ? "Disabled" : "Enabled"}
+              </span>
+            </div>
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-gray-500 font-medium shrink-0">Created:</span>
+              <span className="font-semibold text-gray-800 text-right">
+                {format(new Date(record.createdAt), "PP")}
+              </span>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
-    <div className="p-4">
-      <div className="flex justify-between items-center mb-6">
-        <Title level={3} className="!mb-0">
-          Client Portal Users
-        </Title>
-        <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          onClick={() => setIsModalOpen(true)}
-        >
-          Add Client User
-        </Button>
+    <div className="p-4 relative min-h-[400px]">
+      <div className="flex justify-between items-center mb-6 flex-wrap gap-3">
+        <div className="flex items-center gap-3">
+          <Button
+            icon={<ArrowLeftOutlined />}
+            onClick={() => navigate('/client')}
+            title="Back to Clients"
+          />
+          <Title level={isMobile ? 4 : 3} className="!mb-0">
+            Client Portal Users
+          </Title>
+        </div>
+        {!isMobile && (
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={() => setIsModalOpen(true)}
+          >
+            Add Client User
+          </Button>
+        )}
       </div>
 
+      {/* Mobile search bar toggle */}
+      {isMobile && showMobileSearch && (
+        <div className="mb-4">
+          <Input.Search
+            placeholder="Search client users by name, email, client..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            allowClear
+            autoFocus
+            className="w-full shadow-sm"
+          />
+        </div>
+      )}
+
       {/* Filters */}
-      <Card className="mb-4">
+      <Card className="mb-4" styles={{ body: { padding: isMobile ? '12px' : '20px' } }}>
         <Space className={isMobile ? "w-full" : ""}>
           <Select
             style={{ width: isMobile ? '100%' : 250 }}
@@ -275,14 +442,17 @@ const ClientUsersAdmin: React.FC = () => {
       </Card>
 
       {/* Users Table */}
-      <Card>
-        <Table
-          dataSource={users}
-          columns={columns}
-          rowKey="id"
-          loading={isLoading}
-          pagination={{ pageSize: 10 }}
-          scroll={{ x: 'max-content' }}
+      <Card styles={{ body: { padding: isMobile ? '12px' : '20px' } }}>
+        <ResponsiveTable
+          tableProps={{
+            dataSource: filteredUsers,
+            columns: columns,
+            rowKey: "id",
+            loading: isLoading,
+            pagination: isMobile ? false : { pageSize: 10 },
+            scroll: { x: 'max-content' },
+          }}
+          renderMobileCard={renderClientUserCard}
         />
       </Card>
 
@@ -439,6 +609,26 @@ const ClientUsersAdmin: React.FC = () => {
           </div>
         </Form>
       </Modal>
+
+      {/* Floating Action Buttons for Mobile */}
+      {isMobile && (
+        <div className="fixed bottom-6 right-5 z-40 flex flex-col items-end gap-3 pointer-events-auto">
+          <button
+            onClick={() => setShowMobileSearch(!showMobileSearch)}
+            className="w-12 h-12 bg-white text-gray-700 rounded-full shadow-lg border border-gray-200 flex items-center justify-center text-lg active:scale-95 transition-all"
+            aria-label="Search Client Users"
+          >
+            {showMobileSearch ? <CloseOutlined /> : <SearchOutlined />}
+          </button>
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="w-14 h-14 bg-blue-600 text-white rounded-full shadow-xl flex items-center justify-center text-2xl active:scale-95 transition-all hover:bg-blue-700"
+            aria-label="Add Client User"
+          >
+            <PlusOutlined />
+          </button>
+        </div>
+      )}
     </div>
   );
 };

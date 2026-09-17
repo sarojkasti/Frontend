@@ -23,7 +23,7 @@ const Setting = () => {
         <Card className="h-full" onClick={() => navigate("/permission")} hoverable>
           <Title level={4}>Permissions</Title>
           <Paragraph>
-            Create and edit permissions for resources.
+            View and manage endpoints and resource permissions.
           </Paragraph>
         </Card>
       </Col>

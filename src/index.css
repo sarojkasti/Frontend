@@ -195,13 +195,26 @@ body {
     max-width: 100% !important;
   }
 
-  /* Tabs: scrollable on mobile */
-  .ant-tabs-nav-list {
-    flex-wrap: nowrap !important;
-  }
+  /* Tabs: scrollable and properly padded on mobile */
   .ant-tabs-nav {
     overflow-x: auto !important;
     -webkit-overflow-scrolling: touch;
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+    margin-bottom: 12px !important;
+  }
+  .ant-tabs-nav-wrap {
+    overflow: visible !important;
+  }
+  .ant-tabs-nav-list {
+    flex-wrap: nowrap !important;
+    display: flex !important;
+    gap: 6px !important;
+  }
+  .ant-tabs .ant-tabs-tab {
+    padding: 8px 16px !important;
+    margin: 0 !important;
+    transition: all 0.2s ease;
   }
 
   /* Stat cards: smaller on mobile */

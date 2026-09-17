@@ -55,6 +55,8 @@ import {
   fetchManagerReportData,
 } from "@/service/report.service";
 import { listActiveUsers } from "@/service/user.service";
+import { useIsMobile } from "@/hooks/useIsMobile";
+import ResponsiveTable from "@/components/ui/MobileCardList";
 
 const { Title, Text } = Typography;
 const { RangePicker } = DatePicker;
@@ -72,6 +74,7 @@ const CHART_COLORS = [
 ];
 
 const ReportsPage: React.FC = () => {
+  const { isMobile } = useIsMobile();
   const [activeTab, setActiveTab] = useState("worklog");
   const [selectedProjectId, setSelectedProjectId] = useState<string>("all");
   const [selectedUserId, setSelectedUserId] = useState<string>("all");
@@ -653,8 +656,166 @@ const ReportsPage: React.FC = () => {
     XLSX.writeFile(workbook, fileName);
   };
 
+  const renderUserWorklogCard = (record: any) => (
+    <div key={record.id} className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 mb-3">
+      <div className="flex items-center gap-3 mb-2 border-b border-gray-50 pb-2">
+        <Avatar style={{ backgroundColor: "#1677ff" }}>
+          {record.name.charAt(0)}
+        </Avatar>
+        <div className="min-w-0 flex-1">
+          <h4 className="font-semibold text-gray-900 text-sm truncate">{record.name}</h4>
+          <p className="text-xs text-gray-500 truncate">{record.email}</p>
+        </div>
+        <Tag color="blue">{record.totalWorks} entries</Tag>
+      </div>
+      <div className="grid grid-cols-3 gap-2 text-center pt-1">
+        <div>
+          <span className="text-[11px] text-gray-400 block">Total</span>
+          <span className="text-sm font-semibold text-blue-600">{record.totalHours} hrs</span>
+        </div>
+        <div>
+          <span className="text-[11px] text-gray-400 block">Approved</span>
+          <span className="text-sm font-semibold text-green-600">{record.approvedHours} hrs</span>
+        </div>
+        <div>
+          <span className="text-[11px] text-gray-400 block">Projects</span>
+          <span className="text-sm font-semibold text-purple-600">{record.projectsCount}</span>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderDetailedWorklogCard = (record: any) => {
+    let statusColor = "default";
+    if (record.status === "APPROVED") statusColor = "success";
+    else if (record.status === "REJECTED") statusColor = "error";
+    else if (record.status === "PENDING" || record.status === "REQUESTED") statusColor = "warning";
+
+    return (
+      <div key={record.id} className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 mb-3">
+        <div className="flex justify-between items-start gap-2 mb-2">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="font-semibold text-sm text-gray-900">{record.employeeName}</span>
+              <span className="text-xs text-gray-400">• {record.date}</span>
+            </div>
+            <span className="text-xs text-gray-600 block mt-0.5">{record.projectName}</span>
+          </div>
+          <Tag color={statusColor} className="mr-0 shrink-0">{record.status}</Tag>
+        </div>
+
+        {record.taskName && record.taskName !== "-" && (
+          <div className="mb-2 text-xs bg-gray-50 p-2 rounded flex flex-col gap-1">
+            <div className="font-medium text-gray-700 truncate">Task: {record.taskName}</div>
+            <div className="flex items-center gap-1 flex-wrap">
+              {record.taskCode && record.taskCode !== "-" && (
+                <Tag color="cyan" className="text-[10px] m-0">{record.taskCode}</Tag>
+              )}
+              {record.taskStatus && record.taskStatus !== "-" && (
+                <Tag color="blue" className="text-[10px] m-0">{record.taskStatus}</Tag>
+              )}
+            </div>
+          </div>
+        )}
+
+        {record.description && record.description !== "-" && (
+          <p className="text-xs text-gray-600 mb-2 line-clamp-2">{record.description}</p>
+        )}
+
+        <div className="flex justify-between items-center pt-2 border-t border-gray-50 text-xs">
+          <span className="text-gray-500">{record.startTime} - {record.endTime}</span>
+          <span className="font-bold text-blue-600">{record.loggedHours} hrs</span>
+        </div>
+        {record.approvedBy && record.approvedBy !== "-" && (
+          <div className="text-[11px] text-gray-400 mt-1">
+            Approved by: {record.approvedBy}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderProjectMatrixCard = (record: any) => (
+    <div key={record.id} className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 mb-3">
+      <div className="flex justify-between items-start mb-2">
+        <div className="min-w-0 flex-1 pr-2">
+          <h4 className="font-semibold text-gray-900 text-sm truncate">{record.name}</h4>
+          <span className="text-xs text-gray-500 block truncate">{record.code} • Manager: {record.manager}</span>
+        </div>
+        {record.costVariance > 0 ? (
+          <Tag color="red" className="mr-0 text-xs shrink-0">+NPR {record.costVariance.toLocaleString("en-IN")} Over</Tag>
+        ) : (
+          <Tag color="green" className="mr-0 text-xs shrink-0">-NPR {Math.abs(record.costVariance).toLocaleString("en-IN")} Saved</Tag>
+        )}
+      </div>
+
+      <div className="mb-3">
+        <div className="flex justify-between text-xs text-gray-500 mb-1">
+          <span>Progress</span>
+          <span>{record.completionPercent}%</span>
+        </div>
+        <Progress
+          percent={record.completionPercent}
+          size="small"
+          status={record.completionPercent >= 100 ? "success" : "active"}
+          strokeColor={{ "0%": "#1677ff", "100%": "#52c41a" }}
+        />
+      </div>
+
+      <div className="grid grid-cols-2 gap-2 text-xs pt-2 border-t border-gray-50">
+        <div>
+          <span className="text-gray-400 block">Budget</span>
+          <span className="font-medium text-gray-800">NPR {record.budget.toLocaleString("en-IN")}</span>
+        </div>
+        <div>
+          <span className="text-gray-400 block">Cost</span>
+          <span className="font-semibold text-blue-600">NPR {record.completionCost.toLocaleString("en-IN")}</span>
+        </div>
+        <div>
+          <span className="text-gray-400 block">Est. Time</span>
+          <span className="text-gray-700">{record.estimatedHours} hrs</span>
+        </div>
+        <div>
+          <span className="text-gray-400 block">Spent Time</span>
+          <span className="font-medium text-gray-800">{record.actualLoggedHours} hrs</span>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderAttendanceDiscrepancyCard = (record: any) => (
+    <div key={record.userId || record.name} className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 mb-3">
+      <div className="flex justify-between items-start mb-2">
+        <div className="min-w-0 flex-1 pr-2">
+          <h4 className="font-semibold text-gray-900 text-sm truncate">{record.name}</h4>
+          <span className="text-xs text-gray-500 block truncate">{record.roleName}</span>
+        </div>
+        {record.overtimeDays > 0 ? (
+          <Tag color="orange" className="mr-0 text-xs shrink-0">{record.overtimeDays} days OT</Tag>
+        ) : (
+          <Tag color="default" className="mr-0 text-xs shrink-0">0 OT</Tag>
+        )}
+      </div>
+
+      <div className="grid grid-cols-3 gap-2 text-center text-xs pt-2 border-t border-gray-50">
+        <div>
+          <span className="text-[11px] text-gray-400 block">Expected/Day</span>
+          <span className="font-medium text-gray-700">{record.expectedDailyHours || 8} hrs</span>
+        </div>
+        <div>
+          <span className="text-[11px] text-gray-400 block">Worklog</span>
+          <span className="font-semibold text-blue-600">{(record.totalWorklogMinutes / 60).toFixed(1)} hrs</span>
+        </div>
+        <div>
+          <span className="text-[11px] text-gray-400 block">Attendance</span>
+          <span className="font-semibold text-purple-600">{(record.totalAttendanceMinutes / 60).toFixed(1)} hrs</span>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
-    <div style={{ padding: "0 4px 24px 4px" }}>
+    <div className="pb-16 sm:pb-0 px-2 sm:px-0">
       {/* Top Breadcrumb Navigation */}
       <div
         style={{
@@ -667,18 +828,20 @@ const ReportsPage: React.FC = () => {
         <Breadcrumb
           items={[{ title: "Home" }, { title: "Analytics & Reports Hub" }]}
         />
-        <Button
-          type="primary"
-          icon={<FileExcelOutlined style={{ color: "#ffffff" }} />}
-          onClick={handleExportExcel}
-          style={{
-            borderRadius: "6px",
-            backgroundColor: "#21a366",
-            borderColor: "#21a366",
-          }}
-        >
-          Export Report Excel
-        </Button>
+        {!isMobile && (
+          <Button
+            type="primary"
+            icon={<FileExcelOutlined style={{ color: "#ffffff" }} />}
+            onClick={handleExportExcel}
+            style={{
+              borderRadius: "6px",
+              backgroundColor: "#21a366",
+              borderColor: "#21a366",
+            }}
+          >
+            Export Report Excel
+          </Button>
+        )}
       </div>
 
       {/* Header Card */}
@@ -904,6 +1067,22 @@ const ReportsPage: React.FC = () => {
           onChange={setActiveTab}
           type="line"
           size="middle"
+          renderTabBar={(props, DefaultTabBar) => (
+            <div className="overflow-x-auto whitespace-nowrap px-4 sm:px-0">
+              <DefaultTabBar {...props} style={{ marginBottom: 0 }} />
+            </div>
+          )}
+          tabBarStyle={
+            isMobile
+              ? {
+                  overflowX: "auto",
+                  whiteSpace: "nowrap",
+                  marginBottom: 12,
+                  paddingLeft: "16px",
+                  paddingRight: "16px",
+                }
+              : undefined
+          }
           items={[
             {
               key: "worklog",
@@ -1119,80 +1298,83 @@ const ReportsPage: React.FC = () => {
                     Team Member Worklog Breakdown
                   </Divider>
 
-                  <Table
-                    dataSource={worklogAnalytics.userTableData}
-                    rowKey="id"
-                    pagination={{ pageSize: 8 }}
-                    size="small"
-                    columns={[
-                      {
-                        title: "Team Member",
-                        dataIndex: "name",
-                        key: "name",
-                        render: (text: string, record: any) => (
-                          <Space>
-                            <Avatar
-                              size="small"
-                              style={{ backgroundColor: "#1677ff" }}
-                            >
-                              {text.charAt(0)}
-                            </Avatar>
-                            <div>
-                              <Text
-                                strong
-                                style={{ display: "block", fontSize: 13 }}
+                  <ResponsiveTable
+                    tableProps={{
+                      dataSource: worklogAnalytics.userTableData,
+                      rowKey: "id",
+                      pagination: isMobile ? false : { pageSize: 8 },
+                      size: "small",
+                      columns: [
+                        {
+                          title: "Team Member",
+                          dataIndex: "name",
+                          key: "name",
+                          render: (text: string, record: any) => (
+                            <Space>
+                              <Avatar
+                                size="small"
+                                style={{ backgroundColor: "#1677ff" }}
                               >
-                                {text}
-                              </Text>
-                              <Text type="secondary" style={{ fontSize: 11 }}>
-                                {record.email}
-                              </Text>
-                            </div>
-                          </Space>
-                        ),
-                      },
-                      {
-                        title: "Submissions",
-                        dataIndex: "totalWorks",
-                        key: "totalWorks",
-                        align: "center",
-                        render: (val: number) => (
-                          <Tag color="blue">{val} entries</Tag>
-                        ),
-                      },
-                      {
-                        title: "Total Logged Hours",
-                        dataIndex: "totalHours",
-                        key: "totalHours",
-                        align: "right",
-                        render: (val: string) => (
-                          <Text strong style={{ color: "#1677ff" }}>
-                            {val} hrs
-                          </Text>
-                        ),
-                      },
-                      {
-                        title: "Approved Hours",
-                        dataIndex: "approvedHours",
-                        key: "approvedHours",
-                        align: "right",
-                        render: (val: string) => (
-                          <Text style={{ color: "#52c41a" }}>{val} hrs</Text>
-                        ),
-                      },
-                      {
-                        title: "Assigned Projects",
-                        dataIndex: "projectsCount",
-                        key: "projectsCount",
-                        align: "center",
-                        render: (val: number) => (
-                          <Badge
-                            count={val}
-                            style={{ backgroundColor: "#722ed1" }}
-                          />
-                        ),
-                      },
-                    ]}
+                                {text.charAt(0)}
+                              </Avatar>
+                              <div>
+                                <Text
+                                  strong
+                                  style={{ display: "block", fontSize: 13 }}
+                                >
+                                  {text}
+                                </Text>
+                                <Text type="secondary" style={{ fontSize: 11 }}>
+                                  {record.email}
+                                </Text>
+                              </div>
+                            </Space>
+                          ),
+                        },
+                        {
+                          title: "Submissions",
+                          dataIndex: "totalWorks",
+                          key: "totalWorks",
+                          align: "center",
+                          render: (val: number) => (
+                            <Tag color="blue">{val} entries</Tag>
+                          ),
+                        },
+                        {
+                          title: "Total Logged Hours",
+                          dataIndex: "totalHours",
+                          key: "totalHours",
+                          align: "right",
+                          render: (val: string) => (
+                            <Text strong style={{ color: "#1677ff" }}>
+                              {val} hrs
+                            </Text>
+                          ),
+                        },
+                        {
+                          title: "Approved Hours",
+                          dataIndex: "approvedHours",
+                          key: "approvedHours",
+                          align: "right",
+                          render: (val: string) => (
+                            <Text style={{ color: "#52c41a" }}>{val} hrs</Text>
+                          ),
+                        },
+                        {
+                          title: "Assigned Projects",
+                          dataIndex: "projectsCount",
+                          key: "projectsCount",
+                          align: "center",
+                          render: (val: number) => (
+                            <Badge
+                              count={val}
+                              style={{ backgroundColor: "#722ed1" }}
+                            />
+                          ),
+                        },
+                      ],
+                    }}
+                    renderMobileCard={renderUserWorklogCard}
                   />
 
                   <Divider
@@ -1207,165 +1389,170 @@ const ReportsPage: React.FC = () => {
                     {worklogAnalytics.detailedWorklogs.length} entries)
                   </Divider>
 
-                  <Table
-                    dataSource={worklogAnalytics.detailedWorklogs}
-                    rowKey="id"
-                    pagination={{
-                      pageSize: 10,
-                      showSizeChanger: true,
-                      pageSizeOptions: ["10", "20", "50", "100"],
-                      showTotal: (total, range) =>
-                        `${range[0]}-${range[1]} of ${total} entries`,
-                    }}
-                    size="small"
-                    scroll={{ x: 1200 }}
-                    columns={[
-                      {
-                        title: "Date",
-                        dataIndex: "date",
-                        key: "date",
-                        width: 110,
-                        render: (text: string) => (
-                          <Text style={{ fontSize: 12 }}>{text}</Text>
-                        ),
-                      },
-                      {
-                        title: "Employee",
-                        dataIndex: "employeeName",
-                        key: "employeeName",
-                        width: 170,
-                        render: (text: string, record: any) => (
-                          <div>
-                            <Text
-                              strong
-                              style={{ display: "block", fontSize: 12 }}
-                            >
-                              {text}
-                            </Text>
-                            <Text type="secondary" style={{ fontSize: 11 }}>
-                              {record.employeeEmail}
-                            </Text>
-                          </div>
-                        ),
-                      },
-                      {
-                        title: "Project",
-                        dataIndex: "projectName",
-                        key: "projectName",
-                        width: 180,
-                        render: (text: string, record: any) => (
-                          <div>
-                            <Text
-                              strong
-                              style={{ display: "block", fontSize: 12 }}
-                            >
-                              {text}
-                            </Text>
-                            {record.projectCode &&
-                              record.projectCode !== "-" && (
-                                <Tag color="cyan" style={{ fontSize: 10 }}>
-                                  {record.projectCode}
-                                </Tag>
-                              )}
-                          </div>
-                        ),
-                      },
-                      {
-                        title: "Task",
-                        dataIndex: "taskName",
-                        key: "taskName",
-                        width: 180,
-                        render: (text: string, record: any) => (
-                          <div>
-                            <Text style={{ display: "block", fontSize: 12 }}>
-                              {text}
-                            </Text>
-                            <Space size={4} wrap>
-                              {record.taskCode && record.taskCode !== "-" && (
-                                <Tag color="purple" style={{ fontSize: 10 }}>
-                                  {record.taskCode}
-                                </Tag>
-                              )}
-                              {record.taskStatus &&
-                                record.taskStatus !== "-" && (
-                                  <Tag color="blue" style={{ fontSize: 10 }}>
-                                    {record.taskStatus}
+                  <ResponsiveTable
+                    tableProps={{
+                      dataSource: worklogAnalytics.detailedWorklogs,
+                      rowKey: "id",
+                      pagination: isMobile
+                        ? false
+                        : {
+                            pageSize: 10,
+                            showSizeChanger: true,
+                            pageSizeOptions: ["10", "20", "50", "100"],
+                            showTotal: (total, range) =>
+                              `${range[0]}-${range[1]} of ${total} entries`,
+                          },
+                      size: "small",
+                      scroll: isMobile ? undefined : { x: 1200 },
+                      columns: [
+                        {
+                          title: "Date",
+                          dataIndex: "date",
+                          key: "date",
+                          width: 110,
+                          render: (text: string) => (
+                            <Text style={{ fontSize: 12 }}>{text}</Text>
+                          ),
+                        },
+                        {
+                          title: "Employee",
+                          dataIndex: "employeeName",
+                          key: "employeeName",
+                          width: 170,
+                          render: (text: string, record: any) => (
+                            <div>
+                              <Text
+                                strong
+                                style={{ display: "block", fontSize: 12 }}
+                              >
+                                {text}
+                              </Text>
+                              <Text type="secondary" style={{ fontSize: 11 }}>
+                                {record.employeeEmail}
+                              </Text>
+                            </div>
+                          ),
+                        },
+                        {
+                          title: "Project",
+                          dataIndex: "projectName",
+                          key: "projectName",
+                          width: 180,
+                          render: (text: string, record: any) => (
+                            <div>
+                              <Text
+                                strong
+                                style={{ display: "block", fontSize: 12 }}
+                              >
+                                {text}
+                              </Text>
+                              {record.projectCode &&
+                                record.projectCode !== "-" && (
+                                  <Tag color="cyan" style={{ fontSize: 10 }}>
+                                    {record.projectCode}
                                   </Tag>
                                 )}
-                            </Space>
-                          </div>
-                        ),
-                      },
-                      {
-                        title: "Work Description",
-                        dataIndex: "description",
-                        key: "description",
-                        ellipsis: { tooltip: true },
-                        render: (text: string) => (
-                          <Text style={{ fontSize: 12 }}>{text}</Text>
-                        ),
-                      },
-                      {
-                        title: "Time",
-                        key: "time",
-                        width: 150,
-                        render: (_: any, record: any) => (
-                          <Text style={{ fontSize: 11 }}>
-                            {record.startTime} - {record.endTime}
-                          </Text>
-                        ),
-                      },
-                      {
-                        title: "Hours",
-                        dataIndex: "loggedHours",
-                        key: "loggedHours",
-                        align: "right",
-                        width: 90,
-                        render: (val: number) => (
-                          <Text strong style={{ color: "#1677ff" }}>
-                            {val} hrs
-                          </Text>
-                        ),
-                      },
-                      {
-                        title: "Status",
-                        dataIndex: "status",
-                        key: "status",
-                        align: "center",
-                        width: 110,
-                        render: (st: string) => {
-                          let color = "default";
-                          if (st === "APPROVED") color = "success";
-                          else if (st === "REJECTED") color = "error";
-                          else if (st === "PENDING" || st === "REQUESTED")
-                            color = "warning";
-                          return <Tag color={color}>{st}</Tag>;
+                            </div>
+                          ),
                         },
-                      },
-                      {
-                        title: "Approved By",
-                        dataIndex: "approvedBy",
-                        key: "approvedBy",
-                        width: 130,
-                        render: (text: string) => (
-                          <Text type="secondary" style={{ fontSize: 12 }}>
-                            {text}
-                          </Text>
-                        ),
-                      },
-                      {
-                        title: "Remarks",
-                        dataIndex: "remarks",
-                        key: "remarks",
-                        width: 140,
-                        ellipsis: { tooltip: true },
-                        render: (text: string) => (
-                          <Text type="secondary" style={{ fontSize: 11 }}>
-                            {text}
-                          </Text>
-                        ),
-                      },
-                    ]}
+                        {
+                          title: "Task",
+                          dataIndex: "taskName",
+                          key: "taskName",
+                          width: 180,
+                          render: (text: string, record: any) => (
+                            <div>
+                              <Text style={{ display: "block", fontSize: 12 }}>
+                                {text}
+                              </Text>
+                              <Space size={4} wrap>
+                                {record.taskCode && record.taskCode !== "-" && (
+                                  <Tag color="purple" style={{ fontSize: 10 }}>
+                                    {record.taskCode}
+                                  </Tag>
+                                )}
+                                {record.taskStatus &&
+                                  record.taskStatus !== "-" && (
+                                    <Tag color="blue" style={{ fontSize: 10 }}>
+                                      {record.taskStatus}
+                                    </Tag>
+                                  )}
+                              </Space>
+                            </div>
+                          ),
+                        },
+                        {
+                          title: "Work Description",
+                          dataIndex: "description",
+                          key: "description",
+                          ellipsis: { tooltip: true },
+                          render: (text: string) => (
+                            <Text style={{ fontSize: 12 }}>{text}</Text>
+                          ),
+                        },
+                        {
+                          title: "Time",
+                          key: "time",
+                          width: 150,
+                          render: (_: any, record: any) => (
+                            <Text style={{ fontSize: 11 }}>
+                              {record.startTime} - {record.endTime}
+                            </Text>
+                          ),
+                        },
+                        {
+                          title: "Hours",
+                          dataIndex: "loggedHours",
+                          key: "loggedHours",
+                          align: "right",
+                          width: 90,
+                          render: (val: number) => (
+                            <Text strong style={{ color: "#1677ff" }}>
+                              {val} hrs
+                            </Text>
+                          ),
+                        },
+                        {
+                          title: "Status",
+                          dataIndex: "status",
+                          key: "status",
+                          align: "center",
+                          width: 110,
+                          render: (st: string) => {
+                            let color = "default";
+                            if (st === "APPROVED") color = "success";
+                            else if (st === "REJECTED") color = "error";
+                            else if (st === "PENDING" || st === "REQUESTED")
+                              color = "warning";
+                            return <Tag color={color}>{st}</Tag>;
+                          },
+                        },
+                        {
+                          title: "Approved By",
+                          dataIndex: "approvedBy",
+                          key: "approvedBy",
+                          width: 130,
+                          render: (text: string) => (
+                            <Text type="secondary" style={{ fontSize: 12 }}>
+                              {text}
+                            </Text>
+                          ),
+                        },
+                        {
+                          title: "Remarks",
+                          dataIndex: "remarks",
+                          key: "remarks",
+                          width: 140,
+                          ellipsis: { tooltip: true },
+                          render: (text: string) => (
+                            <Text type="secondary" style={{ fontSize: 11 }}>
+                              {text}
+                            </Text>
+                          ),
+                        },
+                      ],
+                    }}
+                    renderMobileCard={renderDetailedWorklogCard}
                   />
                 </div>
               ),
@@ -1589,97 +1776,100 @@ const ReportsPage: React.FC = () => {
                     Project Progress, Completion Cost (NPR) & Time Matrix
                   </Divider>
 
-                  <Table
-                    dataSource={managerAnalytics.projectReports}
-                    rowKey="id"
-                    pagination={{ pageSize: 8 }}
-                    size="small"
-                    columns={[
-                      {
-                        title: "Project Name",
-                        dataIndex: "name",
-                        key: "name",
-                        render: (text: string, record: any) => (
-                          <div>
-                            <Text
-                              strong
-                              style={{ color: "#1e293b", fontSize: 13 }}
-                            >
-                              {text}
-                            </Text>
-                            <Text
-                              type="secondary"
-                              style={{ display: "block", fontSize: 11 }}
-                            >
-                              {record.code} • Manager: {record.manager}
-                            </Text>
-                          </div>
-                        ),
-                      },
-                      {
-                        title: "Completion Progress",
-                        dataIndex: "completionPercent",
-                        key: "completionPercent",
-                        width: 170,
-                        render: (val: number) => (
-                          <Progress
-                            percent={val}
-                            size="small"
-                            status={val >= 100 ? "success" : "active"}
-                            strokeColor={{ "0%": "#1677ff", "100%": "#52c41a" }}
-                          />
-                        ),
-                      },
-                      {
-                        title: "Budget (NPR)",
-                        dataIndex: "budget",
-                        key: "budget",
-                        align: "right",
-                        render: (val: number) =>
-                          `NPR ${val.toLocaleString("en-IN")}`,
-                      },
-                      {
-                        title: "Completion Cost (NPR)",
-                        dataIndex: "completionCost",
-                        key: "completionCost",
-                        align: "right",
-                        render: (val: number) => (
-                          <Text strong style={{ color: "#1677ff" }}>
-                            NPR {val.toLocaleString("en-IN")}
-                          </Text>
-                        ),
-                      },
-                      {
-                        title: "Cost Variance",
-                        dataIndex: "costVariance",
-                        key: "costVariance",
-                        align: "center",
-                        render: (val: number) =>
-                          val > 0 ? (
-                            <Tag color="red">
-                              +NPR {val.toLocaleString("en-IN")} Over
-                            </Tag>
-                          ) : (
-                            <Tag color="green">
-                              -NPR {Math.abs(val).toLocaleString("en-IN")} Saved
-                            </Tag>
+                  <ResponsiveTable
+                    tableProps={{
+                      dataSource: managerAnalytics.projectReports,
+                      rowKey: "id",
+                      pagination: isMobile ? false : { pageSize: 8 },
+                      size: "small",
+                      columns: [
+                        {
+                          title: "Project Name",
+                          dataIndex: "name",
+                          key: "name",
+                          render: (text: string, record: any) => (
+                            <div>
+                              <Text
+                                strong
+                                style={{ color: "#1e293b", fontSize: 13 }}
+                              >
+                                {text}
+                              </Text>
+                              <Text
+                                type="secondary"
+                                style={{ display: "block", fontSize: 11 }}
+                              >
+                                {record.code} • Manager: {record.manager}
+                              </Text>
+                            </div>
                           ),
-                      },
-                      {
-                        title: "Time Required (Est.)",
-                        dataIndex: "estimatedHours",
-                        key: "estimatedHours",
-                        align: "right",
-                        render: (val: number) => `${val} hrs`,
-                      },
-                      {
-                        title: "Time Spent (Logged)",
-                        dataIndex: "actualLoggedHours",
-                        key: "actualLoggedHours",
-                        align: "right",
-                        render: (val: number) => <Text strong>{val} hrs</Text>,
-                      },
-                    ]}
+                        },
+                        {
+                          title: "Completion Progress",
+                          dataIndex: "completionPercent",
+                          key: "completionPercent",
+                          width: 170,
+                          render: (val: number) => (
+                            <Progress
+                              percent={val}
+                              size="small"
+                              status={val >= 100 ? "success" : "active"}
+                              strokeColor={{ "0%": "#1677ff", "100%": "#52c41a" }}
+                            />
+                          ),
+                        },
+                        {
+                          title: "Budget (NPR)",
+                          dataIndex: "budget",
+                          key: "budget",
+                          align: "right",
+                          render: (val: number) =>
+                            `NPR ${val.toLocaleString("en-IN")}`,
+                        },
+                        {
+                          title: "Completion Cost (NPR)",
+                          dataIndex: "completionCost",
+                          key: "completionCost",
+                          align: "right",
+                          render: (val: number) => (
+                            <Text strong style={{ color: "#1677ff" }}>
+                              NPR {val.toLocaleString("en-IN")}
+                            </Text>
+                          ),
+                        },
+                        {
+                          title: "Cost Variance",
+                          dataIndex: "costVariance",
+                          key: "costVariance",
+                          align: "center",
+                          render: (val: number) =>
+                            val > 0 ? (
+                              <Tag color="red">
+                                +NPR {val.toLocaleString("en-IN")} Over
+                              </Tag>
+                            ) : (
+                              <Tag color="green">
+                                -NPR {Math.abs(val).toLocaleString("en-IN")} Saved
+                              </Tag>
+                            ),
+                        },
+                        {
+                          title: "Time Required (Est.)",
+                          dataIndex: "estimatedHours",
+                          key: "estimatedHours",
+                          align: "right",
+                          render: (val: number) => `${val} hrs`,
+                        },
+                        {
+                          title: "Time Spent (Logged)",
+                          dataIndex: "actualLoggedHours",
+                          key: "actualLoggedHours",
+                          align: "right",
+                          render: (val: number) => <Text strong>{val} hrs</Text>,
+                        },
+                      ],
+                    }}
+                    renderMobileCard={renderProjectMatrixCard}
                   />
                 </div>
               ),
@@ -1794,47 +1984,51 @@ const ReportsPage: React.FC = () => {
                     </Row>
                   ) : null}
 
-                  <Table
-                    dataSource={managerData?.workingTimeStats?.userStats || []}
-                    rowKey="userId"
-                    size="small"
-                    columns={[
-                      {
-                        title: "Employee Name",
-                        dataIndex: "name",
-                        key: "name",
-                      },
-                      { title: "Role", dataIndex: "roleName", key: "roleName" },
-                      {
-                        title: "Expected Daily Hours",
-                        dataIndex: "expectedDailyHours",
-                        key: "expectedDailyHours",
-                        render: (val: number) => `${val || 8} hrs`,
-                      },
-                      {
-                        title: "Total Worklog (Mins)",
-                        dataIndex: "totalWorklogMinutes",
-                        key: "totalWorklogMinutes",
-                        render: (val: number) => `${(val / 60).toFixed(1)} hrs`,
-                      },
-                      {
-                        title: "Total Attendance (Mins)",
-                        dataIndex: "totalAttendanceMinutes",
-                        key: "totalAttendanceMinutes",
-                        render: (val: number) => `${(val / 60).toFixed(1)} hrs`,
-                      },
-                      {
-                        title: "Overtime Days",
-                        dataIndex: "overtimeDays",
-                        key: "overtimeDays",
-                        render: (val: number) =>
-                          val > 0 ? (
-                            <Tag color="orange">{val} days</Tag>
-                          ) : (
-                            <Tag color="default">0</Tag>
-                          ),
-                      },
-                    ]}
+                  <ResponsiveTable
+                    tableProps={{
+                      dataSource: managerData?.workingTimeStats?.userStats || [],
+                      rowKey: "userId",
+                      size: "small",
+                      pagination: isMobile ? false : undefined,
+                      columns: [
+                        {
+                          title: "Employee Name",
+                          dataIndex: "name",
+                          key: "name",
+                        },
+                        { title: "Role", dataIndex: "roleName", key: "roleName" },
+                        {
+                          title: "Expected Daily Hours",
+                          dataIndex: "expectedDailyHours",
+                          key: "expectedDailyHours",
+                          render: (val: number) => `${val || 8} hrs`,
+                        },
+                        {
+                          title: "Total Worklog (Mins)",
+                          dataIndex: "totalWorklogMinutes",
+                          key: "totalWorklogMinutes",
+                          render: (val: number) => `${(val / 60).toFixed(1)} hrs`,
+                        },
+                        {
+                          title: "Total Attendance (Mins)",
+                          dataIndex: "totalAttendanceMinutes",
+                          key: "totalAttendanceMinutes",
+                          render: (val: number) => `${(val / 60).toFixed(1)} hrs`,
+                        },
+                        {
+                          title: "Overtime Days",
+                          dataIndex: "overtimeDays",
+                          key: "overtimeDays",
+                          render: (val: number) =>
+                            val > 0 ? (
+                              <Tag color="orange">{val} days</Tag>
+                            ) : (
+                              <Tag color="default">0</Tag>
+                            ),
+                        },
+                      ],
+                    }}
+                    renderMobileCard={renderAttendanceDiscrepancyCard}
                   />
                 </div>
               ),

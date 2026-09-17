@@ -3,7 +3,7 @@ import { useMarkTasksComplete } from "@/hooks/task/useMarkTasksComplete";
 import { useFirstVerifyTasks, useSecondVerifyTasks } from "@/hooks/task/useVerifyTasks";
 import { TaskType } from "@/types/task";
 import { useSession } from "@/context/SessionContext";
-import { EditOutlined, SearchOutlined, CheckOutlined, CheckCircleOutlined, ProjectOutlined, AppstoreOutlined, FolderOutlined } from "@ant-design/icons";
+import { EditOutlined, SearchOutlined, CheckOutlined, CheckCircleOutlined, ProjectOutlined, AppstoreOutlined, FolderOutlined, EyeOutlined, DownOutlined, UpOutlined } from "@ant-design/icons";
 import {
   Avatar,
   Col,
@@ -31,6 +31,12 @@ import _ from "lodash";
 
 const AllTaskTable = ({ status, userRole, onEdit, externalSearchText = '' }: { status: string, userRole?: string, onEdit?: (task: TaskType) => void, externalSearchText?: string }) => {
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  const [expandedIds, setExpandedIds] = useState<Record<string, boolean>>({});
+
+  const toggleExpand = (id: string | number) => {
+    const sId = String(id);
+    setExpandedIds((prev) => ({ ...prev, [sId]: !prev[sId] }));
+  };
 
   // Hooks
   const { data: currentUserData, isPending } = useCurrentUserTasks(true);
@@ -435,45 +441,108 @@ const AllTaskTable = ({ status, userRole, onEdit, externalSearchText = '' }: { s
                                     rowExpandable: (record: any) => Array.isArray(record.children) && record.children.length > 0
                                   }
                                 }}
-                                renderMobileCard={(record: any) => (
-                                  <div className="flex flex-col gap-2">
-                                    <div className="flex items-start justify-between gap-2">
-                                      <div className="flex items-start gap-2 flex-1 min-w-0">
-                                        <Checkbox
-                                          checked={selectedRowKeys.includes(record.id)}
-                                          onChange={(e) => {
-                                            const next = e.target.checked
-                                              ? [...selectedRowKeys, record.id]
-                                              : selectedRowKeys.filter((k) => k !== record.id);
-                                            setSelectedRowKeys(next);
-                                          }}
-                                        />
-                                        <div className="font-semibold text-gray-900 text-sm break-words">
-                                          {record.isSubTask && <span className="text-gray-400 mr-1">↳</span>}
-                                          {record.name}
+                                renderMobileCard={(record: any) => {
+                                  const isExpanded = !!expandedIds[record.id];
+                                  const projId = record.projectId || record.project?.id;
+                                  return (
+                                    <div className="flex flex-col gap-2">
+                                      <div className="flex items-start justify-between gap-2">
+                                        <div className="flex items-start gap-2 flex-1 min-w-0">
+                                          <Checkbox
+                                            checked={selectedRowKeys.includes(record.id)}
+                                            onChange={(e) => {
+                                              const next = e.target.checked
+                                                ? [...selectedRowKeys, record.id]
+                                                : selectedRowKeys.filter((k) => k !== record.id);
+                                              setSelectedRowKeys(next);
+                                            }}
+                                          />
+                                          <div className="font-semibold text-gray-900 text-sm break-words">
+                                            {record.isSubTask && <span className="text-gray-400 mr-1">↳</span>}
+                                            {record.name}
+                                          </div>
+                                        </div>
+                                        {/* Action Icons: Detailed View, Edit, Dropdown Toggle */}
+                                        <div className="flex items-center gap-1 shrink-0">
+                                          {projId && (
+                                            <Link to={`/projects/${projId}/tasks/${record.id}`}>
+                                              <Button
+                                                type="text"
+                                                size="small"
+                                                icon={<EyeOutlined style={{ fontSize: "16px", color: "#0c66e4" }} />}
+                                                className="flex items-center justify-center h-8 w-8 rounded-full hover:bg-blue-50 text-blue-600"
+                                                title="View Details"
+                                                aria-label="View Details"
+                                              />
+                                            </Link>
+                                          )}
+                                          <Button
+                                            type="text"
+                                            size="small"
+                                            icon={<EditOutlined style={{ fontSize: "16px", color: "#0c66e4" }} />}
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              onEdit?.(record);
+                                            }}
+                                            className="flex items-center justify-center h-8 w-8 rounded-full hover:bg-blue-50 text-blue-600"
+                                            title="Edit Task"
+                                            aria-label="Edit Task"
+                                          />
+                                          <Button
+                                            type="text"
+                                            size="small"
+                                            icon={isExpanded ? <UpOutlined /> : <DownOutlined />}
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              toggleExpand(record.id);
+                                            }}
+                                            className="text-gray-500 hover:text-blue-600 flex items-center justify-center h-8 w-8 rounded-full hover:bg-gray-100"
+                                            title="Toggle Details"
+                                            aria-label="Toggle Details"
+                                          />
                                         </div>
                                       </div>
-                                      <Tag color={record.taskType === 'story' ? 'blue' : 'green'} className="shrink-0 text-xs">
-                                        {record.taskType === 'story' ? 'Task' : 'Subtask'}
-                                      </Tag>
-                                    </div>
-                                    <div className="flex items-center justify-between text-xs text-gray-500 pt-1 border-t border-gray-100">
-                                      <div>Priority: <Tag color={record.priority === 'high' ? 'red' : record.priority === 'medium' ? 'orange' : 'default'}>{record.priority || 'Normal'}</Tag></div>
-                                      {record.assignees && record.assignees.length > 0 && (
-                                        <Avatar.Group max={{ count: 2 }}>
-                                          {record.assignees.map((user: any) => (
-                                            <Avatar key={user.id} size="small" style={{ backgroundColor: "#87d068" }}>
-                                              {user.username ? user.username.charAt(0).toUpperCase() : "?"}
-                                            </Avatar>
-                                          ))}
-                                        </Avatar.Group>
+
+                                      {/* Revealed Detail Card (when dropdown button clicked) */}
+                                      {isExpanded && (
+                                        <div className="mt-2 pt-2.5 border-t border-dashed border-gray-200 flex flex-col gap-2 bg-gray-50/80 rounded-lg p-3 text-xs text-gray-600">
+                                          <div className="flex items-center justify-between gap-2">
+                                            <span className="text-gray-500 font-medium shrink-0">Task Type:</span>
+                                            <Tag color={record.taskType === 'story' ? 'blue' : 'green'} className="m-0 text-[10px]">
+                                              {record.taskType === 'story' ? 'Task' : 'Subtask'}
+                                            </Tag>
+                                          </div>
+                                          <div className="flex items-center justify-between gap-2">
+                                            <span className="text-gray-500 font-medium shrink-0">Priority:</span>
+                                            <Tag color={record.priority === 'high' ? 'red' : record.priority === 'medium' ? 'orange' : 'default'} className="m-0 text-[10px]">
+                                              {record.priority ? record.priority.toUpperCase() : 'NORMAL'}
+                                            </Tag>
+                                          </div>
+                                          {record.assignees && record.assignees.length > 0 && (
+                                            <div className="flex items-center justify-between gap-2">
+                                              <span className="text-gray-500 font-medium shrink-0">Assignees:</span>
+                                              <Avatar.Group max={{ count: 3 }}>
+                                                {record.assignees.map((user: any) => (
+                                                  <Avatar key={user.id} size="small" style={{ backgroundColor: "#87d068" }}>
+                                                    {user.username ? user.username.charAt(0).toUpperCase() : "?"}
+                                                  </Avatar>
+                                                ))}
+                                              </Avatar.Group>
+                                            </div>
+                                          )}
+                                          {record.description && (
+                                            <div className="pt-1.5 border-t border-gray-200/60">
+                                              <span className="text-gray-500 font-medium block mb-1">Description:</span>
+                                              <div className="text-gray-700 bg-white p-2 rounded border border-gray-100 break-words">
+                                                {record.description}
+                                              </div>
+                                            </div>
+                                          )}
+                                        </div>
                                       )}
                                     </div>
-                                    <div className="flex justify-end pt-1">
-                                      <Button icon={<EditOutlined />} size="small" onClick={() => onEdit?.(record)}>Edit</Button>
-                                    </div>
-                                  </div>
-                                )}
+                                  );
+                                }}
                               />
                             </Collapse.Panel>
                           ))}

@@ -13,7 +13,7 @@ const Dashboard: React.FC = () => {
   const canViewAvailability = canViewUserAvailability(permissions || []);
 
   return (
-    <div className="flex flex-col gap-4" style={{ minHeight: 0 }}>
+    <div className="flex flex-col gap-4 pb-16" style={{ minHeight: 0 }}>
       <Row gutter={[8, 8]} style={{ flex: "0 0 auto" }}>
         <Col xs={24} lg={17}>
           <Suspense fallback={<Spin size="large" />}>

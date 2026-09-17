@@ -32,8 +32,14 @@ import {
   FileTextOutlined,
   EditOutlined,
   PaperClipOutlined,
-  SaveOutlined
+  SaveOutlined,
+  SearchOutlined,
+  CloseOutlined,
+  DownOutlined,
+  UpOutlined,
+  KeyOutlined
 } from "@ant-design/icons";
+import ResponsiveTable from "@/components/ui/MobileCardList";
 import {
   useClientReportById,
   useCreateClientReport,
@@ -69,7 +75,9 @@ const { TextArea } = Input;
 const backendURI = import.meta.env.VITE_BACKEND_URI;
 
 const ClientReportsAdmin: React.FC = () => {
-  const isMobile = useIsMobile();
+  const { isMobile } = useIsMobile();
+  const [showMobileSearch, setShowMobileSearch] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<ReportAccessStatus | undefined>();
   const [filterCustomerId, setFilterCustomerId] = useState<string | undefined>();
   const [filterDocumentTypeId, setFilterDocumentTypeId] = useState<string | undefined>();
@@ -78,6 +86,13 @@ const ClientReportsAdmin: React.FC = () => {
   const [isAccessModalOpen, setIsAccessModalOpen] = useState(false);
   const [selectedReport, setSelectedReport] = useState<ClientReportType | null>(null);
   const [selectedRowKeys, setSelectedRowKeys] = useState<string[]>([]);
+  const [expandedCardIds, setExpandedCardIds] = useState<string[]>([]);
+  const toggleExpandCard = (id: string | number) => {
+    const strId = String(id);
+    setExpandedCardIds((prev) =>
+      prev.includes(strId) ? prev.filter((i) => i !== strId) : [...prev, strId]
+    );
+  };
   const [selectedCustomerForForm, setSelectedCustomerForForm] = useState<string | undefined>();
   const [form] = Form.useForm();
   const [editForm] = Form.useForm();
@@ -425,6 +440,138 @@ const ClientReportsAdmin: React.FC = () => {
     }
   ];
 
+  const filteredReports = useMemo(() => {
+    if (!reports) return [];
+    if (!searchQuery?.trim()) return reports;
+    const q = searchQuery.toLowerCase();
+    return reports.filter((r) =>
+      r.title?.toLowerCase().includes(q) ||
+      r.customer?.name?.toLowerCase().includes(q) ||
+      r.project?.name?.toLowerCase().includes(q) ||
+      r.documentType?.name?.toLowerCase().includes(q)
+    );
+  }, [reports, searchQuery]);
+
+  const renderClientReportCard = (record: ClientReportType) => {
+    const isExpanded = expandedCardIds.includes(String(record.id));
+    const files = record.files || [];
+    const fileCount = files.length;
+    return (
+      <div key={record.id} className="bg-white rounded-lg shadow-sm border border-gray-100 p-3 mb-3">
+        {/* Main Header Row */}
+        <div className="flex justify-between items-start gap-2">
+          <div className="min-w-0 flex-1">
+            <h4 className="font-semibold text-gray-900 text-sm leading-tight block truncate">{record.title}</h4>
+            <div className="text-xs text-gray-500 truncate">
+              {record.customer?.name || "No Client"}
+              {record.project?.name ? ` • ${record.project.name}` : ""}
+            </div>
+          </div>
+
+          {/* Action Icons: Edit, Access, Delete, Toggle Details */}
+          <div className="flex items-center gap-1 shrink-0">
+            <Button
+              type="text"
+              size="small"
+              icon={<EditOutlined style={{ fontSize: "16px", color: "#0c66e4" }} />}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleOpenEditModal(record);
+              }}
+              className="flex items-center justify-center h-8 w-8 rounded-full hover:bg-blue-50 text-blue-600"
+              title="Edit Report"
+              aria-label="Edit Report"
+            />
+            <Button
+              type="text"
+              size="small"
+              icon={<KeyOutlined style={{ fontSize: "16px", color: "#0c66e4" }} />}
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedReport(record);
+                accessForm.setFieldsValue({
+                  accessStatus: record.accessStatus,
+                  accessNotes: record.accessNotes
+                });
+                setIsAccessModalOpen(true);
+              }}
+              className="flex items-center justify-center h-8 w-8 rounded-full hover:bg-blue-50 text-blue-600"
+              title="Access Settings"
+              aria-label="Access Settings"
+            />
+            <Popconfirm
+              title="Delete this report?"
+              onConfirm={() => handleDelete(record.id)}
+              okText="Yes"
+              cancelText="No"
+            >
+              <Button 
+                type="text"
+                size="small" 
+                danger 
+                icon={<DeleteOutlined style={{ fontSize: "16px", color: "#ff4d4f" }} />} 
+                className="flex items-center justify-center h-8 w-8 rounded-full hover:bg-red-50 text-red-600"
+                title="Delete Report"
+                aria-label="Delete Report"
+              />
+            </Popconfirm>
+            <Button
+              type="text"
+              size="small"
+              icon={isExpanded ? <UpOutlined /> : <DownOutlined />}
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleExpandCard(record.id);
+              }}
+              className="text-gray-500 hover:text-blue-600 flex items-center justify-center h-8 w-8 rounded-full hover:bg-gray-100"
+              title="Toggle Details"
+              aria-label="Toggle Details"
+            />
+          </div>
+        </div>
+
+        {/* Revealed Detail Card (when dropdown button clicked) */}
+        {isExpanded && (
+          <div className="mt-2 pt-2.5 border-t border-dashed border-gray-200 flex flex-col gap-2 bg-gray-50/80 rounded-lg p-3 text-xs text-gray-600">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-gray-500 font-medium shrink-0">Status / Visibility:</span>
+              <div className="flex items-center gap-1">
+                {getStatusTag(record.accessStatus)}
+                <Tag color={record.isVisible ? "blue" : "default"} className="m-0 text-xs">
+                  {record.isVisible ? "Visible" : "Hidden"}
+                </Tag>
+              </div>
+            </div>
+            {record.documentType?.name && (
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-gray-500 font-medium shrink-0">Document Type:</span>
+                <span className="font-semibold text-gray-800 text-right">{record.documentType.name}</span>
+              </div>
+            )}
+            {record.fiscalYear && (
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-gray-500 font-medium shrink-0">Fiscal Year:</span>
+                <span className="font-semibold text-gray-800 text-right">{formatNepaliFiscalYear(record.fiscalYear)}</span>
+              </div>
+            )}
+            {fileCount > 0 && (
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-gray-500 font-medium shrink-0">Attachments:</span>
+                <span className="font-semibold text-gray-800 text-right">{fileCount} file{fileCount > 1 ? "s" : ""}</span>
+              </div>
+            )}
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-gray-500 font-medium shrink-0">Created:</span>
+              <span className="font-semibold text-gray-800 text-right">
+                {record.createdAt ? format(new Date(record.createdAt), "yyyy-MM-dd") : "-"}
+              </span>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   // Calculate stats
   const stats = {
     total: reports?.length || 0,
@@ -434,7 +581,29 @@ const ClientReportsAdmin: React.FC = () => {
   };
 
   return (
-    <div className="p-4">
+    <div className="p-4 relative min-h-[400px]">
+      {/* Mobile Search Bar */}
+      {isMobile && showMobileSearch && (
+        <div className="mb-4 bg-white p-3 rounded-lg shadow-sm border border-gray-100 flex items-center gap-2">
+          <Input
+            placeholder="Search reports by title, client, project..."
+            prefix={<SearchOutlined className="text-gray-400" />}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            allowClear
+            autoFocus
+          />
+          <Button
+            type="text"
+            icon={<CloseOutlined />}
+            onClick={() => {
+              setSearchQuery("");
+              setShowMobileSearch(false);
+            }}
+          />
+        </div>
+      )}
+
       {/* Stats */}
       <Row gutter={[16, 16]} className="mb-6">
         <Col xs={12} sm={6}>
@@ -533,30 +702,35 @@ const ClientReportsAdmin: React.FC = () => {
                 </Button>
               </Space>
             )}
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={() => setIsModalOpen(true)}
-            >
-              Upload Report
-            </Button>
+            {!isMobile && (
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={() => setIsModalOpen(true)}
+              >
+                Upload Report
+              </Button>
+            )}
           </Space>
         </div>
       </Card>
 
       {/* Reports Table */}
       <Card>
-        <Table
-          rowSelection={{
-            selectedRowKeys,
-            onChange: (keys) => setSelectedRowKeys(keys as string[])
+        <ResponsiveTable
+          tableProps={{
+            rowSelection: isMobile ? undefined : {
+              selectedRowKeys,
+              onChange: (keys) => setSelectedRowKeys(keys as string[])
+            },
+            dataSource: filteredReports,
+            columns: columns,
+            rowKey: "id",
+            loading: isLoading,
+            pagination: isMobile ? false : { pageSize: 10 },
+            scroll: { x: 'max-content' }
           }}
-          dataSource={reports}
-          columns={columns}
-          rowKey="id"
-          loading={isLoading}
-          pagination={{ pageSize: 10 }}
-          scroll={{ x: 'max-content' }}
+          renderMobileCard={renderClientReportCard}
         />
       </Card>
 
@@ -1157,6 +1331,26 @@ const ClientReportsAdmin: React.FC = () => {
           </div>
         </Form>
       </Modal>
+
+      {/* Mobile Floating Action Buttons */}
+      {isMobile && (
+        <>
+          <button
+            onClick={() => setShowMobileSearch(!showMobileSearch)}
+            className="fixed bottom-20 right-5 z-40 w-12 h-12 bg-white text-gray-700 rounded-full shadow-lg border border-gray-200 flex items-center justify-center text-lg active:scale-95 transition-transform"
+            aria-label="Search Reports"
+          >
+            <SearchOutlined />
+          </button>
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="fixed bottom-6 right-5 z-40 w-14 h-14 bg-blue-600 text-white rounded-full shadow-xl flex items-center justify-center text-2xl active:scale-95 transition-transform"
+            aria-label="Upload Report"
+          >
+            <PlusOutlined />
+          </button>
+        </>
+      )}
     </div>
   );
 };

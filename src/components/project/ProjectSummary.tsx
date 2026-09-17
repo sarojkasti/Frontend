@@ -7,6 +7,7 @@ import { useSession } from "@/context/SessionContext";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { completeProject } from "@/service/project.service";
 import { fetchProjectTaskGroups } from "@/service/taskgroup.service";
+import useIsMobile from "@/hooks/useIsMobile";
 
 const { Text } = Typography;
 
@@ -28,6 +29,7 @@ interface SummaryRow {
 }
 
 const ProjectSummary = ({ project }: ProjectSummaryProps) => {
+  const { isMobile } = useIsMobile();
   const { profile } = useSession();
   const queryClient = useQueryClient();
 
@@ -381,15 +383,103 @@ const ProjectSummary = ({ project }: ProjectSummaryProps) => {
 
       {/* Task Super -> Task Group Progress Hierarchy Table Card */}
       <Col span={24}>
-        <Card title="Task Super & Group Progress Breakdown">
-          <Table
-            columns={groupColumns}
-            dataSource={hierarchicalSummaries}
-            pagination={false}
-            rowKey="key"
-            defaultExpandAllRows={true}
-            size="middle"
-          />
+        <Card 
+          title="Task Super & Group Progress Breakdown"
+          bodyStyle={{ padding: isMobile ? '12px 8px' : '24px' }}
+        >
+          {isMobile ? (
+            <div className="flex flex-col gap-3">
+              {hierarchicalSummaries.map((superItem) => (
+                <div
+                  key={superItem.key}
+                  className="bg-white rounded-xl border border-gray-200 p-3.5 shadow-sm"
+                >
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <FolderOutlined style={{ color: "#1677ff", fontSize: 16 }} />
+                      <span className="font-semibold text-gray-800 text-sm truncate">
+                        {superItem.name}
+                      </span>
+                    </div>
+                    {superItem.total === 0 ? (
+                      <Tag color="default">No Tasks</Tag>
+                    ) : superItem.completed === superItem.total ? (
+                      <Tag color="success">Completed</Tag>
+                    ) : superItem.inProgress > 0 || superItem.completed > 0 ? (
+                      <Tag color="processing">In Progress</Tag>
+                    ) : (
+                      <Tag color="warning">Pending</Tag>
+                    )}
+                  </div>
+
+                  <div className="mb-2">
+                    <Progress
+                      percent={superItem.percent}
+                      size="small"
+                      status={superItem.completed === superItem.total && superItem.total > 0 ? "success" : "active"}
+                    />
+                    <div className="flex justify-between items-center text-xs text-gray-500 mt-1">
+                      <span>{superItem.completed} / {superItem.total} completed</span>
+                      <span>{superItem.inProgress} in progress</span>
+                    </div>
+                  </div>
+
+                  {superItem.children && superItem.children.length > 0 && (
+                    <div className="mt-3 pt-2.5 border-t border-gray-100 flex flex-col gap-2">
+                      <div className="text-xs font-medium text-gray-400 uppercase tracking-wider">
+                        Task Groups ({superItem.children.length})
+                      </div>
+                      {superItem.children.map((group) => (
+                        <div
+                          key={group.key}
+                          className="bg-gray-50 rounded-lg p-2.5 border border-gray-100 text-xs"
+                        >
+                          <div className="flex items-center justify-between gap-2 mb-1.5">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <AppstoreOutlined style={{ color: "#64748b" }} />
+                              <span className="font-medium text-gray-700 truncate">
+                                {group.name}
+                              </span>
+                            </div>
+                            {group.total === 0 ? (
+                              <Tag color="default" style={{ margin: 0 }}>No Tasks</Tag>
+                            ) : group.completed === group.total ? (
+                              <Tag color="success" style={{ margin: 0 }}>Completed</Tag>
+                            ) : group.inProgress > 0 || group.completed > 0 ? (
+                              <Tag color="processing" style={{ margin: 0 }}>In Progress</Tag>
+                            ) : (
+                              <Tag color="warning" style={{ margin: 0 }}>Pending</Tag>
+                            )}
+                          </div>
+                          <Progress
+                            percent={group.percent}
+                            size="small"
+                            strokeWidth={6}
+                            status={group.completed === group.total && group.total > 0 ? "success" : "normal"}
+                          />
+                          <div className="flex items-center justify-between text-gray-500 mt-1">
+                            <span>Total: {group.total}</span>
+                            <span>Done: {group.completed}</span>
+                            <span>In Prog: {group.inProgress}</span>
+                            <span>Open: {group.open}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <Table
+              columns={groupColumns}
+              dataSource={hierarchicalSummaries}
+              pagination={false}
+              rowKey="key"
+              defaultExpandAllRows={true}
+              size="middle"
+            />
+          )}
         </Card>
       </Col>
     </Row>

@@ -18,6 +18,9 @@ import {
   SettingOutlined,
   DeleteOutlined,
   ClearOutlined,
+  SearchOutlined,
+  CloseOutlined,
+  ArrowLeftOutlined,
 } from "@ant-design/icons";
 import { useSession } from "@/context/SessionContext";
 import TodoTaskTable from "@/components/TodoTask/TodoTaskTable";
@@ -43,12 +46,18 @@ import {
 import { useNavigate } from "react-router-dom";
 import dayjs from "dayjs";
 import "./TodoTask.css";
+import { useIsMobile } from "@/hooks/useIsMobile";
+
 const { Title } = Typography;
 const { TabPane } = Tabs;
 const { Option } = Select;
+
 const TodoTaskPage = () => {
   const { profile } = useSession();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
+  const [showMobileSearch, setShowMobileSearch] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("my-tasks");
   const [viewMode, setViewMode] = useState<"list" | "create" | "edit" | "view">(
     "list",
@@ -400,7 +409,7 @@ const TodoTaskPage = () => {
     return data;
   };
   return (
-    <div className="todo-task-container">
+    <div className="todo-task-container pb-16 sm:pb-0 px-2 sm:px-0">
       <Card
         title={
           <Space>
@@ -412,32 +421,48 @@ const TodoTaskPage = () => {
         }
         extra={
           viewMode === "list" ? (
-            <Space>
-              {hasCreatePermission && (
-                <Button
-                  type="primary"
-                  icon={<PlusOutlined />}
-                  onClick={() => setViewMode("create")}
-                >
-                  Create Task
-                </Button>
-              )}
-              {hasManagePermission && (
-                <Button
-                  icon={<SettingOutlined />}
-                  onClick={() => navigate("/todotask/task-types")}
-                >
-                  Task Types
-                </Button>
-              )}
-            </Space>
+            !isMobile && (
+              <Space>
+                {hasCreatePermission && (
+                  <Button
+                    type="primary"
+                    icon={<PlusOutlined />}
+                    onClick={() => setViewMode("create")}
+                  >
+                    Create Task
+                  </Button>
+                )}
+                {hasManagePermission && (
+                  <Button
+                    icon={<SettingOutlined />}
+                    onClick={() => navigate("/todotask/task-types")}
+                  >
+                    Task Types
+                  </Button>
+                )}
+              </Space>
+            )
           ) : (
-            <Button onClick={() => setViewMode("list")}>Back to List</Button>
+            <Button icon={<ArrowLeftOutlined />} onClick={() => setViewMode("list")}>Back to List</Button>
           )
         }
       >
         {viewMode === "list" && (
           <>
+            {/* Mobile search bar toggle */}
+            {isMobile && showMobileSearch && (
+              <div className="mb-4 px-2 sm:px-0">
+                <Input.Search
+                  placeholder="Search tasks by title, assigned user, type..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  allowClear
+                  autoFocus
+                  className="w-full shadow-sm"
+                />
+              </div>
+            )}
+
             <Tabs
               activeKey={activeTab}
               onChange={(key) => {
@@ -445,6 +470,22 @@ const TodoTaskPage = () => {
                 setFilterStatus("");
                 setFilterUserId("");
               }}
+              renderTabBar={(props, DefaultTabBar) => (
+                <div className="overflow-x-auto whitespace-nowrap px-4 sm:px-0">
+                  <DefaultTabBar {...props} style={{ marginBottom: 0 }} />
+                </div>
+              )}
+              tabBarStyle={
+                isMobile
+                  ? {
+                      overflowX: "auto",
+                      whiteSpace: "nowrap",
+                      marginBottom: 12,
+                      paddingLeft: "16px",
+                      paddingRight: "16px",
+                    }
+                  : undefined
+              }
             >
               <TabPane tab="My Tasks" key="my-tasks">
                 <Space style={{ marginBottom: 16 }} wrap className="flex flex-wrap gap-2">
@@ -508,6 +549,7 @@ const TodoTaskPage = () => {
                   viewType="my"
                   taskData={getFilteredTaskData()}
                   isPending={isLoading}
+                  searchQuery={searchQuery}
                   onViewTask={handleViewTask}
                   onEditTask={handleEditTask}
                   onStatusChange={handleStatusChange}
@@ -581,6 +623,7 @@ const TodoTaskPage = () => {
                     viewType="created"
                     taskData={getFilteredTaskData()}
                     isPending={isLoading}
+                    searchQuery={searchQuery}
                     onViewTask={handleViewTask}
                     onEditTask={handleEditTask}
                     onStatusChange={handleStatusChange}
@@ -652,6 +695,7 @@ const TodoTaskPage = () => {
                   viewType="my"
                   taskData={getFilteredTaskData()}
                   isPending={isLoading}
+                  searchQuery={searchQuery}
                   onViewTask={handleViewTask}
                   onEditTask={handleEditTask}
                   onStatusChange={handleStatusChange}
@@ -752,6 +796,7 @@ const TodoTaskPage = () => {
                     viewType="all"
                     taskData={getFilteredTaskData()}
                     isPending={isLoading}
+                    searchQuery={searchQuery}
                     onViewTask={handleViewTask}
                     onEditTask={handleEditTask}
                     onStatusChange={handleStatusChange}
@@ -808,6 +853,28 @@ const TodoTaskPage = () => {
           />
         )}
       </Card>
+
+      {/* Floating Action Buttons for Mobile */}
+      {isMobile && viewMode === "list" && (
+        <div className="fixed bottom-6 right-5 z-40 flex flex-col items-end gap-3 pointer-events-auto">
+          <button
+            onClick={() => setShowMobileSearch(!showMobileSearch)}
+            className="w-12 h-12 bg-white text-gray-700 rounded-full shadow-lg border border-gray-200 flex items-center justify-center text-lg active:scale-95 transition-all"
+            aria-label="Search Tasks"
+          >
+            {showMobileSearch ? <CloseOutlined /> : <SearchOutlined />}
+          </button>
+          {hasCreatePermission && (
+            <button
+              onClick={() => setViewMode("create")}
+              className="w-14 h-14 bg-blue-600 text-white rounded-full shadow-xl flex items-center justify-center text-2xl active:scale-95 transition-all hover:bg-blue-700"
+              aria-label="Create Task"
+            >
+              <PlusOutlined />
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 };

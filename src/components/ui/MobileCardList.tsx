@@ -47,6 +47,7 @@ export function MobileCardList<T = any>({
           <div
             key={(item as any)?.key ?? (item as any)?.id ?? index}
             className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 transition-shadow hover:shadow-md"
+            style={{ contentVisibility: 'auto', containIntrinsicSize: '0 85px' }}
           >
             {renderCard(item, index)}
           </div>

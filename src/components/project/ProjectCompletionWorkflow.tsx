@@ -14,6 +14,7 @@ import EvaluationForm from '../project-evaluation/EvaluationForm';
 import EvaluationList from '../project-evaluation/EvaluationList';
 import SignoffForm from '../project-signoff/SignoffForm';
 import SignoffDetails from '../project-signoff/SignoffDetails';
+import useIsMobile from '@/hooks/useIsMobile';
 
 const { Text } = Typography;
 
@@ -26,6 +27,7 @@ const ProjectCompletionWorkflow: React.FC<ProjectCompletionWorkflowProps> = ({
   project,
   currentUser
 }) => {
+  const { isMobile } = useIsMobile();
   const [isEvaluationModalOpen, setIsEvaluationModalOpen] = useState(false);
   const [isSignoffModalOpen, setIsSignoffModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<any>(null);
@@ -164,8 +166,17 @@ const ProjectCompletionWorkflow: React.FC<ProjectCompletionWorkflowProps> = ({
 
   return (
     <div>
-      <Card title="Project Completion Workflow" style={{ marginBottom: 16 }}>
-        <Steps current={currentStep} items={steps} />
+      <Card 
+        title="Project Completion Workflow" 
+        style={{ marginBottom: 16 }}
+        bodyStyle={{ padding: isMobile ? '12px 8px' : '24px' }}
+      >
+        <Steps 
+          current={currentStep} 
+          items={steps} 
+          direction={isMobile ? "vertical" : "horizontal"}
+          size={isMobile ? "small" : "default"}
+        />
         
         <div style={{ marginTop: 24 }}>
           {/* Step 1: Mark as Complete */}

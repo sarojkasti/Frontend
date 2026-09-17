@@ -2,6 +2,8 @@ import React from 'react';
 import { Card, Table, Tag, Typography, Empty } from 'antd';
 import { useQuery } from '@tanstack/react-query';
 import { getEvaluationsByProject } from '@/service/project-evaluation.service';
+import useIsMobile from '@/hooks/useIsMobile';
+import { ResponsiveTable } from '@/components/ui/MobileCardList';
 
 const { Text } = Typography;
 
@@ -26,6 +28,7 @@ const ratingLabels: Record<string, string> = {
 };
 
 const EvaluationList: React.FC<EvaluationListProps> = ({ projectId }) => {
+  const { isMobile } = useIsMobile();
   const { data: evaluations, isLoading } = useQuery({
     queryKey: ['project-evaluations', projectId],
     queryFn: () => getEvaluationsByProject(projectId),
@@ -117,17 +120,20 @@ const EvaluationList: React.FC<EvaluationListProps> = ({ projectId }) => {
   ];
 
   return (
-    <Card title="Team Performance Evaluations">
+    <Card 
+      title="Team Performance Evaluations"
+      bodyStyle={{ padding: isMobile ? '12px 8px' : '24px' }}
+    >
       {!evaluations || evaluations.length === 0 ? (
         <Empty description="No evaluations submitted yet" />
       ) : (
-        <Table
+        <ResponsiveTable
           columns={columns}
           dataSource={evaluations}
           rowKey="id"
           loading={isLoading}
           pagination={false}
-          scroll={{ x: 1500 }}
+          scroll={isMobile ? undefined : { x: 1500 }}
         />
       )}
     </Card>

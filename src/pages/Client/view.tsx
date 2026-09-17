@@ -26,6 +26,7 @@ import { useClientById } from '@/hooks/client/useClientById';
 import PortalCredentialsForm from '@/components/Client/portalcredentialsform';
 import ClientProjects from '@/components/Client/ClientProjects';
 import ClientUsersTab from '@/components/Client/ClientUsersTab';
+import useIsMobile from '@/hooks/useIsMobile';
 import dayjs from 'dayjs';
 
 const { TabPane } = Tabs;
@@ -34,6 +35,7 @@ const { Title, Text } = Typography;
 const ClientView: React.FC = () => {
   const { id } = useParams<{ id?: string }>();
   const navigate = useNavigate();
+  const { isMobile } = useIsMobile();
   const { data: client, isLoading } = useClientById({ id: id || '' });
   const [activeTab, setActiveTab] = useState('basic');
   const [copiedPan, setCopiedPan] = useState(false);
@@ -66,9 +68,15 @@ const ClientView: React.FC = () => {
     }
   };
 
-  const formatText = (text?: string) => {
+  const formatText = (text?: any) => {
     if (!text) return '-';
-    return text.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
+    if (typeof text === 'object' && text !== null) {
+      if (text.name) return String(text.name);
+      if (text.label) return String(text.label);
+      if (text.title) return String(text.title);
+      return '-';
+    }
+    return String(text).replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
   };
 
   const formatLegalStatus = (status?: any) => {
@@ -76,7 +84,7 @@ const ClientView: React.FC = () => {
     if (typeof status === 'object' && status.name) {
       return status.name;
     }
-    return formatText(String(status));
+    return formatText(status);
   };
 
   const getStatusTag = (status?: string) => {
@@ -100,31 +108,40 @@ const ClientView: React.FC = () => {
       <Card
         className="shadow-sm border-slate-200"
         style={{ marginBottom: 20, borderRadius: 12, overflow: 'hidden' }}
-        bodyStyle={{ padding: '24px 28px' }}
+        styles={{ body: { padding: isMobile ? '16px' : '24px 28px' } }}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16 }}>
-          {/* Left: Avatar & Main Title */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
+          {/* Left: Back button, Avatar & Main Title */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 10 : 16, flexWrap: 'wrap' }}>
+            <Button
+              type="text"
+              shape="circle"
+              icon={<ArrowLeftOutlined style={{ fontSize: isMobile ? 18 : 20 }} />}
+              onClick={() => navigate('/client')}
+              className="flex items-center justify-center -ml-1 text-gray-600 hover:text-blue-600 hover:bg-gray-100 shrink-0"
+              title="Back to Clients"
+            />
             <Avatar
-              size={72}
+              size={isMobile ? 48 : 64}
               style={{
                 background: 'linear-gradient(135deg, #1677ff 0%, #003eb3 100%)',
-                fontSize: 28,
+                fontSize: isMobile ? 20 : 26,
                 fontWeight: 700,
-                boxShadow: '0 4px 12px rgba(22, 119, 255, 0.3)'
+                boxShadow: '0 4px 12px rgba(22, 119, 255, 0.3)',
+                flexShrink: 0
               }}
             >
               {typeof client.name === 'string' ? client.name.charAt(0).toUpperCase() : 'C'}
             </Avatar>
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                <Title level={2} style={{ margin: 0, color: '#0f172a', fontWeight: 700 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <Title level={isMobile ? 4 : 2} style={{ margin: 0, color: '#0f172a', fontWeight: 700 }}>
                   {client.name}
                 </Title>
                 {getStatusTag(client.status)}
               </div>
               {client.shortName && (
-                <Text type="secondary" style={{ fontSize: 14, fontWeight: 500 }}>
+                <Text type="secondary" style={{ fontSize: 13, fontWeight: 500 }}>
                   Short Name: <Tag color="blue">{client.shortName}</Tag>
                 </Text>
               )}
@@ -132,11 +149,13 @@ const ClientView: React.FC = () => {
           </div>
 
           {/* Right: Actions Header */}
-          <Space size={12}>
-            <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/client')} size="large">
-              Back to Clients
-            </Button>
-            <Button type="primary" icon={<EditOutlined />} onClick={() => navigate(`/client/edit/${id}`)} size="large">
+          <Space size={12} wrap>
+            {!isMobile && (
+              <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/client')} size="middle">
+                Back to Clients
+              </Button>
+            )}
+            <Button type="primary" icon={<EditOutlined />} onClick={() => navigate(`/client/edit/${id}`)} size={isMobile ? "middle" : "middle"}>
               Edit Client
             </Button>
           </Space>

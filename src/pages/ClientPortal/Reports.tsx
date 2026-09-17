@@ -39,10 +39,13 @@ import { ClientPortalProject } from "@/types/project";
 import { formatDistanceToNow } from "date-fns";
 import { useSearchParams } from "react-router-dom";
 import { formatNepaliFiscalYear } from "@/utils/fiscalYear";
+import { useIsMobile } from "@/hooks/useIsMobile";
+import ResponsiveTable from "@/components/ui/MobileCardList";
 
 const { Text } = Typography;
 
 const ClientReports: React.FC = () => {
+  const { isMobile } = useIsMobile();
   const [searchParams, setSearchParams] = useSearchParams();
   const { data: reports, isLoading: reportsLoading } = useMyClientReports();
   const { data: stats, isLoading: statsLoading } = useMyClientReportStats();
@@ -395,6 +398,86 @@ const ClientReports: React.FC = () => {
     }
   ];
 
+  const renderClientPortalReportCard = (record: ClientReportType) => {
+    const isProjectPaymentPending = projects?.some(
+      (p: ClientPortalProject) => p.id === record.projectId && !p.isPaymentDone && !p.isPaymentTemporarilyEnabled
+    );
+    const isDisabled = record.accessStatus !== ReportAccessStatus.ACCESSIBLE || !!isProjectPaymentPending;
+    const files = record.files || [];
+
+    return (
+      <div key={record.id} className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 mb-3">
+        <div className="flex justify-between items-start mb-2">
+          <div className="flex-1 pr-2">
+            <h4 className="font-medium text-gray-900 leading-tight mb-1">{record.title}</h4>
+            <div className="text-xs text-gray-500">
+              {(record as any).customer?.name || ""}
+              {record.project?.name ? ` • ${record.project.name}` : ""}
+            </div>
+          </div>
+          <div>
+            {record.accessStatus === ReportAccessStatus.ACCESSIBLE ? (
+              <Tag color="success" icon={<CheckCircleOutlined />}>Accessible</Tag>
+            ) : record.accessStatus === ReportAccessStatus.PENDING ? (
+              <Tag color="warning" icon={<ClockCircleOutlined />}>Pending</Tag>
+            ) : (
+              <Tag color="error">Revoked</Tag>
+            )}
+          </div>
+        </div>
+
+        {record.description && (
+          <p className="text-xs text-gray-600 mb-2">{record.description}</p>
+        )}
+
+        <div className="flex flex-wrap gap-1 mb-3">
+          {record.documentType?.name && (
+            <Tag className="text-xs">{record.documentType.name}</Tag>
+          )}
+          {record.fiscalYear && (
+            <Tag className="text-xs">FY: {formatNepaliFiscalYear(record.fiscalYear)}</Tag>
+          )}
+        </div>
+
+        <div className="pt-2 border-t border-gray-50 flex justify-between items-center">
+          <span className="text-xs text-gray-400">
+            {record.createdAt ? formatDistanceToNow(new Date(record.createdAt), { addSuffix: true }) : ""}
+          </span>
+          <div>
+            {files.length > 0 ? (
+              <div className="flex flex-col gap-1">
+                {files.map((file) => (
+                  <Button
+                    key={file.id}
+                    type="primary"
+                    size="small"
+                    icon={isDisabled ? <LockOutlined /> : <DownloadOutlined />}
+                    disabled={isDisabled}
+                    loading={downloadingFile}
+                    onClick={() => handleDownloadFile(record, file)}
+                  >
+                    {isDisabled ? "Locked" : file.displayFileName || file.originalFileName || "Download"}
+                  </Button>
+                ))}
+              </div>
+            ) : (
+              <Button
+                type="primary"
+                size="small"
+                icon={isDisabled ? <LockOutlined /> : <DownloadOutlined />}
+                disabled={isDisabled}
+                loading={downloading}
+                onClick={() => handleDownload(record)}
+              >
+                {isDisabled ? "Locked" : "Download"}
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   if (reportsLoading || statsLoading) {
     return (
       <div className="flex justify-center items-center" style={{ minHeight: 400 }}>
@@ -497,16 +580,24 @@ const ClientReports: React.FC = () => {
         }
       >
         {filteredReports && filteredReports.length > 0 ? (
-          <Table
-            dataSource={
-              selectedProjectId === "__none__"
-                ? filteredReports.filter((r: ClientReportType) => !r.projectId)
-                : filteredReports
-            }
-            columns={reportColumns}
-            rowKey="id"
-            pagination={{ pageSize: 15, showSizeChanger: true, showTotal: (total) => `${total} reports` }}
-            tableLayout="fixed"
+          <ResponsiveTable
+            tableProps={{
+              dataSource:
+                selectedProjectId === "__none__"
+                  ? filteredReports.filter((r: ClientReportType) => !r.projectId)
+                  : filteredReports,
+              columns: reportColumns,
+              rowKey: "id",
+              pagination: isMobile
+                ? false
+                : {
+                    pageSize: 15,
+                    showSizeChanger: true,
+                    showTotal: (total) => `${total} reports`,
+                  },
+              tableLayout: "fixed",
+            }}
+            renderMobileCard={renderClientPortalReportCard}
           />
         ) : (
           <Empty description={

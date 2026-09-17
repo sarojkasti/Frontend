@@ -1,20 +1,68 @@
 import { useUser } from "@/hooks/user/useUser";
 import { Role } from "@/pages/Role/type";
-import { EditOutlined, EyeOutlined, SearchOutlined } from "@ant-design/icons";
+import {
+  EditOutlined,
+  EyeOutlined,
+  SearchOutlined,
+  DownOutlined,
+  UpOutlined,
+  UserOutlined
+} from "@ant-design/icons";
 import { Avatar, Button, Card, Table, TableProps, Input, Space, Tooltip } from "antd";
-import { useState, useRef } from "react";
-import { Link } from "react-router-dom";
+import { useState, useRef, useMemo } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { UserType } from "@/types/user";
 import Highlighter from 'react-highlight-words';
 import ResponsiveTable from "@/components/ui/MobileCardList";
 import { Tag } from "antd";
-const UserTable = ({ status, showModal }: { status: string, showModal: any }) => {
+import { useIsMobile } from "@/hooks/useIsMobile";
+
+const UserTable = ({ status, showModal, searchQuery = "" }: { status: string, showModal: any, searchQuery?: string }) => {
+  const navigate = useNavigate();
+  const { isMobile } = useIsMobile();
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
-  const { data: user, isPending } = useUser({ status, limit, page, keywords: "" });
+  const { data: user, isPending } = useUser({
+    status,
+    limit: isMobile ? 100 : limit,
+    page: isMobile ? 1 : page,
+    keywords: searchQuery
+  });
+
+  const filteredUsers = useMemo(() => {
+    const rawUsers: UserType[] = user?.results || [];
+    if (!searchQuery?.trim()) return rawUsers;
+    const q = searchQuery.trim().toLowerCase();
+    return rawUsers.filter((u: any) => {
+      const name = (u.name || "").toLowerCase();
+      const email = (u.email || "").toLowerCase();
+      const username = (u.username || "").toLowerCase();
+      const phone = (u.phoneNumber || u.phone || "").toString().toLowerCase();
+      const empId = (u.employeeId || "").toString().toLowerCase();
+      const roleName = (u.role?.displayName || u.role?.name || "").toLowerCase();
+      const department = (u.profile?.department?.name || "").toLowerCase();
+      return (
+        name.includes(q) ||
+        email.includes(q) ||
+        username.includes(q) ||
+        phone.includes(q) ||
+        empId.includes(q) ||
+        roleName.includes(q) ||
+        department.includes(q)
+      );
+    });
+  }, [user?.results, searchQuery]);
+
   const [searchText, setSearchText] = useState('');
   const [searchedColumn, setSearchedColumn] = useState('');
   const [sortedInfo, setSortedInfo] = useState<any>({});
+  const [expandedIds, setExpandedIds] = useState<string[]>([]);
+  const toggleExpand = (id: string | number) => {
+    const strId = String(id);
+    setExpandedIds((prev) =>
+      prev.includes(strId) ? prev.filter((i) => i !== strId) : [...prev, strId]
+    );
+  };
   const searchInput = useRef<any>(null);
   const handleSearch = (selectedKeys: string[], confirm: () => void, dataIndex: string) => {
     confirm();
@@ -245,51 +293,136 @@ const UserTable = ({ status, showModal }: { status: string, showModal: any }) =>
       name: record.name,
     }),
   };
-  const renderUserCard = (record: UserType) => (
-    <div className="flex flex-col gap-3">
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3 min-w-0">
-          <Avatar src={record.avatar ? `${import.meta.env.VITE_BACKEND_URI}/document/${record.avatar}` : undefined}>
-            {record.name ? record.name[0] : "U"}
-          </Avatar>
-          <div className="min-w-0">
-            <div className="font-semibold text-gray-900 text-sm truncate">{record.name}</div>
-            <div className="text-xs text-gray-500 truncate">{record.email}</div>
+  const renderUserCard = (record: UserType) => {
+    const isExpanded = expandedIds.includes(String(record.id));
+    const roleName = (record.role as any)?.displayName || record.role?.name || "No Role";
+
+    return (
+      <div className="flex flex-col gap-2.5">
+        {/* Tier 1: User Name & Email */}
+        <div>
+          <div
+            onClick={() => navigate(`/user/${record.id}`)}
+            className="font-bold text-base text-gray-900 hover:text-blue-600 hover:underline cursor-pointer truncate"
+            title={record.name}
+          >
+            {record.name}
+          </div>
+          <div className="text-xs text-gray-500 line-clamp-1 mt-0.5">
+            {record.email || "No Email"}
           </div>
         </div>
-        <Tag color="blue" className="shrink-0">{record.role?.name || "User"}</Tag>
+
+        {/* Tier 2: Avatar + Role on Left, Action Buttons on Right */}
+        <div className="flex items-center justify-between gap-2 pt-1 border-t border-gray-100 text-xs">
+          <div className="flex items-center gap-1.5 text-gray-700 min-w-0">
+            <Avatar
+              size={22}
+              icon={<UserOutlined />}
+              src={
+                record.avatar
+                  ? `${import.meta.env.VITE_BACKEND_URI}/document/${record.avatar}`
+                  : undefined
+              }
+              className="bg-blue-600 text-[10px] shrink-0"
+            >
+              {record.name ? record.name[0] : "U"}
+            </Avatar>
+            <span className="font-medium text-gray-700 truncate max-w-[170px]">
+              {roleName}
+            </span>
+          </div>
+
+          {/* Action Icons: View Details, Edit, Dropdown Toggle */}
+          <div className="flex items-center gap-1 shrink-0">
+            <Button
+              type="text"
+              size="small"
+              icon={<EyeOutlined style={{ fontSize: "16px", color: "#0c66e4" }} />}
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(`/user/${record.id}`);
+              }}
+              className="flex items-center justify-center h-8 w-8 rounded-full hover:bg-blue-50 text-blue-600"
+              title="View Details"
+              aria-label="View Details"
+            />
+            <Button
+              type="text"
+              size="small"
+              icon={<EditOutlined style={{ fontSize: "16px", color: "#0c66e4" }} />}
+              onClick={(e) => {
+                e.stopPropagation();
+                showModal(record);
+              }}
+              className="flex items-center justify-center h-8 w-8 rounded-full hover:bg-blue-50 text-blue-600"
+              title="Edit User"
+              aria-label="Edit User"
+            />
+            <Button
+              type="text"
+              size="small"
+              icon={isExpanded ? <UpOutlined /> : <DownOutlined />}
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleExpand(record.id);
+              }}
+              className="text-gray-500 hover:text-blue-600 flex items-center justify-center h-8 w-8 rounded-full hover:bg-gray-100"
+              title="Toggle Details"
+              aria-label="Toggle Details"
+            />
+          </div>
+        </div>
+
+        {/* Revealed Detail Card (when dropdown button clicked) */}
+        {isExpanded && (
+          <div className="mt-2 pt-2.5 border-t border-dashed border-gray-200 flex flex-col gap-2 bg-gray-50/80 rounded-lg p-3 text-xs text-gray-600">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-gray-500 font-medium shrink-0">Employee ID:</span>
+              <span className="font-semibold text-gray-800 text-right">{record.employeeId || "-"}</span>
+            </div>
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-gray-500 font-medium shrink-0">Phone:</span>
+              <span className="font-semibold text-gray-800 text-right">
+                {record.phoneNumber || (record as any).phone || "-"}
+              </span>
+            </div>
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-gray-500 font-medium shrink-0">Status:</span>
+              <Tag color={record.status === "active" ? "success" : "error"}>
+                {record.status ? record.status.charAt(0).toUpperCase() + record.status.slice(1) : "Active"}
+              </Tag>
+            </div>
+          </div>
+        )}
       </div>
-      <div className="flex items-center justify-between pt-2 border-t border-gray-100 text-xs text-gray-600">
-        <div>ID: <span className="font-medium text-gray-800">{record.employeeId || '-'}</span></div>
-        <div>Phone: <span className="font-medium text-gray-800">{record.phone || '-'}</span></div>
-      </div>
-      <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
-        <Link to={`/user/${record.id}`}>
-          <Button size="small" icon={<EyeOutlined style={{ color: '#1677ff' }} />}>View</Button>
-        </Link>
-        <Button size="small" type="primary" icon={<EditOutlined />} onClick={() => showModal(record)}>Edit</Button>
-      </div>
-    </div>
-  );
+    );
+  };
 
   return (
-    <Card styles={{ body: { padding: '12px' } }}>
+    <Card
+      styles={{ body: { padding: isMobile ? 0 : 12 } }}
+      bordered={!isMobile}
+      className={isMobile ? "bg-transparent border-0 shadow-none" : ""}
+    >
       <ResponsiveTable<UserType>
         tableProps={{
           loading: isPending,
-          dataSource: user?.results,
+          dataSource: filteredUsers,
           columns: columns,
-          rowSelection: rowSelection,
+          rowSelection: isMobile ? undefined : rowSelection,
           onChange: handleTableChange,
-          pagination: {
-            current: page,
-            pageSize: limit,
-            total: user?.totalItems || 0,
-            showSizeChanger: true,
-            showQuickJumper: true,
-            pageSizeOptions: [5, 10, 20, 50],
-            showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} items`,
-          },
+          pagination: isMobile
+            ? false
+            : {
+                current: page,
+                pageSize: limit,
+                total: searchQuery?.trim() ? filteredUsers.length : (user?.totalItems || 0),
+                showSizeChanger: true,
+                showQuickJumper: true,
+                pageSizeOptions: [5, 10, 20, 50],
+                showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} items`,
+              },
           size: "small",
           rowKey: "id",
         }}

@@ -5,7 +5,7 @@ import { Link, useNavigate } from "react-router-dom";
 import TableToolbar from "../Table/TableToolbar";
 import { useDeleteWorklog } from "@/hooks/worklog/useDeleteWorklog";
 import { useState, useRef, useEffect, useMemo, type Key } from "react";
-import { SearchOutlined, EditOutlined, DeleteOutlined, CheckOutlined, CloseOutlined, FilterOutlined, ClearOutlined, QuestionCircleOutlined } from "@ant-design/icons";
+import { SearchOutlined, EditOutlined, DeleteOutlined, CheckOutlined, CloseOutlined, FilterOutlined, ClearOutlined, QuestionCircleOutlined, DownOutlined, UpOutlined } from "@ant-design/icons";
 import Highlighter from "react-highlight-words";
 import { useAllWorklog, WorklogFilters } from "@/hooks/worklog/useAllWorklog";
 import { useUser } from "@/hooks/user/useUser";
@@ -16,11 +16,14 @@ import { useSession } from "@/context/SessionContext";
 import { useBulkApproveWorklogs } from "@/hooks/worklog/useBulkApproveWorklogs";
 import { useBulkRejectWorklogs } from "@/hooks/worklog/useBulkRejectWorklogs";
 import { getWorklogType, getWorklogTypeColor, getWorklogTypeDescription, WorklogStatus } from "@/utils/worklogUtils";
+import ResponsiveTable from "@/components/ui/MobileCardList";
+import { useIsMobile } from "@/hooks/useIsMobile";
 
 const { TextArea } = Input;
 
 const AdminWorklogTable = ({ headerControls }: { headerControls?: React.ReactNode }) => {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const { profile } = useSession();
   const [filters, setFilters] = useState<WorklogFilters>({});
   const { data: worklogs, isPending, refetch } = useAllWorklog(filters);
@@ -36,6 +39,13 @@ const AdminWorklogTable = ({ headerControls }: { headerControls?: React.ReactNod
   const [isBulkRejectModalVisible, setIsBulkRejectModalVisible] = useState(false);
   const [bulkRejectedRemark, setBulkRejectedRemark] = useState("");
   const [worklogTypeFilter, setWorklogTypeFilter] = useState<string | undefined>(undefined);
+  const [expandedCardIds, setExpandedCardIds] = useState<string[]>([]);
+  const toggleExpandCard = (id: string | number) => {
+    const strId = String(id);
+    setExpandedCardIds((prev) =>
+      prev.includes(strId) ? prev.filter((i) => i !== strId) : [...prev, strId]
+    );
+  };
   
   // For search functionality
   const [searchText, setSearchText] = useState('');
@@ -349,7 +359,7 @@ const AdminWorklogTable = ({ headerControls }: { headerControls?: React.ReactNod
     setWorklogTypeFilter(undefined);
   };
 
-  const rowSelection = hasRequestedRows && (canBulkApproveWorklogs || canBulkRejectWorklogs)
+  const rowSelection = !isMobile && hasRequestedRows && (canBulkApproveWorklogs || canBulkRejectWorklogs)
     ? {
         selectedRowKeys,
         onChange: (newSelectedRowKeys: Key[]) => setSelectedRowKeys(newSelectedRowKeys),
@@ -626,6 +636,114 @@ const AdminWorklogTable = ({ headerControls }: { headerControls?: React.ReactNod
     return baseColumns;
   };
 
+  const renderAdminWorklogCard = (record: any) => {
+    const isExpanded = expandedCardIds.includes(String(record.id));
+    const dateStr = record?.startTime ? moment(record.startTime).format("YYYY-MM-DD") : "-";
+    const userName = record?.user?.name || "-";
+    const projectName = record?.task?.project?.name || "-";
+    const taskName = record?.task?.name || "-";
+    const duration = record?.time || "-";
+    const status = record?.status || "requested";
+    const worklogType = getWorklogType(record, activeWorkhour);
+
+    return (
+      <div className="flex flex-col gap-2">
+        {/* Main Header Row */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            <div className="font-semibold text-gray-900 text-sm truncate">{userName}</div>
+            <div className="text-xs text-gray-500 truncate">{projectName} &bull; {taskName}</div>
+          </div>
+
+          {/* Action Icons: Edit, Approve/Reject, Toggle Details */}
+          <div className="flex items-center gap-1 shrink-0">
+            <Button
+              type="text"
+              size="small"
+              icon={<EditOutlined style={{ fontSize: "16px", color: "#0c66e4" }} />}
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(`/worklogs/edit/${record.id}`);
+              }}
+              className="flex items-center justify-center h-8 w-8 rounded-full hover:bg-blue-50 text-blue-600"
+              title="Edit Worklog"
+              aria-label="Edit Worklog"
+            />
+            {status === "requested" && (
+              <>
+                <Button
+                  type="text"
+                  size="small"
+                  icon={<CheckOutlined style={{ fontSize: "16px", color: "#52c41a" }} />}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    editWorklog({ id: record.id, status: "approved" });
+                  }}
+                  className="flex items-center justify-center h-8 w-8 rounded-full hover:bg-green-50 text-green-600"
+                  title="Approve"
+                  aria-label="Approve"
+                />
+                <Button
+                  type="text"
+                  size="small"
+                  danger
+                  icon={<CloseOutlined style={{ fontSize: "16px", color: "#ff4d4f" }} />}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    showRejectModal(record.id);
+                  }}
+                  className="flex items-center justify-center h-8 w-8 rounded-full hover:bg-red-50 text-red-600"
+                  title="Reject"
+                  aria-label="Reject"
+                />
+              </>
+            )}
+            <Button
+              type="text"
+              size="small"
+              icon={isExpanded ? <UpOutlined /> : <DownOutlined />}
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleExpandCard(record.id);
+              }}
+              className="text-gray-500 hover:text-blue-600 flex items-center justify-center h-8 w-8 rounded-full hover:bg-gray-100"
+              title="Toggle Details"
+              aria-label="Toggle Details"
+            />
+          </div>
+        </div>
+
+        {/* Revealed Detail Card (when dropdown button clicked) */}
+        {isExpanded && (
+          <div className="mt-2 pt-2.5 border-t border-dashed border-gray-200 flex flex-col gap-2 bg-gray-50/80 rounded-lg p-3 text-xs text-gray-600">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-gray-500 font-medium shrink-0">Date:</span>
+              <span className="font-semibold text-gray-800 text-right">{dateStr}</span>
+            </div>
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-gray-500 font-medium shrink-0">Duration:</span>
+              <span className="font-semibold text-gray-800 text-right">{duration} hrs</span>
+            </div>
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-gray-500 font-medium shrink-0">Type:</span>
+              <Tag color={getWorklogTypeColor(worklogType)} className="m-0 text-[10px]">
+                {worklogType.toUpperCase()}
+              </Tag>
+            </div>
+            {record?.reason && (
+              <div className="pt-1.5 border-t border-gray-200/60">
+                <span className="text-gray-500 font-medium block mb-1">Reason / Notes:</span>
+                <div className="text-gray-700 bg-white p-2 rounded border border-gray-100 break-words">
+                  {record.reason}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <Card className="text-xs" style={{ padding: '0' }} bodyStyle={{ padding: '8px' }}>
       <style>
@@ -871,78 +989,83 @@ const AdminWorklogTable = ({ headerControls }: { headerControls?: React.ReactNod
               </Tooltip>
             </div>
 
-            <Space size="small" style={{ marginLeft: '8px', marginBottom: '2px' }}>
-              {canBulkApproveWorklogs && (
-                <Popconfirm
-                  title="Approve selected worklogs?"
-                  okText="Approve"
-                  cancelText="Cancel"
-                  onConfirm={handleBulkApprove}
-                  disabled={!selectedRowKeys.length}
-                >
-                  <Button
-                    type="primary"
-                    size="small"
-                    loading={isBulkApprovePending}
+            {!isMobile && (
+              <Space size="small" style={{ marginLeft: '8px', marginBottom: '2px' }}>
+                {canBulkApproveWorklogs && (
+                  <Popconfirm
+                    title="Approve selected worklogs?"
+                    okText="Approve"
+                    cancelText="Cancel"
+                    onConfirm={handleBulkApprove}
                     disabled={!selectedRowKeys.length}
-                    style={{ height: '24px' }}
                   >
-                    Approve Selected ({selectedRowKeys.length})
-                  </Button>
-                </Popconfirm>
-              )}
-              {canBulkRejectWorklogs && (
-                <Popconfirm
-                  title="Reject selected worklogs?"
-                  okText="Continue"
-                  cancelText="Cancel"
-                  onConfirm={showBulkRejectModal}
-                  disabled={!selectedRowKeys.length}
-                >
-                  <Button
-                    danger
-                    size="small"
-                    loading={isBulkRejectPending}
+                    <Button
+                      type="primary"
+                      size="small"
+                      loading={isBulkApprovePending}
+                      disabled={!selectedRowKeys.length}
+                      style={{ height: '24px' }}
+                    >
+                      Approve Selected ({selectedRowKeys.length})
+                    </Button>
+                  </Popconfirm>
+                )}
+                {canBulkRejectWorklogs && (
+                  <Popconfirm
+                    title="Reject selected worklogs?"
+                    okText="Continue"
+                    cancelText="Cancel"
+                    onConfirm={showBulkRejectModal}
                     disabled={!selectedRowKeys.length}
-                    style={{ height: '24px' }}
                   >
-                    Reject Selected ({selectedRowKeys.length})
-                  </Button>
-                </Popconfirm>
-              )}
-            </Space>
+                    <Button
+                      danger
+                      size="small"
+                      loading={isBulkRejectPending}
+                      disabled={!selectedRowKeys.length}
+                      style={{ height: '24px' }}
+                    >
+                      Reject Selected ({selectedRowKeys.length})
+                    </Button>
+                  </Popconfirm>
+                )}
+              </Space>
+            )}
           </div>
         </div>
       </Form>
 
       <div className="table-container admin-worklog-table" style={{ overflowX: 'auto', width: '100%' }}>
-        <Table
-          loading={isPending || isEditPending}
-          dataSource={filteredWorklogs || []}
-          columns={getColumns() as any}
-          rowSelection={rowSelection}
-          size="small"
-          className="text-xs compact-table admin-worklog-table"
-          style={{ 
-            fontSize: '10px'
+        <ResponsiveTable
+          tableProps={{
+            loading: isPending || isEditPending,
+            dataSource: filteredWorklogs || [],
+            columns: getColumns() as any,
+            rowSelection: rowSelection,
+            size: "small",
+            className: "text-xs compact-table admin-worklog-table",
+            style: { 
+              fontSize: '10px'
+            },
+            rowClassName: (record: any) => {
+              const worklogType = getWorklogType(record, activeWorkhour);
+              return `compact-row row-${worklogType}`;
+            },
+            onChange: handleTableChange,
+            rowKey: "id",
+            bordered: true,
+            pagination: isMobile ? false : {
+              showSizeChanger: true,
+              showQuickJumper: true,
+              defaultPageSize: 50,
+              pageSizeOptions: [10, 20, 50, 100],
+              showTotal: (total: number, range: [number, number]) => <span style={{ fontSize: '10px' }}>{`${range[0]}-${range[1]} of ${total} items`}</span>,
+              size: 'small'
+            },
+            scroll: { x: 'max-content' },
+            sticky: true,
           }}
-          rowClassName={(record) => {
-            const worklogType = getWorklogType(record, activeWorkhour);
-            return `compact-row row-${worklogType}`;
-          }}
-          onChange={handleTableChange}
-          rowKey="id"
-          bordered
-          pagination={{
-            showSizeChanger: true,
-            showQuickJumper: true,
-            defaultPageSize: 50,
-            pageSizeOptions: [10, 20, 50, 100],
-            showTotal: (total, range) => <span style={{ fontSize: '10px' }}>{`${range[0]}-${range[1]} of ${total} items`}</span>,
-            size: 'small'
-          }}
-          scroll={{ x: 'max-content' }}
-          sticky
+          renderMobileCard={renderAdminWorklogCard}
         />
       </div>
 

@@ -65,7 +65,7 @@ const AllTask = () => {
     setOpen(false);
   };
   return (
-    <div style={{ position: 'relative' }}>
+    <div className="pb-16 sm:pb-0 px-2 sm:px-0" style={{ position: 'relative' }}>
       {/* Search Bar - responsive: centered on desktop, full-width on mobile */}
       <div className={isMobile ? "mb-3 px-1" : ""} style={isMobile ? {} : { 
         position: 'absolute', 
@@ -84,6 +84,22 @@ const AllTask = () => {
       </div>
       <Tabs
         defaultActiveKey="1"
+        renderTabBar={(props, DefaultTabBar) => (
+          <div className="overflow-x-auto whitespace-nowrap px-4 sm:px-0">
+            <DefaultTabBar {...props} style={{ marginBottom: 0 }} />
+          </div>
+        )}
+        tabBarStyle={
+          isMobile
+            ? {
+                overflowX: "auto",
+                whiteSpace: "nowrap",
+                marginBottom: 12,
+                paddingLeft: "16px",
+                paddingRight: "16px",
+              }
+            : undefined
+        }
         tabBarExtraContent={
           !hideAddTask ? (
             <Button 

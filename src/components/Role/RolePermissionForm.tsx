@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { usePermission } from "@/hooks/permission/usePermission";
 import { useRolePermissionById } from "@/hooks/permission/useRolePermissionById";
 import { useUpdateRolePermissions } from "@/hooks/role/useUpdateRolePermissions";
-import { Spin, message, Input, Button, Space, Card, Collapse, Checkbox, Row, Col, Divider } from "antd";
-import { SearchOutlined, SaveOutlined } from "@ant-design/icons";
+import { Spin, message, Input, Button, Space, Card, Collapse, Checkbox, Row, Col, Divider, Alert } from "antd";
+import { SearchOutlined, SaveOutlined, InfoCircleOutlined } from "@ant-design/icons";
 
 const { Search } = Input;
 const { Panel } = Collapse;
@@ -122,6 +122,15 @@ const RolePermissionForm = ({ id }: RolePermissionFormProps) => {
           </Button>
         }
       >
+        {/* Informative banner regarding baseline employee capabilities */}
+        <Alert
+          message="Baseline Employee Self-Service Included"
+          description="Standard employee actions (clocking in/out, viewing assigned projects & tasks, creating personal worklogs, and submitting leave requests) are built into the system by default for all authenticated users. Use this matrix to grant privileged managerial, financial, or administrative permissions."
+          type="info"
+          showIcon
+          className="mb-4"
+        />
+
         {/* Search and Filter Controls */}
         <Space direction="vertical" style={{ width: '100%', marginBottom: '20px' }}>
           <Row gutter={16}>

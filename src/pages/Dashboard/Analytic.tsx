@@ -4,6 +4,7 @@ import { Card, Col, Row } from "antd";
 import Title from "antd/es/typography/Title";
 import Typography from "antd/es/typography/Typography";
 import React from "react";
+import useIsMobile from "@/hooks/useIsMobile";
 import {
     Bar,
     BarChart,
@@ -20,43 +21,72 @@ import {
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#ffc658', '#FF6666'];
 
-const UserRoleChart: React.FC<{ data: any[] }> = ({ data }) => (
-    <ResponsiveContainer width="100%" height={300}>
-        <PieChart>
-            <Pie
-                data={data}
-                cx="40%"
-                cy="50%"
-                innerRadius={60}
-                outerRadius={80}
-                dataKey="value"
-                nameKey="name"
-            >
-                {data.map((entry, index) => (
-                    <Cell
-                        key={`cell-${index}`}
-                        fill={COLORS[index % COLORS.length]}
-                    />
-                ))}
-            </Pie>
-            <Tooltip />
-            <Legend layout="vertical" verticalAlign="middle" align="right" wrapperStyle={{ paddingLeft: '20px' }} />
-        </PieChart>
-    </ResponsiveContainer>
-);
+const UserRoleChart: React.FC<{ data: any[] }> = ({ data }) => {
+    const { isMobile } = useIsMobile();
+    return (
+        <ResponsiveContainer width="100%" height={isMobile ? 260 : 300}>
+            <PieChart>
+                <Pie
+                    data={data}
+                    cx={isMobile ? "35%" : "40%"}
+                    cy="50%"
+                    innerRadius={isMobile ? 45 : 60}
+                    outerRadius={isMobile ? 65 : 80}
+                    dataKey="value"
+                    nameKey="name"
+                >
+                    {data.map((entry, index) => (
+                        <Cell
+                            key={`cell-${index}`}
+                            fill={COLORS[index % COLORS.length]}
+                        />
+                    ))}
+                </Pie>
+                <Tooltip />
+                <Legend 
+                    layout="vertical" 
+                    verticalAlign="middle" 
+                    align="right" 
+                    wrapperStyle={{ 
+                        fontSize: isMobile ? "11px" : "12px",
+                        paddingLeft: isMobile ? "4px" : "20px" 
+                    }} 
+                />
+            </PieChart>
+        </ResponsiveContainer>
+    );
+};
 
-const ProjectNatureChart: React.FC<{ data: any[] }> = ({ data }) => (
-    <ResponsiveContainer width="100%" height={300}>
-        <BarChart data={data} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-            <XAxis dataKey="name" />
-            <YAxis />
-            <Tooltip />
-            <CartesianGrid strokeDasharray="3 3" />
-            <Legend />
-            <Bar dataKey="value" fill="#8884d8" />
-        </BarChart>
-    </ResponsiveContainer>
-);
+const ProjectNatureChart: React.FC<{ data: any[] }> = ({ data }) => {
+    const { isMobile } = useIsMobile();
+    return (
+        <ResponsiveContainer width="100%" height={isMobile ? 260 : 300}>
+            <BarChart 
+                data={data} 
+                margin={{ 
+                    top: 10, 
+                    right: isMobile ? 10 : 30, 
+                    left: isMobile ? -15 : 20, 
+                    bottom: isMobile ? 35 : 10 
+                }}
+            >
+                <XAxis 
+                    dataKey="name" 
+                    tick={{ fontSize: isMobile ? 10 : 12 }}
+                    interval={0}
+                    angle={isMobile ? -25 : 0}
+                    textAnchor={isMobile ? "end" : "middle"}
+                    height={isMobile ? 40 : 30}
+                />
+                <YAxis tick={{ fontSize: isMobile ? 10 : 12 }} />
+                <Tooltip />
+                <CartesianGrid strokeDasharray="3 3" />
+                <Legend wrapperStyle={{ fontSize: isMobile ? "11px" : "12px", paddingTop: "6px" }} />
+                <Bar dataKey="value" fill="#8884d8" radius={[4, 4, 0, 0]} />
+            </BarChart>
+        </ResponsiveContainer>
+    );
+};
 
 
 const formatRole = (role: string) => {
@@ -75,7 +105,7 @@ const formatRole = (role: string) => {
 };
 
 const Analytic = () => {
-
+    const { isMobile } = useIsMobile();
     const { data: users } = useUser({ status: "", limit: 1000, page: 1, keywords: "" });
     // Use "active" status for projects to ensure the backend returns data
     const { data: projectsData } = useProject({ status: "active" });
@@ -119,29 +149,62 @@ const Analytic = () => {
     const projectNatureData = Object.keys(natureMap).map(key => ({ name: key, value: natureMap[key] }));
 
     return (<>
-        <Row gutter={8} style={{ marginBottom: "8px" }}>
+        <Row gutter={[8, 8]} style={{ marginBottom: "12px" }}>
             <Col span={8}>
-                <Card title="Total Users" bordered>
-                    <Title level={4}>{totalUsers}</Title>
-                    <Typography>100%</Typography>
+                <Card 
+                    bordered 
+                    styles={{ body: { padding: isMobile ? "12px 6px" : "16px", textAlign: "center" } }} 
+                    className="rounded-xl shadow-2xs h-full"
+                >
+                    <div className="text-[11px] sm:text-xs font-semibold text-slate-500 truncate" title="Total Users">
+                      Total Users
+                    </div>
+                    <div className="text-xl sm:text-2xl font-bold text-slate-900 mt-1">
+                      {totalUsers}
+                    </div>
+                    <div className="text-[10px] sm:text-xs font-medium text-slate-400 mt-0.5">
+                      100%
+                    </div>
                 </Card>
             </Col>
             <Col span={8}>
-                <Card title="Active Users" bordered>
-                    <Title level={4}>{activeUsers}</Title>
-                    <Typography>{activePercentage}%</Typography>
+                <Card 
+                    bordered 
+                    styles={{ body: { padding: isMobile ? "12px 6px" : "16px", textAlign: "center" } }} 
+                    className="rounded-xl shadow-2xs h-full"
+                >
+                    <div className="text-[11px] sm:text-xs font-semibold text-emerald-600 truncate" title="Active Users">
+                      Active Users
+                    </div>
+                    <div className="text-xl sm:text-2xl font-bold text-slate-900 mt-1">
+                      {activeUsers}
+                    </div>
+                    <div className="text-[10px] sm:text-xs font-medium text-emerald-600/80 mt-0.5">
+                      {activePercentage}%
+                    </div>
                 </Card>
             </Col>
             <Col span={8}>
-                <Card title="Inactive Users" bordered>
-                    <Title level={4}>{inactiveUsers}</Title>
-                    <Typography>{inactivePercentage}%</Typography>
+                <Card 
+                    bordered 
+                    styles={{ body: { padding: isMobile ? "12px 6px" : "16px", textAlign: "center" } }} 
+                    className="rounded-xl shadow-2xs h-full"
+                >
+                    <div className="text-[11px] sm:text-xs font-semibold text-slate-500 truncate" title="Inactive Users">
+                      Inactive Users
+                    </div>
+                    <div className="text-xl sm:text-2xl font-bold text-slate-900 mt-1">
+                      {inactiveUsers}
+                    </div>
+                    <div className="text-[10px] sm:text-xs font-medium text-slate-400 mt-0.5">
+                      {inactivePercentage}%
+                    </div>
                 </Card>
             </Col>
         </Row>
         <Row gutter={[12, 12]}>
             <Col xs={24} lg={12}>
-                <Card title="User Role Distribution" bordered>
+                <Card title="User Role Distribution" bordered styles={{ body: { padding: isMobile ? "12px 8px" : "24px" } }}>
                     {userRoleData.length > 0 ? (
                         <UserRoleChart data={userRoleData} />
                     ) : (
@@ -150,7 +213,7 @@ const Analytic = () => {
                 </Card>
             </Col>
             <Col xs={24} lg={12}>
-                <Card title="Project Nature Distribution" bordered>
+                <Card title="Project Nature Distribution" bordered styles={{ body: { padding: isMobile ? "12px 8px" : "24px" } }}>
                     {projectNatureData.length > 0 ? (
                         <ProjectNatureChart data={projectNatureData} />
                     ) : (

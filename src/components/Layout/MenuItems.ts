@@ -29,28 +29,23 @@ export interface MenuItem {
 }
 
 export const MenuItems = (): MenuProps[] => {
-  const { permissions, profile } = useSession();
+  const { permissionChecker } = useSession();
 
-  const isSuperOrAdmin =
-    profile?.role?.name === "superuser" ||
-    profile?.role?.name === "administrator" ||
-    _.some(permissions, { resource: "admin" });
+  const isSuperOrAdmin = permissionChecker.isSuperAdmin();
 
   const hasReportsPermission =
-    isSuperOrAdmin || _.some(permissions, { resource: "reports" });
+    isSuperOrAdmin || permissionChecker.hasResourceAccess("reports");
 
-  const hasWorklogPagePermission = (permissions || []).some((perm: any) => {
-    if (typeof perm !== "object") return false;
-    const method = perm?.method?.toLowerCase?.();
-    const path = perm?.path;
-    return method === "get" && (path === "/worklogs/user" || path === "/worklogs/allworklog");
-  });
+  const hasWorklogPagePermission =
+    isSuperOrAdmin ||
+    permissionChecker.hasPermission("get", "/worklogs/user") ||
+    permissionChecker.hasPermission("get", "/worklogs/allworklog");
 
   const items = [
     {
       key: "/",
       label: "Home",
-      resource: "user",
+      resource: "default",
       icon: React.createElement(DashboardOutlined),
     },
     {
@@ -62,13 +57,13 @@ export const MenuItems = (): MenuProps[] => {
     {
       key: "/projects",
       label: "Project",
-      resource: "projects",
+      resource: "default",
       icon: React.createElement(ProjectOutlined),
     },
     {
       key: "/calendar",
       label: "Calendar",
-      resource: "calendar",
+      resource: "default",
       icon: React.createElement(CalendarOutlined),
     },
     {
@@ -80,7 +75,7 @@ export const MenuItems = (): MenuProps[] => {
     {
       key: "/tasks",
       label: "Tasks",
-      resource: "tasks",
+      resource: "default",
       icon: React.createElement(ProfileOutlined),
     },
     {
@@ -98,51 +93,32 @@ export const MenuItems = (): MenuProps[] => {
     {
       key: "/worklogs-all",
       label: "Worklogs",
-      resource: "worklogs",
+      resource: "default",
       icon: React.createElement(FieldTimeOutlined),
-      visible: hasWorklogPagePermission,
     },
     {
       key: "/attendance",
       label: "Attendance",
-      resource: "default", // Make attendance available to all authenticated users
+      resource: "default",
       icon: React.createElement(ClockCircleOutlined),
     },
     {
       key: "/leave-management",
       label: "Leave",
-      resource: "leave",
+      resource: "default",
       icon: React.createElement(CoffeeOutlined),
     },
     {
       key: "/notice-board",
       label: "Notice Board",
-      resource: "default", // Make notice board available to all authenticated users
+      resource: "default",
       icon: React.createElement(NotificationOutlined),
     },
     {
       key: "/todotask",
       label: "Todo Tasks",
-      resource: "todo-task",
+      resource: "default",
       icon: React.createElement(CheckSquareOutlined),
-    },
-    {
-      key: "/role",
-      label: "Roles",
-      resource: "admin",
-      icon: React.createElement(TeamOutlined),
-    },
-    {
-      key: "/permission",
-      label: "Permissions",
-      resource: "admin",
-      icon: React.createElement(SafetyOutlined),
-    },
-    {
-      key: "/permission/assign",
-      label: "Assign Permissions",
-      resource: "admin",
-      icon: React.createElement(SettingOutlined),
     },
     {
       key: "/client-reports",
@@ -165,22 +141,23 @@ export const MenuItems = (): MenuProps[] => {
     },
   ];
 
-  const filteredItems = _.filter(items, (item) => {
-    if ((item as any).visible !== undefined) {
-      return (item as any).visible;
-    }
+  const filteredItems = items
+    .filter((item: any) => {
+      if (item.visible !== undefined) {
+        return item.visible;
+      }
 
-    // Always show attendance & notice board for authenticated users
-    if (item.resource === "default") {
-      return true;
-    }
-    // For other items, use original logic
-    return _.some(permissions, { resource: item.resource });
-  }).map((item) => {
-    // Strip custom properties that shouldn't go to DOM
-    const { visible, resource, ...rest } = item;
-    return rest;
-  });
+      // Always show attendance & notice board for authenticated users
+      if (item.resource === "default") {
+        return true;
+      }
+      return permissionChecker.hasResourceAccess(item.resource);
+    })
+    .map((item) => {
+      // Strip custom properties that shouldn't go to DOM
+      const { visible, resource, ...rest } = item;
+      return rest;
+    });
 
   return filteredItems;
 };

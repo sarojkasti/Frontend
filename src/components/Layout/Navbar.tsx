@@ -167,6 +167,9 @@ const Navbar = ({
                   </span>
                 ),
                 key: "logout",
+                onClick: () => {
+                  logout();
+                },
               },
             ],
           }}

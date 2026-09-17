@@ -1,40 +1,61 @@
 import { useSession } from "@/context/SessionContext";
 import { Spin } from "antd";
+import React from "react";
 
-const ProtectedRoute = ({ component, method, resource, path }: any) => {
-    const { permissions, isProfilePending, profile } = useSession();
+interface ProtectedRouteProps {
+  component: React.ReactNode;
+  method?: string;
+  resource?: string;
+  path?: string;
+}
 
-    const isSuperOrAdmin =
-        profile?.role?.name === "superuser" ||
-        profile?.role?.name === "administrator" ||
-        (permissions || []).some((p: any) => typeof p === 'object' && p?.resource === 'admin');
+const BASELINE_GET_RESOURCES = new Set([
+  "default",
+  "attendance",
+  "calendar",
+  "holiday",
+  "notice-board",
+  "todo-task",
+  "leave",
+  "projects",
+  "tasks",
+  "worklogs"
+]);
 
-    // Check if the user has the required permission
-    const hasRequiredPermission = (permissions || []).some((permission: any) => {
-        if (typeof permission === 'object' && permission.method && permission.resource) {
-            // If path is provided, match against it
-            if (path && permission.path) {
-                return permission.method === method && permission.path === path;
-            }
-            // Otherwise match against resource
-            return permission.method === method && permission.resource === resource;
-        } else if (typeof permission === 'string') {
-            // For string-based permissions (format: "resource:method")
-            return permission === `${resource}:${method}` || 
-                   permission === `${resource}_${method}` ||
-                   // For backward compatibility with older permission formats
-                   (permission.includes(resource) && permission.includes(method));
-        }
-        return false;
-    });
-    
-    if (isProfilePending) {
-        return <div className="flex justify-center py-24"><Spin size="large" /></div> 
-    }
+const ProtectedRoute = ({ component, method = "get", resource, path }: ProtectedRouteProps) => {
+  const { isProfilePending, permissionChecker } = useSession();
 
-    const hasAccess = isSuperOrAdmin || hasRequiredPermission;
+  if (isProfilePending) {
+    return (
+      <div className="flex justify-center py-24">
+        <Spin size="large" />
+      </div>
+    );
+  }
 
-    return <>{hasAccess ? component : <>You don't have access to this resource</>}</>
+  // 1. Superuser / administrator bypass
+  if (permissionChecker.isSuperAdmin()) {
+    return <>{component}</>;
+  }
+
+  // 2. Specific route path permission check
+  if (path) {
+    const hasAccess = permissionChecker.hasPermission(method, path);
+    return <>{hasAccess ? component : <div>You don't have access to this resource</div>}</>;
+  }
+
+  // 3. Baseline self-service resources accessible to all authenticated users
+  if (resource === "default" || (method.toLowerCase() === "get" && resource && BASELINE_GET_RESOURCES.has(resource.toLowerCase()))) {
+    return <>{component}</>;
+  }
+
+  // 4. Resource-level check for privileged / management modules
+  if (resource) {
+    const hasAccess = permissionChecker.hasResourceAccess(resource, method);
+    return <>{hasAccess ? component : <div>You don't have access to this resource</div>}</>;
+  }
+
+  return <>{component}</>;
 };
 
 export default ProtectedRoute;

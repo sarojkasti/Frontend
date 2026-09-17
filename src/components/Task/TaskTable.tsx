@@ -8,6 +8,8 @@ import { useProjectTasksWithHierarchy } from "@/hooks/task/useProjectTasksWithHi
 import { useUser } from "@/hooks/user/useUser";
 import { UserType } from "@/hooks/user/type";
 import { TaskType } from "@/types/task";
+import useIsMobile from "@/hooks/useIsMobile";
+import { ResponsiveTable } from "@/components/ui/MobileCardList";
 import {
   EditOutlined,
   DeleteOutlined,
@@ -15,7 +17,13 @@ import {
   CheckOutlined,
   CheckCircleOutlined,
   AppstoreOutlined,
-  FolderOutlined
+  FolderOutlined,
+  PlusOutlined,
+  CalendarOutlined,
+  DownOutlined,
+  UpOutlined,
+  EyeOutlined,
+  RightOutlined
 } from "@ant-design/icons";
 import {
   Avatar,
@@ -147,6 +155,9 @@ const TaskTable = ({
     projectId: projectId as string
   });
 
+  const { isMobile } = useIsMobile();
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const [expandedMobileTaskIds, setExpandedMobileTaskIds] = useState<Record<string, boolean>>({});
   const data = allTasks;
   const [form] = Form.useForm();
   const [bulkForm] = Form.useForm();
@@ -1227,6 +1238,224 @@ const TaskTable = ({
     );
   };
 
+  const renderMobileTaskCard = (task: ExtendedTaskType) => {
+    const isStory = task.taskType === "story";
+    const hasSubtasks = Array.isArray(task.children) && task.children.length > 0;
+    const isExpanded = !!expandedMobileTaskIds[task.id];
+
+    const typeBadge = isStory ? (
+      <Tag color="blue" style={{ margin: 0, fontSize: "11px", borderRadius: 4 }}>Task</Tag>
+    ) : (
+      <Tag color="green" style={{ margin: 0, fontSize: "11px", borderRadius: 4 }}>Subtask</Tag>
+    );
+
+    return (
+      <div className="flex flex-col gap-2.5 py-1">
+        {/* Main Header Row: Title & Action Icons (No status tag on card) */}
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-start gap-1.5 flex-1 min-w-0">
+            <div className="mt-0.5">{typeBadge}</div>
+            <Link
+              to={`/projects/${task.projectId}/tasks/${task.id}`}
+              className="text-sm font-semibold text-gray-900 hover:text-blue-600 line-clamp-2"
+            >
+              {task.name}
+            </Link>
+          </div>
+
+          {/* Action Icons: View Details, Edit, Quick Actions, Dropdown Toggle */}
+          <div className="flex items-center gap-1 shrink-0">
+            <Link to={`/projects/${task.projectId}/tasks/${task.id}`}>
+              <Button
+                type="text"
+                size="small"
+                icon={<EyeOutlined style={{ fontSize: "16px", color: "#0c66e4" }} />}
+                className="flex items-center justify-center h-8 w-8 rounded-full hover:bg-blue-50 text-blue-600"
+                title="View Details"
+                aria-label="View Details"
+              />
+            </Link>
+            <Button
+              type="text"
+              size="small"
+              icon={<EditOutlined style={{ fontSize: "16px", color: "#0c66e4" }} />}
+              onClick={() => handleEditClick(task)}
+              className="flex items-center justify-center h-8 w-8 rounded-full hover:bg-blue-50 text-blue-600"
+              title="Edit Task"
+              aria-label="Edit Task"
+            />
+            {task.status === "in_progress" && canMarkComplete && (
+              <Popconfirm
+                title="Mark Complete"
+                description="Mark this task as complete?"
+                onConfirm={() => handleSingleMarkComplete(task)}
+                okText="Yes"
+                cancelText="No"
+                okButtonProps={{ style: { backgroundColor: "#52c41a", borderColor: "#52c41a" } }}
+              >
+                <Button
+                  size="small"
+                  type="text"
+                  icon={<CheckOutlined style={{ color: "#52c41a", fontSize: "15px" }} />}
+                  className="flex items-center justify-center h-8 w-8 rounded-full hover:bg-green-50 text-green-600"
+                  loading={isMarkingComplete}
+                  title="Mark Complete"
+                  aria-label="Mark Complete"
+                />
+              </Popconfirm>
+            )}
+            {canDeleteTask && (
+              <Popconfirm
+                title="Delete Task"
+                description="Are you sure to delete this task?"
+                onConfirm={() => handleDeleteTask(String(task.id))}
+                okText="Yes"
+                cancelText="No"
+                okButtonProps={{ danger: true }}
+              >
+                <Button
+                  size="small"
+                  type="text"
+                  danger
+                  icon={<DeleteOutlined style={{ fontSize: "15px", color: "#ff4d4f" }} />}
+                  className="flex items-center justify-center h-8 w-8 rounded-full hover:bg-red-50 text-red-600"
+                  title="Delete Task"
+                  aria-label="Delete Task"
+                />
+              </Popconfirm>
+            )}
+            <Button
+              type="text"
+              size="small"
+              icon={isExpanded ? <UpOutlined /> : <DownOutlined />}
+              onClick={() =>
+                setExpandedMobileTaskIds((prev) => ({
+                  ...prev,
+                  [task.id]: !prev[task.id]
+                }))
+              }
+              className="text-gray-500 hover:text-blue-600 flex items-center justify-center h-8 w-8 rounded-full hover:bg-gray-100"
+              title="Toggle Details"
+              aria-label="Toggle Details"
+            />
+          </div>
+        </div>
+
+        {/* Revealed Detail Card (when dropdown button clicked) */}
+        {isExpanded && (
+          <div className="mt-2 pt-2.5 border-t border-dashed border-gray-200 flex flex-col gap-2.5 bg-gray-50/80 rounded-lg p-3 text-xs text-gray-600">
+            {/* Due Date & Assignees */}
+            <div className="flex items-center justify-between text-xs text-gray-500">
+              <div className="flex items-center gap-1.5">
+                <span className="text-gray-400 font-medium">Assignee:</span>
+                {task.assignees && task.assignees.length > 0 ? (
+                  <Avatar.Group
+                    max={{
+                      count: 2,
+                      style: { color: "#f56a00", backgroundColor: "#fde3cf", fontSize: 10, width: 22, height: 22, lineHeight: "22px" }
+                    }}
+                  >
+                    {task.assignees.map((user: any) => (
+                      <Tooltip key={user.id} title={user.username || user.name || getUserDisplayName(user)}>
+                        <Avatar style={{ backgroundColor: "#87d068", width: 22, height: 22, fontSize: 11, lineHeight: "22px" }}>
+                          {(user.username || user.name || "U").charAt(0).toUpperCase()}
+                        </Avatar>
+                      </Tooltip>
+                    ))}
+                  </Avatar.Group>
+                ) : (
+                  <span className="text-gray-400 italic">Unassigned</span>
+                )}
+              </div>
+
+              <div className="flex items-center gap-1 font-medium text-gray-700">
+                <CalendarOutlined className="text-gray-400" />
+                <span>{task.dueDate ? moment(task.dueDate).format("YYYY-MM-DD") : "No due date"}</span>
+              </div>
+            </div>
+
+            {/* Verification Badges & Actions if Done */}
+            {task.status === "done" && (
+              <div className="flex items-center gap-2 pt-1 flex-wrap">
+                {task.secondVerifiedBy ? (
+                  <Tag color="green" style={{ fontSize: "11px", borderRadius: 4 }}>✓✓ 2nd Verified</Tag>
+                ) : task.firstVerifiedBy ? (
+                  <Tag color="blue" style={{ fontSize: "11px", borderRadius: 4 }}>✓ 1st Verified</Tag>
+                ) : null}
+
+                {!task.firstVerifiedBy && hasFirstVerifyPermission && (
+                  <Button
+                    type="link"
+                    size="small"
+                    onClick={() => handleSingleFirstVerify(task)}
+                    disabled={isFirstVerifying}
+                    style={{ padding: 0, fontSize: "12px", height: "auto" }}
+                  >
+                    ✓ 1st Verify
+                  </Button>
+                )}
+                {task.firstVerifiedBy && !task.secondVerifiedBy && hasSecondVerifyPermission && (
+                  <Button
+                    type="link"
+                    size="small"
+                    onClick={() => handleSingleSecondVerify(task)}
+                    disabled={isSecondVerifying}
+                    style={{ color: "#722ed1", padding: 0, fontSize: "12px", height: "auto" }}
+                  >
+                    ✓ 2nd Verify
+                  </Button>
+                )}
+              </div>
+            )}
+
+            {/* Subtasks Accordion Inside Drawer */}
+            {hasSubtasks && (
+              <div className="flex flex-col gap-1.5 pt-1 border-t border-gray-200/60">
+                <span className="font-medium text-gray-600">Subtasks ({task.children!.length}):</span>
+                <div className="flex flex-col gap-2 pl-2 border-l-2 border-blue-200 mt-1">
+                  {task.children!.map((sub: any) => (
+                    <div key={sub.id} className="bg-white rounded-lg p-2 border border-gray-200 shadow-2xs">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-start gap-1 min-w-0">
+                          <Tag color="green" style={{ margin: 0, fontSize: "10px", borderRadius: 3 }}>Sub</Tag>
+                          <Link
+                            to={`/projects/${sub.projectId}/tasks/${sub.id}`}
+                            className="text-xs font-medium text-gray-800 hover:text-blue-600 line-clamp-1"
+                          >
+                            {sub.name}
+                          </Link>
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <Link to={`/projects/${sub.projectId}/tasks/${sub.id}`}>
+                            <Button
+                              size="small"
+                              type="text"
+                              icon={<EyeOutlined style={{ color: "#0c66e4", fontSize: 13 }} />}
+                              className="h-6 w-6 p-0"
+                              title="View Details"
+                            />
+                          </Link>
+                          <Button
+                            size="small"
+                            type="text"
+                            icon={<EditOutlined style={{ color: "#1890ff", fontSize: 13 }} />}
+                            onClick={() => handleEditClick(sub)}
+                            className="h-6 w-6 p-0"
+                            title="Edit Subtask"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const columns = useMemo(
     () => [
       {
@@ -1638,9 +1867,9 @@ const TaskTable = ({
 
   return (
     <>
-      <Card>
+      <Card bodyStyle={isMobile ? { padding: "12px 8px" } : undefined}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", gap: "16px", marginBottom: 16, flexWrap: "wrap" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap", flex: 1 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap", flex: 1, width: isMobile ? "100%" : "auto" }}>
             <Radio.Group
               value={activeTab}
               onChange={(e) => {
@@ -1648,84 +1877,105 @@ const TaskTable = ({
                 setSelectedRowKeys([]);
               }}
               buttonStyle="solid"
+              className={isMobile ? "w-full flex" : ""}
+              style={isMobile ? { width: "100%", display: "flex" } : undefined}
             >
-              <Radio.Button value="open">To Do</Radio.Button>
-              <Radio.Button value="in_progress">Doing</Radio.Button>
-              <Radio.Button value="done">Completed</Radio.Button>
+              <Radio.Button value="open" style={isMobile ? { flex: 1, textAlign: "center" } : undefined}>To Do</Radio.Button>
+              <Radio.Button value="in_progress" style={isMobile ? { flex: 1, textAlign: "center" } : undefined}>Doing</Radio.Button>
+              <Radio.Button value="done" style={isMobile ? { flex: 1, textAlign: "center" } : undefined}>Completed</Radio.Button>
             </Radio.Group>
 
-            <Button type="primary" onClick={handleSetDueDate} disabled={selectedRowKeys.length === 0}>
-              Set Due Date
-            </Button>
-            <Button type="primary" onClick={handleAssign} disabled={selectedRowKeys.length === 0}>
-              Assign
-            </Button>
-
-            {hasCompleteAllPermission && (
-              <Button
-                type="primary"
-                onClick={openCompleteAllTasksModal}
-                loading={isCompletingAllTasks}
-                style={{ backgroundColor: "#fa8c16", borderColor: "#fa8c16" }}
-              >
-                Complete All Task
-              </Button>
-            )}
-
-            {hasInProgressTasks && !hasOpenTasks && canMarkComplete && (
-              <Button
-                type="primary"
-                onClick={handleMarkComplete}
-                disabled={selectedRowKeys.length === 0}
-                loading={isMarkingComplete}
-                icon={<CheckOutlined />}
-                style={{ backgroundColor: "#52c41a", borderColor: "#52c41a" }}
-              >
-                Mark Complete
-              </Button>
-            )}
-
-            {hasDoneTasks && !hasOpenTasks && (
+            {!isMobile && (
               <>
-                <Button
-                  onClick={handleFirstVerify}
-                  disabled={selectedRowKeys.length === 0}
-                  loading={isFirstVerifying}
-                  icon={<CheckCircleOutlined />}
-                  style={{ backgroundColor: "#1890ff", borderColor: "#1890ff", color: "white" }}
-                >
-                  First Verify
+                <Button type="primary" onClick={handleSetDueDate} disabled={selectedRowKeys.length === 0}>
+                  Set Due Date
                 </Button>
-                <Button
-                  onClick={handleSecondVerify}
-                  disabled={selectedRowKeys.length === 0}
-                  loading={isSecondVerifying}
-                  icon={<CheckCircleOutlined />}
-                  style={{ backgroundColor: "#722ed1", borderColor: "#722ed1", color: "white" }}
-                >
-                  Second Verify
+                <Button type="primary" onClick={handleAssign} disabled={selectedRowKeys.length === 0}>
+                  Assign
                 </Button>
+
+                {hasCompleteAllPermission && (
+                  <Button
+                    type="primary"
+                    onClick={openCompleteAllTasksModal}
+                    loading={isCompletingAllTasks}
+                    style={{ backgroundColor: "#fa8c16", borderColor: "#fa8c16" }}
+                  >
+                    Complete All Task
+                  </Button>
+                )}
+
+                {hasInProgressTasks && !hasOpenTasks && canMarkComplete && (
+                  <Button
+                    type="primary"
+                    onClick={handleMarkComplete}
+                    disabled={selectedRowKeys.length === 0}
+                    loading={isMarkingComplete}
+                    icon={<CheckOutlined />}
+                    style={{ backgroundColor: "#52c41a", borderColor: "#52c41a" }}
+                  >
+                    Mark Complete
+                  </Button>
+                )}
+
+                {hasDoneTasks && !hasOpenTasks && (
+                  <>
+                    <Button
+                      onClick={handleFirstVerify}
+                      disabled={selectedRowKeys.length === 0}
+                      loading={isFirstVerifying}
+                      icon={<CheckCircleOutlined />}
+                      style={{ backgroundColor: "#1890ff", borderColor: "#1890ff", color: "white" }}
+                    >
+                      First Verify
+                    </Button>
+                    <Button
+                      onClick={handleSecondVerify}
+                      disabled={selectedRowKeys.length === 0}
+                      loading={isSecondVerifying}
+                      icon={<CheckCircleOutlined />}
+                      style={{ backgroundColor: "#722ed1", borderColor: "#722ed1", color: "white" }}
+                    >
+                      Second Verify
+                    </Button>
+                  </>
+                )}
+
+                <Input.Search
+                  placeholder="🔍 Search all fields (name, type, tasksuper, group, status)..."
+                  allowClear
+                  value={globalSearchText}
+                  onChange={(e) => handleGlobalSearch(e.target.value)}
+                  onSearch={(value) => handleGlobalSearch(value)}
+                  style={{ width: 300 }}
+                />
               </>
             )}
-
-            <Input.Search
-              placeholder="🔍 Search all fields (name, type, tasksuper, group, status)..."
-              allowClear
-              value={globalSearchText}
-              onChange={(e) => handleGlobalSearch(e.target.value)}
-              onSearch={(value) => handleGlobalSearch(value)}
-              style={{ width: 300 }}
-            />
           </div>
 
           <div>
-            {!hideAddTask && (
+            {!isMobile && !hideAddTask && (
               <Button type="primary" onClick={() => showModal()}>
                 Add Task
               </Button>
             )}
           </div>
         </div>
+
+        {/* Mobile Search Bar toggled by FAB */}
+        {isMobile && mobileSearchOpen && (
+          <div style={{ marginBottom: 16 }}>
+            <Input.Search
+              placeholder="🔍 Search tasks (name, type, status)..."
+              allowClear
+              value={globalSearchText}
+              onChange={(e) => handleGlobalSearch(e.target.value)}
+              onSearch={(value) => handleGlobalSearch(value)}
+              style={{ width: "100%" }}
+              autoFocus
+            />
+          </div>
+        )}
 
         {(searchText || globalSearchText) && (
           <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: 16 }}>
@@ -1811,16 +2061,17 @@ const TaskTable = ({
                           overflow: "hidden"
                         }}
                       >
-                        <Table
+                        <ResponsiveTable
                           loading={loading}
                           components={{ body: { cell: EditableCell } }}
                           columns={mergedColumns}
                           dataSource={groupItem.tasks}
-                          rowSelection={rowSelection}
+                          rowSelection={isMobile ? undefined : rowSelection}
                           rowKey="id"
                           size="small"
                           bordered={false}
                           pagination={false}
+                          renderMobileCard={renderMobileTaskCard}
                           expandable={{
                             defaultExpandAllRows: true,
                             expandRowByClick: false,
@@ -1930,6 +2181,51 @@ const TaskTable = ({
           </Form.Item>
         </Form>
       </Modal>
+
+      {/* Floating Search Button for Mobile View */}
+      {isMobile && (
+        <div className={`fixed ${!hideAddTask ? "bottom-20" : "bottom-6"} right-5 z-40`}>
+          <Button
+            shape="circle"
+            size="large"
+            icon={<SearchOutlined style={{ fontSize: "18px" }} />}
+            onClick={() => setMobileSearchOpen((prev) => !prev)}
+            className="shadow-xl flex items-center justify-center hover:scale-105 active:scale-95 transition-all duration-200"
+            style={{
+              width: "46px",
+              height: "46px",
+              backgroundColor: mobileSearchOpen ? "#0c66e4" : "#ffffff",
+              color: mobileSearchOpen ? "#ffffff" : "#334155",
+              borderColor: mobileSearchOpen ? "#0c66e4" : "#e2e8f0",
+              boxShadow: "0 4px 14px rgba(0, 0, 0, 0.15)",
+            }}
+          />
+        </div>
+      )}
+
+      {/* Floating Add Task Button for Mobile View */}
+      {isMobile && !hideAddTask && (
+        <div className="fixed bottom-6 right-5 z-40">
+          <Button
+            type="primary"
+            shape="round"
+            size="large"
+            icon={<PlusOutlined style={{ fontSize: "16px" }} />}
+            onClick={() => showModal()}
+            className="shadow-2xl flex items-center gap-1.5 font-medium hover:scale-105 active:scale-95 transition-all duration-200"
+            style={{
+              height: "46px",
+              paddingLeft: "16px",
+              paddingRight: "18px",
+              fontSize: "14px",
+              backgroundColor: "#0c66e4",
+              boxShadow: "0 6px 20px rgba(12, 102, 228, 0.4)",
+            }}
+          >
+            Add Task
+          </Button>
+        </div>
+      )}
     </>
   );
 };

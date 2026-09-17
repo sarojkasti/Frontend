@@ -17,7 +17,9 @@ import ProjectWorklogs from './ProjectWorklogs';
 import DsaManager from './dsa/DsaManager';
 import { useUser } from '@/hooks/user/useUser';
 import { editProject, exportProjectExcel } from '@/service/project.service';
-import { DownloadOutlined } from '@ant-design/icons';
+import { DownloadOutlined, ArrowLeftOutlined } from '@ant-design/icons';
+import { useNavigate } from 'react-router-dom';
+import useIsMobile from '@/hooks/useIsMobile';
 
 interface ProjectDetailProps {
   project: ProjectType;
@@ -25,6 +27,8 @@ interface ProjectDetailProps {
 }
 
 const ProjectDetailComponent = ({ project, loading }: ProjectDetailProps) => {
+  const navigate = useNavigate();
+  const { isMobile } = useIsMobile();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<any>(null);
   const [activeTabKey, setActiveTabKey] = useState('1');
@@ -280,9 +284,24 @@ const ProjectDetailComponent = ({ project, loading }: ProjectDetailProps) => {
       </Modal>
       <Col span={24}>
         <Card 
-          title={name ?? ''}
+          title={
+            <div className="flex items-center gap-2">
+              <Button
+                type="text"
+                shape="circle"
+                icon={<ArrowLeftOutlined style={{ fontSize: 16 }} />}
+                onClick={() => navigate('/projects')}
+                className="flex items-center justify-center -ml-1 text-gray-600 hover:text-blue-600 hover:bg-gray-100"
+                title="Back to Projects"
+              />
+              <span className="text-base sm:text-lg font-semibold truncate block max-w-[240px] sm:max-w-none">
+                {name ?? ''}
+              </span>
+            </div>
+          }
+          bodyStyle={{ padding: isMobile ? '12px 8px' : '20px 24px' }}
           extra={
-            userRole === 'superuser' ? (
+            !isMobile && userRole === 'superuser' ? (
               <Button 
                 type="primary" 
                 icon={<DownloadOutlined />} 
@@ -294,7 +313,27 @@ const ProjectDetailComponent = ({ project, loading }: ProjectDetailProps) => {
             ) : null
           }
         >
-          <Tabs activeKey={activeTabKey} onChange={setActiveTabKey} items={tabItems} />
+          <Tabs 
+            activeKey={activeTabKey} 
+            onChange={setActiveTabKey} 
+            items={tabItems}
+            renderTabBar={(props, DefaultTabBar) => (
+              <div className="overflow-x-auto whitespace-nowrap px-4 sm:px-0">
+                <DefaultTabBar {...props} style={{ marginBottom: 0 }} />
+              </div>
+            )}
+            tabBarStyle={
+              isMobile
+                ? {
+                    overflowX: 'auto',
+                    whiteSpace: 'nowrap',
+                    marginBottom: 12,
+                    paddingLeft: '16px',
+                    paddingRight: '16px',
+                  }
+                : undefined
+            }
+          />
         </Card>
       </Col>
     </Row>

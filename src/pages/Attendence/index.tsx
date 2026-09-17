@@ -11,19 +11,26 @@ import {
     Badge,
     Button,
     Alert,
-    DatePicker
+    DatePicker,
+    Input
 } from "antd";
 import { 
-    ClockCircleOutlined
+    ClockCircleOutlined,
+    SearchOutlined,
+    CloseOutlined
 } from "@ant-design/icons";
 import { useState, useEffect } from "react";
 import moment from "moment";
+import { useIsMobile } from "@/hooks/useIsMobile";
 
 const { Option } = Select;
 const { Title } = Typography;
 
 const Attendence = () => {
     const { profile } = useSession();
+    const isMobile = useIsMobile();
+    const [showMobileSearch, setShowMobileSearch] = useState(false);
+    const [searchQuery, setSearchQuery] = useState("");
     const [personalViewUserId, setPersonalViewUserId] = useState<string>(""); // For the personal section
     const [selectedDate, setSelectedDate] = useState<string>(""); // For date-wise view
     const [hasInitializedDefaultView, setHasInitializedDefaultView] = useState(false);
@@ -163,6 +170,20 @@ const Attendence = () => {
                         </Space>
                     }
                 >
+                    {/* Mobile search bar toggle */}
+                    {isMobile && showMobileSearch && (
+                        <div className="mb-4">
+                            <Input.Search
+                                placeholder="Search attendance by user, date, time, location..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                allowClear
+                                autoFocus
+                                className="w-full shadow-sm"
+                            />
+                        </div>
+                    )}
+
                     {personalViewUserId === "all-today" && isSuperUser ? (
                         <Space direction="vertical" style={{ width: '100%' }}>
                             <Alert
@@ -176,7 +197,7 @@ const Attendence = () => {
                                 }
                                 style={{ marginBottom: 16 }}
                             />
-                            <AttendenceTable viewType="today-all" />
+                            <AttendenceTable viewType="today-all" searchQuery={searchQuery} />
                         </Space>
                     ) : personalViewUserId === "date-wise" && isSuperUser ? (
                         <Space direction="vertical" style={{ width: '100%' }}>
@@ -206,6 +227,7 @@ const Attendence = () => {
                                     selectedDate={selectedDate}
                                     dateWiseData={dateWiseAttendance}
                                     isPending={dateWisePending}
+                                    searchQuery={searchQuery}
                                 />
                             )}
                         </Space>
@@ -222,13 +244,26 @@ const Attendence = () => {
                                 }
                                 style={{ marginBottom: 16 }}
                             />
-                            <AttendenceTable viewType="by-user" selectedUserId={personalViewUserId} />
+                            <AttendenceTable viewType="by-user" selectedUserId={personalViewUserId} searchQuery={searchQuery} />
                         </Space>
                     ) : (
-                        <AttendenceTable viewType="my" />
+                        <AttendenceTable viewType="my" searchQuery={searchQuery} />
                     )}
                 </Card>
             </Space>
+
+            {/* Floating Search Action Button on Mobile */}
+            {isMobile && (
+                <div className="fixed bottom-6 right-5 z-40">
+                    <button
+                        onClick={() => setShowMobileSearch(!showMobileSearch)}
+                        className="w-14 h-14 bg-blue-600 text-white rounded-full shadow-xl flex items-center justify-center text-xl active:scale-95 transition-all hover:bg-blue-700"
+                        aria-label="Search Attendance"
+                    >
+                        {showMobileSearch ? <CloseOutlined /> : <SearchOutlined />}
+                    </button>
+                </div>
+            )}
         </>
     );
 };

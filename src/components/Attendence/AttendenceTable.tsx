@@ -3,12 +3,13 @@ import { useAllUsersAttendence } from "@/hooks/attendence/useAllUsersAttendence"
 import { useTodayAllUsersAttendence } from "@/hooks/attendence/useTodayAllUsersAttendence";
 import { useAttendenceById } from "@/hooks/attendence/useAttendenceById";
 import { Table, Button, Input, Space, Tooltip } from "antd";
-import { SearchOutlined, EnvironmentOutlined } from "@ant-design/icons";
+import { SearchOutlined, EnvironmentOutlined, DownOutlined, UpOutlined } from "@ant-design/icons";
 import moment from "moment";
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import Highlighter from 'react-highlight-words';
 import ResponsiveTable from "@/components/ui/MobileCardList";
 import { Tag } from "antd";
+import { useIsMobile } from "@/hooks/useIsMobile";
 
 interface AttendenceTableProps {
   viewType?: 'my' | 'all-users' | 'today-all' | 'by-user' | 'date-wise';
@@ -16,6 +17,7 @@ interface AttendenceTableProps {
   selectedDate?: string;
   dateWiseData?: any[];
   isPending?: boolean;
+  searchQuery?: string;
 }
 
 const AttendenceTable = ({ 
@@ -23,14 +25,23 @@ const AttendenceTable = ({
   selectedUserId,
   selectedDate,
   dateWiseData,
-  isPending: externalPending
+  isPending: externalPending,
+  searchQuery
 }: AttendenceTableProps) => {
+  const isMobile = useIsMobile();
   const [searchText, setSearchText] = useState('');
   const [searchedColumn, setSearchedColumn] = useState('');
   const [sortedInfo, setSortedInfo] = useState<any>({
     order: 'descend',
     columnKey: 'date',
   });
+  const [expandedCardIds, setExpandedCardIds] = useState<string[]>([]);
+  const toggleExpandCard = (id: string | number) => {
+    const strId = String(id);
+    setExpandedCardIds((prev) =>
+      prev.includes(strId) ? prev.filter((i) => i !== strId) : [...prev, strId]
+    );
+  };
   const searchInput = useRef<any>(null);
 
   // Get attendance data and loading state from the custom hooks based on view type
@@ -366,6 +377,26 @@ const AttendenceTable = ({
     landmarkName: item.landmarkName || getLandmarkName(item.latitude, item.longitude),
   }));
 
+  const filteredAttendence = useMemo(() => {
+    if (!updatedAttendence) return [];
+    if (!searchQuery?.trim()) return updatedAttendence;
+    const q = searchQuery.toLowerCase();
+    return updatedAttendence.filter((item: any) => {
+      const userName = item?.user?.name || item?.user?.email || "";
+      const date = item?.date || "";
+      const clockIn = item?.clockIn || "";
+      const clockOut = item?.clockOut || "";
+      const location = item?.inLocation || item?.landmarkName || "";
+      return (
+        userName.toLowerCase().includes(q) ||
+        date.toLowerCase().includes(q) ||
+        clockIn.toLowerCase().includes(q) ||
+        clockOut.toLowerCase().includes(q) ||
+        location.toLowerCase().includes(q)
+      );
+    });
+  }, [updatedAttendence, searchQuery]);
+
   // Expanded row render to show clock-out history and worklog details
   const expandedRowRender = (record: any) => {
     const historyColumns = [
@@ -507,23 +538,36 @@ const AttendenceTable = ({
   };
 
   const renderAttendenceCard = (record: any) => {
+    const isExpanded = expandedCardIds.includes(String(record.id));
     const duration = calculateDuration(record.clockIn, record.clockOut);
     const isClockedIn = !!record.clockIn && !record.clockOut;
 
     return (
       <div className="flex flex-col gap-2.5">
+        {/* Main Header Row */}
         <div className="flex justify-between items-start gap-2 border-b border-gray-100 pb-2">
-          <div>
-            <div className="font-semibold text-gray-900 text-sm">
+          <div className="min-w-0 flex-1">
+            <div className="font-semibold text-gray-900 text-sm truncate">
               {record.user?.name || record.date}
             </div>
             {record.user?.name && (
-              <div className="text-xs text-gray-500">{record.date}</div>
+              <div className="text-xs text-gray-500 truncate">{record.date}</div>
             )}
           </div>
-          <Tag color={isClockedIn ? "green" : record.clockOut ? "blue" : "default"}>
-            {isClockedIn ? "Working" : record.clockOut ? "Completed" : "Inactive"}
-          </Tag>
+          <div className="flex items-center gap-1 shrink-0">
+            <Button
+              type="text"
+              size="small"
+              icon={isExpanded ? <UpOutlined /> : <DownOutlined />}
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleExpandCard(record.id);
+              }}
+              className="text-gray-500 hover:text-blue-600 flex items-center justify-center h-8 w-8 rounded-full hover:bg-gray-100"
+              title="Toggle Details"
+              aria-label="Toggle Details"
+            />
+          </div>
         </div>
 
         <div className="grid grid-cols-2 gap-2 text-xs py-1">
@@ -542,10 +586,41 @@ const AttendenceTable = ({
           {record.overtime && <span>OT: <strong className="text-blue-600">{record.overtime}</strong></span>}
         </div>
 
-        {record.inLocation && (
-          <div className="text-xs text-gray-500 flex items-center gap-1 pt-1 border-t border-gray-100">
-            <EnvironmentOutlined className="text-blue-500" />
-            <span className="truncate">{record.inLocation}</span>
+        {/* Revealed Detail Card (when dropdown button clicked) */}
+        {isExpanded && (
+          <div className="mt-2 pt-2.5 border-t border-dashed border-gray-200 flex flex-col gap-2 bg-gray-50/80 rounded-lg p-3 text-xs text-gray-600">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-gray-500 font-medium shrink-0">Status:</span>
+              <Tag color={isClockedIn ? "green" : record.clockOut ? "blue" : "default"} className="m-0 text-[10px]">
+                {isClockedIn ? "Working" : record.clockOut ? "Completed" : "Inactive"}
+              </Tag>
+            </div>
+            {record.inLocation && (
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-gray-500 font-medium shrink-0">In Location:</span>
+                <span className="font-semibold text-gray-800 text-right truncate max-w-[180px]">{record.inLocation}</span>
+              </div>
+            )}
+            {record.outLocation && (
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-gray-500 font-medium shrink-0">Out Location:</span>
+                <span className="font-semibold text-gray-800 text-right truncate max-w-[180px]">{record.outLocation}</span>
+              </div>
+            )}
+            {record.overtime && (
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-gray-500 font-medium shrink-0">Overtime:</span>
+                <span className="font-semibold text-blue-600 text-right">{record.overtime}</span>
+              </div>
+            )}
+            {record.remarks && (
+              <div className="pt-1.5 border-t border-gray-200/60">
+                <span className="text-gray-500 font-medium block mb-1">Remarks:</span>
+                <div className="text-gray-700 bg-white p-2 rounded border border-gray-100 break-words">
+                  {record.remarks}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -557,7 +632,7 @@ const AttendenceTable = ({
       <ResponsiveTable
         tableProps={{
           loading: isPending,
-          dataSource: updatedAttendence,
+          dataSource: filteredAttendence,
           columns: columns,
           size: "middle",
           rowKey: "id",
@@ -567,7 +642,7 @@ const AttendenceTable = ({
             rowExpandable: (record: any) => record.history && record.history.length > 0,
           },
           onChange: handleTableChange,
-          pagination: {
+          pagination: isMobile ? false : {
             showSizeChanger: true,
             showQuickJumper: true,
             pageSizeOptions: [5, 10, 20, 50],

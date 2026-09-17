@@ -11,6 +11,7 @@ export default defineConfig({
   base: "/",
   resolve: {
     alias: {
+      "@": "/src",
       "@/components": "/src/components",
       "@/hooks": "/src/hooks",
       "@/utils": "/src/utils",
@@ -18,6 +19,7 @@ export default defineConfig({
       "@/pages": "/src/pages",
       "@/context": "/src/context",
       "@/types": "/src/types",
+      "@/lib": "/src/lib",
     },
   },
   server: {

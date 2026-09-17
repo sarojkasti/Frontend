@@ -43,6 +43,7 @@ import { Link, useNavigate } from "react-router-dom";
 import Highlighter from "react-highlight-words";
 import moment from "moment";
 import dayjs from "dayjs";
+import useIsMobile from "@/hooks/useIsMobile";
 import { ResponsiveTable } from "@/components/ui/MobileCardList";
 import {
   ALL_PROJECT_COLUMNS,
@@ -120,6 +121,7 @@ interface ProjectTableProps {
   setSelectedProjects: (projects: ProjectType[]) => void;
   showFilters: boolean;
   visibleColumnKeys?: string[];
+  searchQuery?: string;
 }
 
 const ProjectTable: React.FC<ProjectTableProps> = ({
@@ -129,9 +131,11 @@ const ProjectTable: React.FC<ProjectTableProps> = ({
   selectedProjects,
   setSelectedProjects,
   showFilters,
-  visibleColumnKeys = ALL_PROJECT_COLUMNS.filter(c => c.defaultVisible).map(c => c.key)
+  visibleColumnKeys = ALL_PROJECT_COLUMNS.filter(c => c.defaultVisible).map(c => c.key),
+  searchQuery = ""
 }) => {
   const navigate = useNavigate();
+  const { isMobile } = useIsMobile();
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(getSavedPageSize());
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>(getSavedColumnWidths());
@@ -379,6 +383,23 @@ const ProjectTable: React.FC<ProjectTableProps> = ({
     if (advancedFilters.status) {
       filtered = filtered.filter((p: any) => p.status === advancedFilters.status);
     }
+    const effectiveSearch = (searchQuery || advancedFilters.search || "").trim().toLowerCase();
+    if (effectiveSearch) {
+      filtered = filtered.filter((p: any) => {
+        const name = (p.name || "").toLowerCase();
+        const client = (p.customer?.name || p.customer?.companyName || "").toLowerCase();
+        const manager = (p.projectManager?.name || "").toLowerCase();
+        const lead = (p.projectLead?.name || "").toLowerCase();
+        const nature = (typeof p.natureOfWork === "object" ? p.natureOfWork?.name || "" : p.natureOfWork || "").toLowerCase();
+        return (
+          name.includes(effectiveSearch) ||
+          client.includes(effectiveSearch) ||
+          manager.includes(effectiveSearch) ||
+          lead.includes(effectiveSearch) ||
+          nature.includes(effectiveSearch)
+        );
+      });
+    }
     return filtered.sort((a: any, b: any) => {
       const aCreatedAt = a.createdAt ? new Date(a.createdAt).getTime() : 0;
       const bCreatedAt = b.createdAt ? new Date(b.createdAt).getTime() : 0;
@@ -387,7 +408,7 @@ const ProjectTable: React.FC<ProjectTableProps> = ({
       }
       return (a.name || "").localeCompare(b.name || "");
     });
-  }, [project, advancedFilters]);
+  }, [project, advancedFilters, searchQuery]);
 
   // Helper to calculate project completion details (fixes 0/0 tasks bug)
   const getProjectCompletionData = (record: any) => {
@@ -903,55 +924,46 @@ const ProjectTable: React.FC<ProjectTableProps> = ({
     const nature = typeof record.natureOfWork === "object" ? record.natureOfWork?.name : record.natureOfWork;
     const group = typeof record.natureOfWorkGroup === "object" ? record.natureOfWorkGroup?.name : record.natureOfWorkGroup;
     const natureText = group && nature ? `${group} • ${nature}` : (nature || group || "General");
-    const isSelected = selectedProjects.some((p) => p.id === record.id);
+
+    const otherMembers = Array.isArray(record.users)
+      ? record.users.filter((u: any) => u.id !== record.projectManager?.id)
+      : [];
+
+    const startDateValue = record.startingDate || record.startDate;
+    const formattedStartDate = startDateValue
+      ? (() => {
+          try {
+            const d = dayjs(startDateValue);
+            const dual = DualDateConverter.createDualDate(d);
+            const nepaliStr = dual.nepali.format("YYYY-MM-DD", "np");
+            return `${nepaliStr} (${d.format("YYYY-MM-DD")})`;
+          } catch (e) {
+            return dayjs(startDateValue).isValid()
+              ? dayjs(startDateValue).format("YYYY-MM-DD")
+              : String(startDateValue);
+          }
+        })()
+      : "N/A";
 
     return (
       <div className="flex flex-col gap-2.5">
-        {/* Main Header: Selection Checkbox + Project Name + Dropdown Expand Button */}
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex items-start gap-2 flex-1 min-w-0">
-            <Checkbox
-              checked={isSelected}
-              onChange={(e) => {
-                if (e.target.checked) {
-                  setSelectedProjects([...selectedProjects, record]);
-                } else {
-                  setSelectedProjects(selectedProjects.filter((p) => p.id !== record.id));
-                }
-              }}
-              className="mt-0.5"
-            />
-            <div className="flex-1 min-w-0">
-              <div
-                onClick={() => navigate(`/projects/${record.id}`)}
-                className="font-semibold text-base text-blue-600 hover:text-blue-800 hover:underline cursor-pointer truncate"
-                title={record.name}
-              >
-                {record.name}
-              </div>
-              <div className="text-xs text-gray-500 line-clamp-1 mt-0.5">
-                {natureText}
-              </div>
-            </div>
+        {/* Main Header: Project Name & Nature of Work */}
+        <div>
+          <div
+            onClick={() => navigate(`/projects/${record.id}`)}
+            className="font-semibold text-base text-blue-600 hover:text-blue-800 hover:underline cursor-pointer truncate"
+            title={record.name}
+          >
+            {record.name}
           </div>
-
-          {/* Dropdown toggle button to reveal little more detail card */}
-          <Button
-            type="text"
-            size="small"
-            icon={isExpanded ? <UpOutlined /> : <DownOutlined />}
-            onClick={(e) => {
-              e.stopPropagation();
-              toggleExpand(record.id);
-            }}
-            className="text-gray-500 hover:text-blue-600 flex items-center justify-center h-7 w-7 rounded-full hover:bg-gray-100"
-            aria-label="Toggle details"
-          />
+          <div className="text-xs text-gray-500 line-clamp-1 mt-0.5">
+            {natureText}
+          </div>
         </div>
 
-        {/* Project Manager Icon and Name */}
+        {/* Project Manager Row: Manager Info on left, Eye & Toggle Arrow on right */}
         <div className="flex items-center justify-between gap-2 pt-1 border-t border-gray-100 text-xs">
-          <div className="flex items-center gap-1.5 text-gray-700">
+          <div className="flex items-center gap-1.5 text-gray-700 min-w-0">
             <Avatar
               size={22}
               icon={<UserOutlined />}
@@ -960,96 +972,141 @@ const ProjectTable: React.FC<ProjectTableProps> = ({
                   ? `${import.meta.env.VITE_BACKEND_URI}/document/${record.projectManager?.avatar}`
                   : undefined
               }
-              className="bg-blue-600 text-[10px]"
+              className="bg-blue-600 text-[10px] shrink-0"
             >
               {record.projectManager?.name?.[0]}
             </Avatar>
-            <span className="font-medium text-gray-700 truncate max-w-[140px]">
+            <span className="font-medium text-gray-700 truncate max-w-[170px]">
               {record.projectManager?.name || "No Manager"}
             </span>
           </div>
 
-          {/* Quick status pill */}
-          <Tag
-            color={
-              record.status === "completed"
-                ? "green"
-                : record.status === "active"
-                ? "blue"
-                : record.status === "suspended"
-                ? "warning"
-                : "default"
-            }
-            className="m-0 text-[11px] capitalize"
-          >
-            {record.status || "active"}
-          </Tag>
+          {/* Action Icons alongside Project Manager: Detailed View, Edit, Dropdown Toggle */}
+          <div className="flex items-center gap-1 shrink-0">
+            <Button
+              type="text"
+              size="small"
+              icon={<EyeOutlined style={{ fontSize: "16px", color: "#0c66e4" }} />}
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(`/projects/${record.id}`);
+              }}
+              className="flex items-center justify-center h-8 w-8 rounded-full hover:bg-blue-50 text-blue-600"
+              title="View Detail"
+              aria-label="View Detail"
+            />
+            {checkPermissionForComponent(permissions, "projects", "patch", "/projects/:id") && (
+              <Button
+                type="text"
+                size="small"
+                icon={<EditOutlined style={{ fontSize: "16px", color: "#0c66e4" }} />}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  showModal(record);
+                }}
+                className="flex items-center justify-center h-8 w-8 rounded-full hover:bg-blue-50 text-blue-600"
+                title="Edit Project"
+                aria-label="Edit Project"
+              />
+            )}
+            <Button
+              type="text"
+              size="small"
+              icon={isExpanded ? <UpOutlined /> : <DownOutlined />}
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleExpand(record.id);
+              }}
+              className="text-gray-500 hover:text-blue-600 flex items-center justify-center h-8 w-8 rounded-full hover:bg-gray-100"
+              title="Toggle details"
+              aria-label="Toggle details"
+            />
+          </div>
         </div>
 
-        {/* Revealed Little More Detail Card (when dropdown button clicked) */}
+        {/* Revealed Detail Card (when dropdown button clicked) */}
         {isExpanded && (
-          <div className="mt-2 pt-2.5 border-t border-dashed border-gray-200 flex flex-col gap-2 bg-gray-50/70 rounded-lg p-2.5 text-xs text-gray-600">
-            {record.customer?.name && (
-              <div className="flex justify-between">
-                <span className="text-gray-500">Client:</span>
-                <span className="font-medium text-gray-800">{record.customer?.name}</span>
-              </div>
-            )}
+          <div className="mt-2 pt-2.5 border-t border-dashed border-gray-200 flex flex-col gap-2.5 bg-gray-50/80 rounded-lg p-3 text-xs text-gray-600">
+            {/* Client */}
+            <div className="flex items-start justify-between gap-3 text-xs">
+              <span className="text-gray-500 font-medium shrink-0">Client:</span>
+              <span className="font-semibold text-gray-800 text-right break-words">
+                {record.customer?.name || "N/A"}
+              </span>
+            </div>
 
-            {(record.startDate || record.endDate) && (
-              <div className="flex justify-between">
-                <span className="text-gray-500">Timeline:</span>
-                <span className="font-medium text-gray-800">
-                  {record.startDate ? dayjs(record.startDate).format("YYYY-MM-DD") : "N/A"} ~{" "}
-                  {record.endDate ? dayjs(record.endDate).format("YYYY-MM-DD") : "N/A"}
+            {/* Start Date */}
+            <div className="flex items-center justify-between gap-3 text-xs">
+              <span className="text-gray-500 font-medium shrink-0">Start Date:</span>
+              <span className="font-semibold text-gray-800 text-right">
+                {formattedStartDate}
+              </span>
+            </div>
+
+            {/* Other Members */}
+            <div className="flex flex-col gap-1.5 pt-0.5">
+              <div className="flex justify-between items-center text-gray-500">
+                <span className="font-medium">Other Members:</span>
+                <span className="text-gray-400 text-[11px]">
+                  {otherMembers.length > 0 ? `${otherMembers.length} assigned` : "None"}
                 </span>
               </div>
-            )}
-
-            {record.completion !== undefined && (
-              <div className="flex flex-col gap-1">
-                <div className="flex justify-between text-gray-500">
-                  <span>Progress:</span>
-                  <span className="font-medium text-gray-800">{record.completion || 0}%</span>
+              {otherMembers.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 items-center">
+                  {otherMembers.map((member: any) => (
+                    <span
+                      key={member.id}
+                      className="inline-flex items-center gap-1 bg-white border border-gray-200 rounded-full px-2 py-0.5 text-[11px] text-gray-700 shadow-2xs"
+                    >
+                      <Avatar
+                        size={16}
+                        src={
+                          member.avatar
+                            ? `${import.meta.env.VITE_BACKEND_URI}/document/${member.avatar}`
+                            : undefined
+                        }
+                        className="bg-blue-600 text-[9px]"
+                      >
+                        {member.name?.[0] || "U"}
+                      </Avatar>
+                      <span className="truncate max-w-[110px]">{member.name}</span>
+                    </span>
+                  ))}
                 </div>
+              )}
+            </div>
+
+            {/* Tasks */}
+            <div className="flex flex-col gap-1 pt-0.5">
+              <div className="flex justify-between items-center text-gray-500">
+                <span className="font-medium">Tasks:</span>
+                <span className="font-semibold text-gray-800">
+                  {record.taskCompletionStats?.total !== undefined && record.taskCompletionStats.total > 0
+                    ? `${record.taskCompletionStats.completed || 0} / ${record.taskCompletionStats.total} completed`
+                    : record.completion !== undefined
+                    ? `${record.completion}% progress`
+                    : "No tasks"}
+                </span>
+              </div>
+              {record.taskCompletionStats?.total !== undefined && record.taskCompletionStats.total > 0 ? (
+                <Progress
+                  percent={Math.round(
+                    ((record.taskCompletionStats.completed || 0) / record.taskCompletionStats.total) * 100
+                  )}
+                  size="small"
+                  status={
+                    record.taskCompletionStats.completed === record.taskCompletionStats.total
+                      ? "success"
+                      : "active"
+                  }
+                />
+              ) : record.completion !== undefined ? (
                 <Progress
                   percent={record.completion || 0}
                   size="small"
                   status={record.completion === 100 ? "success" : "active"}
                 />
-              </div>
-            )}
-
-            <div className="flex justify-between items-center text-gray-500 pt-1">
-              <span>Team:</span>
-              <span className="font-medium text-gray-800">
-                <TeamOutlined className="mr-1" />
-                {record.users?.length || 0} assigned ({record.activeUsers?.length || 0} active)
-              </span>
-            </div>
-
-            {/* Quick action buttons */}
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-gray-200">
-              {checkPermissionForComponent(permissions, "project", "edit") && (
-                <Button
-                  size="small"
-                  icon={<EditOutlined />}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    showModal(record);
-                  }}
-                >
-                  Edit
-                </Button>
-              )}
-              <Button
-                type="primary"
-                size="small"
-                icon={<EyeOutlined />}
-                onClick={() => navigate(`/projects/${record.id}`)}
-              >
-                View Project
-              </Button>
+              ) : null}
             </div>
           </div>
         )}
@@ -1059,7 +1116,11 @@ const ProjectTable: React.FC<ProjectTableProps> = ({
 
   return (
     <>
-      <Card bodyStyle={{ padding: 12 }}>
+      <Card
+        styles={{ body: { padding: isMobile ? 0 : 12 } }}
+        bordered={!isMobile}
+        className={isMobile ? "bg-transparent border-0 shadow-none" : ""}
+      >
         <ResponsiveTable
           components={{
             header: {
@@ -1067,7 +1128,7 @@ const ProjectTable: React.FC<ProjectTableProps> = ({
             },
           }}
           loading={isPending}
-          pagination={paginationOptions}
+          pagination={isMobile ? false : paginationOptions}
           rowSelection={rowSelection}
           showSorterTooltip={true}
           dataSource={filteredProject}
