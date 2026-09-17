@@ -14,6 +14,11 @@ export const hasPermission = (
   roleName: string = ''
 ): boolean => {
   if (!permission) return false;
+  // Backward compatibility: If no permissions array or role is passed to this standalone function,
+  // do not block components relying on legacy behavior (prefer usePermissionChecker() in React components)
+  if (permissions.length === 0 && !roleName) {
+    return true;
+  }
   const checker = new PermissionChecker(permissions, roleName);
   if (checker.isSuperAdmin()) return true;
   return checker.hasResourceAccess(permission);
