@@ -10,7 +10,7 @@ const { Title } = Typography;
 const NoticeBoardPage = () => {
   const { profile, permissions } = useSession();
   const navigate = useNavigate();
-  const isMobile = useIsMobile();
+  const { isMobile } = useIsMobile();
 
   // Better permission check based on the actual permission system
   const roleName = (profile?.role as any)?.name || "";

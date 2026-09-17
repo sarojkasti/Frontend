@@ -76,7 +76,7 @@ const LeaveManagement: React.FC<LeaveManagementProps> = ({ userId: profileUserId
   const { profile, permissions } = useSession();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const isMobile = useIsMobile();
+  const { isMobile } = useIsMobile();
   const userId = profileUserId || (profile as any)?.id;
 
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);

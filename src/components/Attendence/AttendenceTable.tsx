@@ -28,7 +28,7 @@ const AttendenceTable = ({
   isPending: externalPending,
   searchQuery
 }: AttendenceTableProps) => {
-  const isMobile = useIsMobile();
+  const { isMobile } = useIsMobile();
   const [searchText, setSearchText] = useState('');
   const [searchedColumn, setSearchedColumn] = useState('');
   const [sortedInfo, setSortedInfo] = useState<any>({

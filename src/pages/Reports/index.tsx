@@ -1067,11 +1067,15 @@ const ReportsPage: React.FC = () => {
           onChange={setActiveTab}
           type="line"
           size="middle"
-          renderTabBar={(props, DefaultTabBar) => (
-            <div className="overflow-x-auto whitespace-nowrap px-4 sm:px-0">
-              <DefaultTabBar {...props} style={{ marginBottom: 0 }} />
-            </div>
-          )}
+          renderTabBar={
+            isMobile
+              ? (props, DefaultTabBar) => (
+                  <div className="overflow-x-auto whitespace-nowrap px-4 sm:px-0">
+                    <DefaultTabBar {...props} style={{ marginBottom: 0 }} />
+                  </div>
+                )
+              : undefined
+          }
           tabBarStyle={
             isMobile
               ? {

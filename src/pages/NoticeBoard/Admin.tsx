@@ -17,7 +17,7 @@ const NoticeBoardAdmin = () => {
   const { mutateAsync: deleteNoticeBoard } = useDeleteNoticeBoard();
   const { profile } = useSession();
   const navigate = useNavigate();
-  const isMobile = useIsMobile();
+  const { isMobile } = useIsMobile();
   
   const [selectedNotice, setSelectedNotice] = useState<string | null>(null);
   const [detailVisible, setDetailVisible] = useState(false);

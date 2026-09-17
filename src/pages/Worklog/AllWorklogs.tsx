@@ -10,7 +10,7 @@ import { useIsMobile } from "@/hooks/useIsMobile";
 const AllWorklogs = () => {
   const { profile } = useSession();
   const navigate = useNavigate();
-  const isMobile = useIsMobile();
+  const { isMobile } = useIsMobile();
   const [showMobileSearch, setShowMobileSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const profilePermissions = (profile as any)?.role?.permission;
@@ -103,11 +103,15 @@ const AllWorklogs = () => {
       <Tabs
         defaultActiveKey="1"
         items={tabItems}
-        renderTabBar={(props, DefaultTabBar) => (
-          <div className="overflow-x-auto whitespace-nowrap px-4 sm:px-0">
-            <DefaultTabBar {...props} style={{ marginBottom: 0 }} />
-          </div>
-        )}
+        renderTabBar={
+          isMobile
+            ? (props, DefaultTabBar) => (
+                <div className="overflow-x-auto whitespace-nowrap px-4 sm:px-0">
+                  <DefaultTabBar {...props} style={{ marginBottom: 0 }} />
+                </div>
+              )
+            : undefined
+        }
         tabBarStyle={
           isMobile
             ? {

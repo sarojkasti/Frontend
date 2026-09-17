@@ -23,7 +23,7 @@ const { TextArea } = Input;
 
 const AdminWorklogTable = ({ headerControls }: { headerControls?: React.ReactNode }) => {
   const navigate = useNavigate();
-  const isMobile = useIsMobile();
+  const { isMobile } = useIsMobile();
   const { profile } = useSession();
   const [filters, setFilters] = useState<WorklogFilters>({});
   const { data: worklogs, isPending, refetch } = useAllWorklog(filters);

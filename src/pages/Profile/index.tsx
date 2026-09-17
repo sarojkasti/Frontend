@@ -12,7 +12,7 @@ interface ProfileProps {
 
 const Profile: React.FC<ProfileProps> = ({ component: Component }) => {
     const { id } = useParams();
-    const isMobile = useIsMobile();
+    const { isMobile } = useIsMobile();
 
     return (
         <Card>

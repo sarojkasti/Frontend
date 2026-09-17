@@ -251,7 +251,7 @@ interface IncomingWorklogTableProps {
 
 const IncomingWorklogTable = ({ status, searchQuery }: IncomingWorklogTableProps) => {
   const navigate = useNavigate();
-  const isMobile = useIsMobile();
+  const { isMobile } = useIsMobile();
   const { profile } = useSession();
   const currentUserId = (profile as any)?.id;
   const { data: worklogs, isPending } = useWorklogbyUser(status);

@@ -229,7 +229,7 @@ interface AllWorklogTableProps {
 
 const AllWorklogTable = ({ status, searchQuery }: AllWorklogTableProps) => {
   const navigate = useNavigate();
-  const isMobile = useIsMobile();
+  const { isMobile } = useIsMobile();
   const { data: worklogs, isPending } = useWorklog(status);
   const { isPending: isEditPending } = useEditWorklog();
   const { mutate: deleteWorklog } = useDeleteWorklog();

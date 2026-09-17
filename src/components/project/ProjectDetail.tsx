@@ -317,11 +317,15 @@ const ProjectDetailComponent = ({ project, loading }: ProjectDetailProps) => {
             activeKey={activeTabKey} 
             onChange={setActiveTabKey} 
             items={tabItems}
-            renderTabBar={(props, DefaultTabBar) => (
-              <div className="overflow-x-auto whitespace-nowrap px-4 sm:px-0">
-                <DefaultTabBar {...props} style={{ marginBottom: 0 }} />
-              </div>
-            )}
+            renderTabBar={
+              isMobile
+                ? (props, DefaultTabBar) => (
+                    <div className="overflow-x-auto whitespace-nowrap px-4 sm:px-0">
+                      <DefaultTabBar {...props} style={{ marginBottom: 0 }} />
+                    </div>
+                  )
+                : undefined
+            }
             tabBarStyle={
               isMobile
                 ? {

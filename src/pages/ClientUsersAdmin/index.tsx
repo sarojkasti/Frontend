@@ -48,7 +48,7 @@ const { Title, Text } = Typography;
 const { Option } = Select;
 
 const ClientUsersAdmin: React.FC = () => {
-  const isMobile = useIsMobile();
+  const { isMobile } = useIsMobile();
   const navigate = useNavigate();
   const [showMobileSearch, setShowMobileSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");

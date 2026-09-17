@@ -28,7 +28,7 @@ const { Title } = Typography;
 
 const Attendence = () => {
     const { profile } = useSession();
-    const isMobile = useIsMobile();
+    const { isMobile } = useIsMobile();
     const [showMobileSearch, setShowMobileSearch] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
     const [personalViewUserId, setPersonalViewUserId] = useState<string>(""); // For the personal section

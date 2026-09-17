@@ -10,7 +10,7 @@ import { useIsMobile } from "@/hooks/useIsMobile";
 const WorklogAdmin = () => {
   const { profile } = useSession();
   const navigate = useNavigate();
-  const isMobile = useIsMobile();
+  const { isMobile } = useIsMobile();
   const profilePermissions = (profile as any)?.role?.permission;
   
   // Check if user has permission to access all worklog page
@@ -35,23 +35,16 @@ const WorklogAdmin = () => {
   }
   
   const viewControls = (
-    <div className="flex flex-wrap items-center gap-2">
-      <Radio.Group 
-        value={viewMode} 
-        onChange={(e) => setViewMode(e.target.value)}
-        optionType="button"
-        buttonStyle="solid"
-        size={isMobile ? "small" : "middle"}
-      >
-        <Radio.Button value="list">List</Radio.Button>
-        <Radio.Button value="calendar">Calendar</Radio.Button>
-      </Radio.Group>
-      {!isMobile && (
-        <Button type="primary" onClick={() => navigate("/worklogs-all")}>
-          Back to My Worklogs
-        </Button>
-      )}
-    </div>
+    <Radio.Group 
+      value={viewMode} 
+      onChange={(e) => setViewMode(e.target.value)}
+      optionType="button"
+      buttonStyle="solid"
+      size={isMobile ? "small" : "middle"}
+    >
+      <Radio.Button value="list">List</Radio.Button>
+      <Radio.Button value="calendar">Calendar</Radio.Button>
+    </Radio.Group>
   );
 
   return (
@@ -69,13 +62,10 @@ const WorklogAdmin = () => {
       </div>
       {viewMode === 'calendar' ? (
         <div className="mb-4">
-          <div className="flex justify-end mb-4">
-            {viewControls}
-          </div>
           <WorklogCalendar />
         </div>
       ) : (
-        <AdminWorklogTable headerControls={viewControls} />
+        <AdminWorklogTable />
       )}
     </div>
   );

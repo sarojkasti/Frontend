@@ -69,7 +69,7 @@ const TodoTaskTable = ({
     onStatusChange,
     onDeleteTask
 }: TodoTaskTableProps) => {
-    const isMobile = useIsMobile();
+    const { isMobile } = useIsMobile();
     const { profile } = useSession();
     const [remarkModalVisible, setRemarkModalVisible] = useState(false);
     const [selectedTask, setSelectedTask] = useState<TodoTask | null>(null);

@@ -66,11 +66,15 @@ const User: React.FC = () => {
             </div>
           ) : null
         }
-        renderTabBar={(props, DefaultTabBar) => (
-          <div className="overflow-x-auto whitespace-nowrap px-4 sm:px-0">
-            <DefaultTabBar {...props} style={{ marginBottom: 0 }} />
-          </div>
-        )}
+        renderTabBar={
+          isMobile
+            ? (props, DefaultTabBar) => (
+                <div className="overflow-x-auto whitespace-nowrap px-4 sm:px-0">
+                  <DefaultTabBar {...props} style={{ marginBottom: 0 }} />
+                </div>
+              )
+            : undefined
+        }
         tabBarStyle={
           isMobile
             ? {
