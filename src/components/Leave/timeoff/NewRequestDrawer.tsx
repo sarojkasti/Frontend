@@ -11,6 +11,7 @@ import {
   Tag,
   Alert,
   Typography,
+  Radio,
   message,
 } from "antd";
 import dayjs, { Dayjs } from "dayjs";
@@ -56,6 +57,12 @@ const NewRequestDrawer: React.FC<Props> = ({ open, onClose }) => {
   const [bsPick, setBsPick] = useState<NepaliDate | undefined>();
   const [adPick, setAdPick] = useState<Dayjs | null>(null);
 
+  // Fractional Leave state
+  const [isFractional, setIsFractional] = useState<boolean>(false);
+  const [fractionalType, setFractionalType] = useState<"first_half" | "second_half">(
+    "first_half"
+  );
+
   // remaining balance for the selected type
   const remaining = useMemo(() => {
     const bal = balances.find((b) => b.leaveType?.name === typeName);
@@ -90,9 +97,18 @@ const NewRequestDrawer: React.FC<Props> = ({ open, onClose }) => {
       endAd = dates[dates.length - 1];
     }
 
-    const days = mode === "custom" ? dates.length : inclusiveDays(startAd, endAd);
-    return { startAd, endAd, dates, days };
-  }, [mode, system, range, bsFrom, bsTo, customDates]);
+    const isSingleDay =
+      (mode === "custom" && dates.length === 1) ||
+      (mode === "range" && !!startAd && startAd === endAd);
+
+    let days = mode === "custom" ? dates.length : inclusiveDays(startAd, endAd);
+
+    if (isSingleDay && isFractional) {
+      days = 0.5;
+    }
+
+    return { startAd, endAd, dates, days, isSingleDay };
+  }, [mode, system, range, bsFrom, bsTo, customDates, isFractional]);
 
   const exceeds = remaining !== undefined && resolved.days > remaining;
   const canSubmit =
@@ -124,6 +140,8 @@ const NewRequestDrawer: React.FC<Props> = ({ open, onClose }) => {
     setBsTo(undefined);
     setCustomDates([]);
     setMode("range");
+    setIsFractional(false);
+    setFractionalType("first_half");
   };
 
   const handleSubmit = async () => {
@@ -138,6 +156,9 @@ const NewRequestDrawer: React.FC<Props> = ({ open, onClose }) => {
       reason: values.reason,
       requestedManagerId: values.requestedManagerId,
       isCustomDates: mode === "custom",
+      isFractional: resolved.isSingleDay && isFractional,
+      fractionalType: resolved.isSingleDay && isFractional ? fractionalType : undefined,
+      fractionalDuration: resolved.isSingleDay && isFractional ? 0.5 : undefined,
       ...(mode === "custom"
         ? { customDates: resolved.dates }
         : { startDate: resolved.startAd, endDate: resolved.endAd }),
@@ -224,7 +245,10 @@ const NewRequestDrawer: React.FC<Props> = ({ open, onClose }) => {
         <Form.Item label="Duration">
           <Segmented
             value={mode}
-            onChange={(v) => setMode(v as Mode)}
+            onChange={(v) => {
+              setMode(v as Mode);
+              setIsFractional(false);
+            }}
             options={[
               { label: "Date range", value: "range" },
               { label: "Specific days", value: "custom" },
@@ -238,7 +262,10 @@ const NewRequestDrawer: React.FC<Props> = ({ open, onClose }) => {
               <DatePicker.RangePicker
                 style={{ width: "100%" }}
                 value={range as any}
-                onChange={(v) => setRange((v as any) || [null, null])}
+                onChange={(v) => {
+                  setRange((v as any) || [null, null]);
+                  setIsFractional(false);
+                }}
                 disabledDate={(d) => d && d < dayjs().startOf("day")}
               />
             </Form.Item>
@@ -279,6 +306,41 @@ const NewRequestDrawer: React.FC<Props> = ({ open, onClose }) => {
           </Form.Item>
         )}
 
+        {/* Fractional / Half-Day Selector if Single Day is selected */}
+        {resolved.isSingleDay && (
+          <div
+            style={{
+              padding: "10px 14px",
+              background: "#fafafa",
+              border: "1px dashed #d9d9d9",
+              borderRadius: 8,
+              marginBottom: 16,
+            }}
+          >
+            <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8 }}>
+              Single Day Time-off Option
+            </div>
+            <Radio.Group
+              value={isFractional ? fractionalType : "full"}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === "full") {
+                  setIsFractional(false);
+                } else {
+                  setIsFractional(true);
+                  setFractionalType(val);
+                }
+              }}
+            >
+              <Space direction="vertical">
+                <Radio value="full">Full Day (1.0 day)</Radio>
+                <Radio value="first_half">First Half / Morning (0.5 day)</Radio>
+                <Radio value="second_half">Second Half / Afternoon (0.5 day)</Radio>
+              </Space>
+            </Radio.Group>
+          </div>
+        )}
+
         {/* live dual-date + balance feedback */}
         {resolved.days > 0 && resolved.startAd && (
           <div
@@ -296,6 +358,7 @@ const NewRequestDrawer: React.FC<Props> = ({ open, onClose }) => {
             {resolved.endAd && resolved.endAd !== resolved.startAd
               ? ` → ${formatLeaveDate(resolved.endAd, system)}`
               : ""}
+            {isFractional && ` · Half-Day (${fractionalType === 'first_half' ? 'First Half' : 'Second Half'})`}
           </div>
         )}
 
@@ -313,7 +376,7 @@ const NewRequestDrawer: React.FC<Props> = ({ open, onClose }) => {
               showIcon
               message={
                 <span>
-                  Requesting <b>{resolved.days}</b> day{resolved.days > 1 ? "s" : ""}
+                  Requesting <b>{resolved.days}</b> day{resolved.days === 1 ? "" : "s"}
                   {remaining !== undefined && total !== undefined && (
                     <>
                       {" "}

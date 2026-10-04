@@ -28,6 +28,7 @@ export default defineConfig({
     //   cert: fs.readFileSync(path.resolve(__dirname, 'ssl/certificate.crt')),
     // },
     host: '0.0.0.0',
+    port: 5174,
     allowedHosts: ['artha.sarojkasti.com.np', 'task.artha.com.np', 'client.artha.com.np', 'localhost'],
   },
 });

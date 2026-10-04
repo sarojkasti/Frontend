@@ -26,6 +26,7 @@ export function leaveColor(name?: string): string {
 
 export type LeaveStatus =
   | "pending"
+  | "clarification_requested"
   | "approved_by_manager"
   | "approved"
   | "rejected";
@@ -35,6 +36,7 @@ export const STATUS_META: Record<
   { color: string; text: string }
 > = {
   pending: { color: "gold", text: "To approve" },
+  clarification_requested: { color: "orange", text: "Clarification Needed" },
   approved_by_manager: { color: "blue", text: "Manager OK · admin next" },
   approved: { color: "green", text: "Approved" },
   rejected: { color: "red", text: "Rejected" },

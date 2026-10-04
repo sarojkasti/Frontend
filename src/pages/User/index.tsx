@@ -1,17 +1,28 @@
 import PageTitle from "@/components/PageTitle";
 import UserForm from "@/components/user/UserForm";
 import UserTable from "@/components/user/UserTable";
+import UserExportPage from "@/components/user/UserExportPage";
 import { UserStatus } from "@/types/userStatus";
-import { Modal, Tabs, Button, Input } from "antd";
-import { PlusOutlined, SearchOutlined } from "@ant-design/icons";
-import React, { useCallback, useState } from "react";
+import { Modal, Tabs, Button, Input, Tooltip } from "antd";
+import { PlusOutlined, SearchOutlined, DownloadOutlined } from "@ant-design/icons";
+import React, { useCallback, useState, useMemo } from "react";
 import { useIsMobile } from "@/hooks/useIsMobile";
+import { useUser } from "@/hooks/user/useUser";
 
 const User: React.FC = () => {
   const [open, setOpen] = useState(false);
   const [editUserData, setEditUserData] = useState<any | undefined>(undefined);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [activeKey, setActiveKey] = useState("1");
+  const [selectedUsers, setSelectedUsers] = useState<any[]>([]);
+  const [isExportViewOpen, setIsExportViewOpen] = useState(false);
+
+  // Fetch all users with relations for export helper
+  const { data: allUsersData } = useUser({ status: "all", limit: 2000 });
+  const allUsers = useMemo(() => {
+    return Array.isArray(allUsersData) ? allUsersData : allUsersData?.results || [];
+  }, [allUsersData]);
 
   const showModal = useCallback((task?: any) => {
     setEditUserData(task);
@@ -23,6 +34,17 @@ const User: React.FC = () => {
     setOpen(false);
   }, []);
   const { isMobile } = useIsMobile();
+
+  if (isExportViewOpen) {
+    return (
+      <UserExportPage
+        onBack={() => setIsExportViewOpen(false)}
+        selectedUsers={selectedUsers}
+        allUsers={allUsers}
+        activeTabKey={activeKey}
+      />
+    );
+  }
 
   return (
     <div className="pb-16 sm:pb-0 px-2 sm:px-0">
@@ -56,10 +78,19 @@ const User: React.FC = () => {
       )}
 
       <Tabs
-        defaultActiveKey="1"
+        activeKey={activeKey}
+        onChange={setActiveKey}
         tabBarExtraContent={
           !isMobile ? (
             <div className="flex flex-wrap gap-2">
+              <Tooltip title="Download / Export Users Helper">
+                <Button
+                  icon={<DownloadOutlined />}
+                  onClick={() => setIsExportViewOpen(true)}
+                >
+                  Export Users
+                </Button>
+              </Tooltip>
               <Button type="primary" icon={<PlusOutlined />} onClick={() => showModal()}>
                 Create User
               </Button>
@@ -90,20 +121,65 @@ const User: React.FC = () => {
           {
             label: "Active",
             key: "1",
-            children: <UserTable status={UserStatus.ACTIVE} showModal={showModal} searchQuery={searchQuery} />,
+            children: (
+              <UserTable
+                status={UserStatus.ACTIVE}
+                showModal={showModal}
+                searchQuery={searchQuery}
+                selectedUsers={selectedUsers}
+                setSelectedUsers={setSelectedUsers}
+              />
+            ),
           },
           {
             label: "Inactive",
             key: "2",
-            children: <UserTable status={UserStatus.INACTIVE} showModal={showModal} searchQuery={searchQuery} />,
+            children: (
+              <UserTable
+                status={UserStatus.INACTIVE}
+                showModal={showModal}
+                searchQuery={searchQuery}
+                selectedUsers={selectedUsers}
+                setSelectedUsers={setSelectedUsers}
+              />
+            ),
           },
           {
             label: "Blocked",
             key: "3",
-            children: <UserTable status={UserStatus.BLOCKED} showModal={showModal} searchQuery={searchQuery} />,
+            children: (
+              <UserTable
+                status={UserStatus.BLOCKED}
+                showModal={showModal}
+                searchQuery={searchQuery}
+                selectedUsers={selectedUsers}
+                setSelectedUsers={setSelectedUsers}
+              />
+            ),
           },
         ]}
       />
+
+      {/* Floating Export Button for Mobile View */}
+      {isMobile && (
+        <div className="fixed bottom-36 right-5 z-40">
+          <Button
+            shape="circle"
+            size="large"
+            icon={<DownloadOutlined style={{ fontSize: "18px" }} />}
+            onClick={() => setIsExportViewOpen(true)}
+            className="shadow-xl flex items-center justify-center hover:scale-105 active:scale-95 transition-all duration-200"
+            style={{
+              width: "46px",
+              height: "46px",
+              backgroundColor: "#21a366",
+              color: "#ffffff",
+              borderColor: "#21a366",
+              boxShadow: "0 4px 14px rgba(33, 163, 102, 0.35)",
+            }}
+          />
+        </div>
+      )}
 
       {/* Floating Search Button for Mobile View */}
       {isMobile && (

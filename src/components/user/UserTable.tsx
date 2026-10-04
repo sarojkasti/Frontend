@@ -17,7 +17,19 @@ import ResponsiveTable from "@/components/ui/MobileCardList";
 import { Tag } from "antd";
 import { useIsMobile } from "@/hooks/useIsMobile";
 
-const UserTable = ({ status, showModal, searchQuery = "" }: { status: string, showModal: any, searchQuery?: string }) => {
+const UserTable = ({
+  status,
+  showModal,
+  searchQuery = "",
+  selectedUsers = [],
+  setSelectedUsers,
+}: {
+  status: string;
+  showModal: any;
+  searchQuery?: string;
+  selectedUsers?: any[];
+  setSelectedUsers?: (users: any[]) => void;
+}) => {
   const navigate = useNavigate();
   const { isMobile } = useIsMobile();
   const [page, setPage] = useState(1);
@@ -30,7 +42,7 @@ const UserTable = ({ status, showModal, searchQuery = "" }: { status: string, sh
   });
 
   const filteredUsers = useMemo(() => {
-    const rawUsers: UserType[] = user?.results || [];
+    const rawUsers: UserType[] = Array.isArray(user) ? user : user?.results || [];
     if (!searchQuery?.trim()) return rawUsers;
     const q = searchQuery.trim().toLowerCase();
     return rawUsers.filter((u: any) => {
@@ -51,7 +63,7 @@ const UserTable = ({ status, showModal, searchQuery = "" }: { status: string, sh
         department.includes(q)
       );
     });
-  }, [user?.results, searchQuery]);
+  }, [user, searchQuery]);
 
   const [searchText, setSearchText] = useState('');
   const [searchedColumn, setSearchedColumn] = useState('');
@@ -287,7 +299,11 @@ const UserTable = ({ status, showModal, searchQuery = "" }: { status: string, sh
     },
   ];
   const rowSelection: TableProps<UserType>["rowSelection"] = {
-    onChange: (selectedRowKeys: React.Key[], selectedRows: UserType[]) => {
+    selectedRowKeys: selectedUsers?.map((u: any) => u.id),
+    onChange: (_selectedRowKeys: React.Key[], selectedRows: UserType[]) => {
+      if (setSelectedUsers) {
+        setSelectedUsers(selectedRows);
+      }
     },
     getCheckboxProps: (record: UserType) => ({
       name: record.name,
