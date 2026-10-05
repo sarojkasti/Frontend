@@ -54,6 +54,8 @@ import moment from "moment";
 import { useSession } from "@/context/SessionContext";
 import Highlighter from "react-highlight-words";
 import { useQueryClient } from "@tanstack/react-query";
+import TaskDeadlineTag from "./TaskDeadlineTag";
+import TaskQuickViewModal from "./TaskQuickViewModal";
 
 interface ExtendedTaskType extends TaskType {
   first?: boolean;
@@ -183,6 +185,13 @@ const TaskTable = ({
   });
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
   const [globalSearchText, setGlobalSearchText] = useState("");
+  const [quickViewTask, setQuickViewTask] = useState<any | null>(null);
+  const [quickViewOpen, setQuickViewOpen] = useState(false);
+
+  const handleOpenQuickView = (task: any) => {
+    setQuickViewTask(task);
+    setQuickViewOpen(true);
+  };
   const searchInput = useRef<any>(null);
   const queryClient = useQueryClient();
 
@@ -299,7 +308,28 @@ const TaskTable = ({
   }, [allProjectTasks]);
 
   const { processedData, filteredData } = useMemo(() => {
-    const expandedData = data
+    // 1. Raw deduplication by task ID to prevent duplicate items from API
+    const uniqueDataMap = new Map<string, any>();
+    (data || []).forEach((task: any) => {
+      if (task && task.id != null) {
+        uniqueDataMap.set(String(task.id), task);
+      }
+    });
+    const uniqueTasks = Array.from(uniqueDataMap.values());
+
+    // 2. Identify all subtask IDs across stories
+    const subTaskIdsInStories = new Set<string>();
+    uniqueTasks.forEach((task: any) => {
+      if (task.taskType === "story" && Array.isArray(task.subTasks)) {
+        task.subTasks.forEach((sub: any) => {
+          if (sub?.id != null) {
+            subTaskIdsInStories.add(String(sub.id));
+          }
+        });
+      }
+    });
+
+    const expandedData = uniqueTasks
       .filter((task: any) => task.taskType === "story")
       .map((story: any) => {
         const subTasks = story.subTasks || [];
@@ -314,6 +344,7 @@ const TaskTable = ({
             ...subTask,
             key: `${story.id}-${subTask.id}`,
             isSubTask: true,
+            parentTaskName: story.name,
             projectId: projectId
           }));
 
@@ -325,8 +356,13 @@ const TaskTable = ({
         };
       });
 
-    const standaloneTasks = data
-      .filter((task: any) => task.taskType === "task" && !task.parentTask)
+    const standaloneTasks = uniqueTasks
+      .filter((task: any) => {
+        if (task.taskType === "story") return false;
+        if (subTaskIdsInStories.has(String(task.id))) return false;
+        if (task.parentTask || task.parentTaskId) return false;
+        return true;
+      })
       .map((task: any) => ({
         ...task,
         key: task.id,
@@ -487,11 +523,21 @@ const TaskTable = ({
 
       const totalTasks = sortedGroups.reduce((acc, g) => acc + g.tasks.length, 0);
 
+      // Deduplication: if super has only 1 group that shares name or is default, collapse it!
+      const isSingleGroup =
+        sortedGroups.length === 1 &&
+        (sortedGroups[0].name.trim().toLowerCase() === s.name.trim().toLowerCase() ||
+          sortedGroups[0].name === "General Tasks" ||
+          sortedGroups[0].name === "Uncategorized Group" ||
+          s.id === "standalone-super");
+
       superContainers.push({
         id: s.id,
         name: s.name,
         rank: s.rank,
         groups: sortedGroups,
+        isSingleGroup,
+        tasks: isSingleGroup ? sortedGroups[0].tasks : [],
         totalTasks
       });
     });
@@ -1251,7 +1297,7 @@ const TaskTable = ({
 
     return (
       <div className="flex flex-col gap-2.5 py-1">
-        {/* Main Header Row: Title & Action Icons (No status tag on card) */}
+        {/* Main Header Row: Title & Action Icons */}
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-start gap-1.5 flex-1 min-w-0">
             <div className="mt-0.5">{typeBadge}</div>
@@ -1261,20 +1307,26 @@ const TaskTable = ({
             >
               {task.name}
             </Link>
+            {task.tcode && (
+              <Tag color="cyan" className="text-[10px] py-0 px-1 ml-1 leading-4">
+                {task.tcode}
+              </Tag>
+            )}
           </div>
 
           {/* Action Icons: View Details, Edit, Quick Actions, Dropdown Toggle */}
           <div className="flex items-center gap-1 shrink-0">
-            <Link to={`/projects/${task.projectId}/tasks/${task.id}`}>
+            <Tooltip title="Quick View">
               <Button
                 type="text"
                 size="small"
                 icon={<EyeOutlined style={{ fontSize: "16px", color: "#0c66e4" }} />}
+                onClick={() => handleOpenQuickView(task)}
                 className="flex items-center justify-center h-8 w-8 rounded-full hover:bg-blue-50 text-blue-600"
-                title="View Details"
-                aria-label="View Details"
+                title="Quick View Details"
+                aria-label="Quick View Details"
               />
-            </Link>
+            </Tooltip>
             <Button
               type="text"
               size="small"
@@ -1341,6 +1393,19 @@ const TaskTable = ({
           </div>
         </div>
 
+        {/* Always visible metadata row */}
+        <div className="flex items-center gap-2 flex-wrap pl-6">
+          <TaskDeadlineTag dueDate={task.dueDate} status={task.status} />
+          {task.priority && (
+            <Tag color={task.priority === "high" ? "red" : task.priority === "medium" ? "orange" : "default"} className="m-0 text-[10px]">
+              {task.priority.toUpperCase()}
+            </Tag>
+          )}
+          <Tag color={statusColorMap[task.status] || "default"} className="m-0 text-[10px]">
+            {statusLabelMap[task.status] || task.status}
+          </Tag>
+        </div>
+
         {/* Revealed Detail Card (when dropdown button clicked) */}
         {isExpanded && (
           <div className="mt-2 pt-2.5 border-t border-dashed border-gray-200 flex flex-col gap-2.5 bg-gray-50/80 rounded-lg p-3 text-xs text-gray-600">
@@ -1369,8 +1434,7 @@ const TaskTable = ({
               </div>
 
               <div className="flex items-center gap-1 font-medium text-gray-700">
-                <CalendarOutlined className="text-gray-400" />
-                <span>{task.dueDate ? moment(task.dueDate).format("YYYY-MM-DD") : "No due date"}</span>
+                <TaskDeadlineTag dueDate={task.dueDate} status={task.status} />
               </div>
             </div>
 
@@ -1506,7 +1570,7 @@ const TaskTable = ({
           }
 
           return (
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center justify-between gap-2 min-w-0">
               <span
                 style={{
                   fontWeight: isSubTask ? "normal" : "500",
@@ -1518,10 +1582,24 @@ const TaskTable = ({
                 <Tooltip title={tooltip} placement="topLeft">
                   <span style={{ marginRight: "4px" }}>{prefix}</span>
                 </Tooltip>
-                <Link to={`/projects/${record.projectId}/tasks/${record.id}`} className="text-blue-600">
+                <Link to={`/projects/${record.projectId}/tasks/${record.id}`} className="text-blue-600 hover:underline">
                   {content}
                 </Link>
+                {record.tcode && (
+                  <Tag color="cyan" style={{ fontSize: 10, lineHeight: "16px", padding: "0 4px", marginLeft: 6 }}>
+                    {record.tcode}
+                  </Tag>
+                )}
               </span>
+              <Tooltip title="Quick View">
+                <Button
+                  type="text"
+                  size="small"
+                  icon={<EyeOutlined style={{ color: "#1890ff" }} />}
+                  onClick={() => handleOpenQuickView(record)}
+                  className="shrink-0"
+                />
+              </Tooltip>
             </div>
           );
         }
@@ -1600,8 +1678,8 @@ const TaskTable = ({
         key: "dueDate",
         editable: true,
         sorter: (a: ExtendedTaskType, b: ExtendedTaskType) => {
-          if (!a.dueDate) return -1;
-          if (!b.dueDate) return 1;
+          if (!a.dueDate) return 1;
+          if (!b.dueDate) return -1;
           return moment(a.dueDate).unix() - moment(b.dueDate).unix();
         },
         sortOrder: sortedInfo.columnKey === "dueDate" && sortedInfo.order,
@@ -1611,10 +1689,8 @@ const TaskTable = ({
             <Form.Item name="dueDate" style={{ margin: 0 }} rules={[{ required: false }]}>
               <DatePicker />
             </Form.Item>
-          ) : dueDate ? (
-            new Date(dueDate).toLocaleDateString()
           ) : (
-            "---"
+            <TaskDeadlineTag dueDate={dueDate} status={record.status} />
           );
         }
       },
@@ -2031,57 +2107,78 @@ const TaskTable = ({
                     overflow: "hidden"
                   }}
                 >
-                  <Collapse
-                    defaultActiveKey={superItem.groups.map((g: any) => g.id)}
-                    style={{ background: "transparent", border: "none" }}
-                  >
-                    {superItem.groups.map((groupItem: any) => (
-                      <Collapse.Panel
-                        key={groupItem.id}
-                        header={
-                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", paddingRight: 12 }}>
-                            <Tooltip title="Task Group" placement="top">
-                              <Space align="center" style={{ cursor: "pointer" }}>
-                                <FolderOutlined style={{ color: "#64748b", fontSize: 15 }} />
-                                <Typography.Text style={{ fontSize: 14, fontWeight: 500, color: "#334155" }}>
-                                  {groupItem.name}
-                                </Typography.Text>
-                              </Space>
-                            </Tooltip>
-                            <Tag style={{ borderRadius: 12, fontWeight: 500, color: "#64748b", backgroundColor: "#ffffff", borderColor: "#e2e8f0" }}>
-                              {groupItem.tasks.length} tasks
-                            </Tag>
-                          </div>
-                        }
-                        style={{
-                          marginBottom: 8,
-                          background: "#ffffff",
-                          borderRadius: 6,
-                          border: "1px solid #f1f5f9",
-                          overflow: "hidden"
-                        }}
-                      >
-                        <ResponsiveTable
-                          loading={loading}
-                          components={{ body: { cell: EditableCell } }}
-                          columns={mergedColumns}
-                          dataSource={groupItem.tasks}
-                          rowSelection={isMobile ? undefined : rowSelection}
-                          rowKey="id"
-                          size="small"
-                          bordered={false}
-                          pagination={false}
-                          renderMobileCard={renderMobileTaskCard}
-                          expandable={{
-                            defaultExpandAllRows: true,
-                            expandRowByClick: false,
-                            indentSize: 20,
-                            rowExpandable: (record: any) => Array.isArray(record.children) && record.children.length > 0
+                  {superItem.isSingleGroup ? (
+                    <ResponsiveTable
+                      loading={loading}
+                      components={{ body: { cell: EditableCell } }}
+                      columns={mergedColumns}
+                      dataSource={superItem.tasks}
+                      rowSelection={isMobile ? undefined : rowSelection}
+                      rowKey="id"
+                      size="small"
+                      bordered={false}
+                      pagination={false}
+                      renderMobileCard={renderMobileTaskCard}
+                      expandable={{
+                        defaultExpandAllRows: true,
+                        expandRowByClick: false,
+                        indentSize: 20,
+                        rowExpandable: (record: any) => Array.isArray(record.children) && record.children.length > 0
+                      }}
+                    />
+                  ) : (
+                    <Collapse
+                      defaultActiveKey={superItem.groups.map((g: any) => g.id)}
+                      style={{ background: "transparent", border: "none" }}
+                    >
+                      {superItem.groups.map((groupItem: any) => (
+                        <Collapse.Panel
+                          key={groupItem.id}
+                          header={
+                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", paddingRight: 12 }}>
+                              <Tooltip title="Task Group" placement="top">
+                                <Space align="center" style={{ cursor: "pointer" }}>
+                                  <FolderOutlined style={{ color: "#64748b", fontSize: 15 }} />
+                                  <Typography.Text style={{ fontSize: 14, fontWeight: 500, color: "#334155" }}>
+                                    {groupItem.name}
+                                  </Typography.Text>
+                                </Space>
+                              </Tooltip>
+                              <Tag style={{ borderRadius: 12, fontWeight: 500, color: "#64748b", backgroundColor: "#ffffff", borderColor: "#e2e8f0" }}>
+                                {groupItem.tasks.length} tasks
+                              </Tag>
+                            </div>
+                          }
+                          style={{
+                            marginBottom: 8,
+                            background: "#ffffff",
+                            borderRadius: 6,
+                            border: "1px solid #f1f5f9",
+                            overflow: "hidden"
                           }}
-                        />
-                      </Collapse.Panel>
-                    ))}
-                  </Collapse>
+                        >
+                          <ResponsiveTable
+                            loading={loading}
+                            components={{ body: { cell: EditableCell } }}
+                            columns={mergedColumns}
+                            dataSource={groupItem.tasks}
+                            rowSelection={isMobile ? undefined : rowSelection}
+                            rowKey="id"
+                            size="small"
+                            bordered={false}
+                            pagination={false}
+                            renderMobileCard={renderMobileTaskCard}
+                            expandable={{
+                              defaultExpandAllRows: true,
+                              expandRowByClick: false,
+                              indentSize: 20,
+                              rowExpandable: (record: any) => Array.isArray(record.children) && record.children.length > 0
+                            }}
+                          />
+                        </Collapse.Panel>
+                      ))}
+                    </Collapse>
+                  )}
                 </Collapse.Panel>
               ))}
             </Collapse>
@@ -2226,6 +2323,20 @@ const TaskTable = ({
           </Button>
         </div>
       )}
+
+      {/* Quick View Task Modal */}
+      <TaskQuickViewModal
+        task={quickViewTask}
+        open={quickViewOpen}
+        onClose={() => {
+          setQuickViewOpen(false);
+          setQuickViewTask(null);
+        }}
+        onEdit={(task) => {
+          setQuickViewOpen(false);
+          handleEditClick(task);
+        }}
+      />
     </>
   );
 };
