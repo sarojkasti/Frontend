@@ -16,6 +16,7 @@ import { PowerTable, PowerTableColumn, useTableSearch } from "@/components/Table
 import ResponsiveTable from "@/components/ui/MobileCardList";
 import { Tag } from "antd";
 import { useIsMobile } from "@/hooks/useIsMobile";
+import dayjs from "dayjs";
 
 const UserTable = ({
   status,
@@ -156,6 +157,22 @@ const UserTable = ({
       render: (role: Role) => role?.name,
     },
     {
+      title: "Joined Date",
+      dataIndex: "joinedDate",
+      key: "joinedDate",
+      defaultWidth: 140,
+      sorter: (a: UserType, b: UserType) => {
+        const aDate = a.joinedDate || a.createdAt || '';
+        const bDate = b.joinedDate || b.createdAt || '';
+        return aDate.localeCompare(bDate);
+      },
+      sortOrder: sortedInfo.columnKey === 'joinedDate' && sortedInfo.order,
+      render: (_: any, record: UserType) => {
+        const date = record.joinedDate || record.createdAt;
+        return date ? dayjs(date).format('YYYY-MM-DD') : '-';
+      },
+    },
+    {
       title: "Action",
       key: "action",
       width: 100,
@@ -287,6 +304,12 @@ const UserTable = ({
               <Tag color={record.status === "active" ? "success" : "error"}>
                 {record.status ? record.status.charAt(0).toUpperCase() + record.status.slice(1) : "Active"}
               </Tag>
+            </div>
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-gray-500 font-medium shrink-0">Joined Date:</span>
+              <span className="font-semibold text-gray-800 text-right">
+                {record.joinedDate ? dayjs(record.joinedDate).format("YYYY-MM-DD") : (record.createdAt ? dayjs(record.createdAt).format("YYYY-MM-DD") : "-")}
+              </span>
             </div>
           </div>
         )}

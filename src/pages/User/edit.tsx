@@ -1,21 +1,37 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { Card, Tabs, Button, Space, Spin } from "antd";
-import { ArrowLeftOutlined } from "@ant-design/icons";
+import { Card, Tabs, Button, Space, Spin, Modal } from "antd";
+import { ArrowLeftOutlined, EditOutlined } from "@ant-design/icons";
 import { useState } from "react";
 import { useUserDetails } from "@/hooks/user/useUserDetails";
+import { useSession } from "@/context/SessionContext";
+import { useQueryClient } from "@tanstack/react-query";
 import PersonalDetailForm from "@/components/user/PersonalDetailForm";
 import BankDetailForm from "@/components/user/BankDetailForm";
 import EducationDetailForm from "@/components/user/EducationDetailForm";
 import TrainningDetailForm from "@/components/user/TrainningDetailForm";
 import UserDocumentForm from "@/components/user/UserDocumentForm";
 import ContractDetailForm from "@/components/user/ContractDetailForm";
+import UserForm from "@/components/user/UserForm";
 import Title from "antd/es/typography/Title";
 
 const UserEdit = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { profile } = useSession();
+  const roleName = profile?.role?.name?.toLowerCase() || "";
+  const canEditJoinedDate =
+    roleName === "admin" ||
+    roleName === "superuser" ||
+    roleName === "super admin" ||
+    roleName === "super_user" ||
+    roleName === "administrator" ||
+    roleName.includes("admin") ||
+    roleName.includes("super");
+
   const { data: user, isLoading } = useUserDetails(id);
   const [activeTab, setActiveTab] = useState("profile");
+  const [isEditAccountModalOpen, setIsEditAccountModalOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -61,7 +77,7 @@ const UserEdit = () => {
   return (
     <div>
       <Card>
-        <div style={{ marginBottom: "24px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ marginBottom: "24px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
           <Space>
             <Button 
               icon={<ArrowLeftOutlined />} 
@@ -73,6 +89,15 @@ const UserEdit = () => {
               Edit User: {user?.name}
             </Title>
           </Space>
+          {canEditJoinedDate && (
+            <Button
+              type="primary"
+              icon={<EditOutlined />}
+              onClick={() => setIsEditAccountModalOpen(true)}
+            >
+              Edit Account & Joined Date
+            </Button>
+          )}
         </div>
 
         <Tabs
@@ -81,6 +106,24 @@ const UserEdit = () => {
           items={tabItems}
         />
       </Card>
+
+      {canEditJoinedDate && user && (
+        <Modal
+          title="Edit User Account Details & Joined Date"
+          open={isEditAccountModalOpen}
+          footer={null}
+          onCancel={() => setIsEditAccountModalOpen(false)}
+          destroyOnClose
+        >
+          <UserForm
+            initialValues={user}
+            handleCancel={() => {
+              setIsEditAccountModalOpen(false);
+              queryClient.invalidateQueries({ queryKey: ["users", id] });
+            }}
+          />
+        </Modal>
+      )}
     </div>
   );
 };

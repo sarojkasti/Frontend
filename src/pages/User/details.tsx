@@ -350,7 +350,7 @@ const UserDetails = () => {
                       {user.lastActiveAt ? dayjs(user.lastActiveAt).format("YYYY-MM-DD HH:mm:ss") : "Never"}
                     </Descriptions.Item>
                     <Descriptions.Item label="Joined Date">
-                      {user.createdAt ? dayjs(user.createdAt).format("YYYY-MM-DD") : "N/A"}
+                      {user.joinedDate ? dayjs(user.joinedDate).format("YYYY-MM-DD") : (user.createdAt ? dayjs(user.createdAt).format("YYYY-MM-DD") : "N/A")}
                     </Descriptions.Item>
                   </Descriptions>
 

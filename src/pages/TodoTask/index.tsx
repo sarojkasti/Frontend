@@ -58,7 +58,7 @@ const TodoTaskPage = () => {
   const navigate = useNavigate();
   const { isMobile } = useIsMobile();
   const { visibleColumnKeys, columnCustomizer } = useColumnVisibility({
-    persistenceKey: "todo_task_table",
+    persistenceKey: "todo_task_table_v2",
     columns: ALL_TODO_TASK_COLUMNS,
   });
   const [showMobileSearch, setShowMobileSearch] = useState(false);

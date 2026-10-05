@@ -1,4 +1,5 @@
-﻿import { Card, Button, Checkbox, Col, Form, InputNumber, Row, message, Select, DatePicker, Tag } from "antd";
+import { Card, Button, Checkbox, Col, Form, InputNumber, Row, message, Select, DatePicker, Tag } from "antd";
+import { LockOutlined, CheckCircleOutlined, CloseCircleOutlined } from "@ant-design/icons";
 import dayjs from 'dayjs';
 import Title from "antd/es/typography/Title";
 import FormInputWrapper from "../FormInputWrapper";
@@ -215,54 +216,62 @@ const PersonalDetailForm = ({ initialValues, userData }: PersonalDetailFormProps
       onFinish={onFinish}
     >
       {userData && (
-        <Card style={{ marginBottom: "20px", backgroundColor: "#f0f7ff", border: "1px solid #d6e4ff" }}>
-          <Title level={5} style={{ marginBottom: "16px", color: "#1890ff" }}>
-            <span style={{ fontSize: "16px" }}>ðŸ”</span> Authentication Details (Read-Only)
+        <Card style={{ marginBottom: "20px" }}>
+          <Title level={4} style={{ marginBottom: "16px", display: "flex", alignItems: "center", gap: 8 }}>
+            <LockOutlined /> Authentication Details
           </Title>
           <Row gutter={[16, 16]}>
             <Col xs={24} sm={12} md={8}>
-              <div style={{ padding: "8px", backgroundColor: "white", borderRadius: "4px" }}>
-                <div style={{ color: "#8c8c8c", fontSize: "12px", marginBottom: "4px" }}>Username</div>
-                <div style={{ fontWeight: 500 }}>{userData.username || 'N/A'}</div>
+              <div style={{ padding: "8px 12px", backgroundColor: "#f8fafc", borderRadius: "6px", border: "1px solid #f1f5f9" }}>
+                <div style={{ color: "#64748b", fontSize: "12px", marginBottom: "4px" }}>Username</div>
+                <div style={{ fontWeight: 500, color: "#1e293b" }}>{userData.username || 'N/A'}</div>
               </div>
             </Col>
             <Col xs={24} sm={12} md={8}>
-              <div style={{ padding: "8px", backgroundColor: "white", borderRadius: "4px" }}>
-                <div style={{ color: "#8c8c8c", fontSize: "12px", marginBottom: "4px" }}>Email</div>
-                <div style={{ fontWeight: 500 }}>{userData.email}</div>
+              <div style={{ padding: "8px 12px", backgroundColor: "#f8fafc", borderRadius: "6px", border: "1px solid #f1f5f9" }}>
+                <div style={{ color: "#64748b", fontSize: "12px", marginBottom: "4px" }}>Email</div>
+                <div style={{ fontWeight: 500, color: "#1e293b" }}>{userData.email}</div>
               </div>
             </Col>
             <Col xs={24} sm={12} md={8}>
-              <div style={{ padding: "8px", backgroundColor: "white", borderRadius: "4px" }}>
-                <div style={{ color: "#8c8c8c", fontSize: "12px", marginBottom: "4px" }}>Phone Number</div>
-                <div style={{ fontWeight: 500 }}>{userData.phoneNumber || 'N/A'}</div>
+              <div style={{ padding: "8px 12px", backgroundColor: "#f8fafc", borderRadius: "6px", border: "1px solid #f1f5f9" }}>
+                <div style={{ color: "#64748b", fontSize: "12px", marginBottom: "4px" }}>Phone Number</div>
+                <div style={{ fontWeight: 500, color: "#1e293b" }}>{userData.phoneNumber || 'N/A'}</div>
               </div>
             </Col>
             <Col xs={24} sm={12} md={8}>
-              <div style={{ padding: "8px", backgroundColor: "white", borderRadius: "4px" }}>
-                <div style={{ color: "#8c8c8c", fontSize: "12px", marginBottom: "4px" }}>Role</div>
+              <div style={{ padding: "8px 12px", backgroundColor: "#f8fafc", borderRadius: "6px", border: "1px solid #f1f5f9" }}>
+                <div style={{ color: "#64748b", fontSize: "12px", marginBottom: "4px" }}>Role</div>
                 <div style={{ fontWeight: 500 }}>
                   <Tag color="blue">{userData.role?.displayName || userData.role?.name || 'N/A'}</Tag>
                 </div>
               </div>
             </Col>
             <Col xs={24} sm={12} md={8}>
-              <div style={{ padding: "8px", backgroundColor: "white", borderRadius: "4px" }}>
-                <div style={{ color: "#8c8c8c", fontSize: "12px", marginBottom: "4px" }}>Status</div>
+              <div style={{ padding: "8px 12px", backgroundColor: "#f8fafc", borderRadius: "6px", border: "1px solid #f1f5f9" }}>
+                <div style={{ color: "#64748b", fontSize: "12px", marginBottom: "4px" }}>Status</div>
                 <div style={{ fontWeight: 500 }}>
                   <Tag color={userData.status === 'active' ? 'green' : 'red'}>{userData.status}</Tag>
                 </div>
               </div>
             </Col>
             <Col xs={24} sm={12} md={8}>
-              <div style={{ padding: "8px", backgroundColor: "white", borderRadius: "4px" }}>
-                <div style={{ color: "#8c8c8c", fontSize: "12px", marginBottom: "4px" }}>2FA Status</div>
+              <div style={{ padding: "8px 12px", backgroundColor: "#f8fafc", borderRadius: "6px", border: "1px solid #f1f5f9" }}>
+                <div style={{ color: "#64748b", fontSize: "12px", marginBottom: "4px" }}>2FA Status</div>
                 <div style={{ fontWeight: 500 }}>
                   {userData.isTwoFAEnabled ? (
-                    <Tag color="success">âœ“ Enabled</Tag>
+                    <Tag color="success" icon={<CheckCircleOutlined />}>Enabled</Tag>
                   ) : (
-                    <Tag>âœ— Disabled</Tag>
+                    <Tag color="default" icon={<CloseCircleOutlined />}>Disabled</Tag>
                   )}
+                </div>
+              </div>
+            </Col>
+            <Col xs={24} sm={12} md={8}>
+              <div style={{ padding: "8px 12px", backgroundColor: "#f8fafc", borderRadius: "6px", border: "1px solid #f1f5f9" }}>
+                <div style={{ color: "#64748b", fontSize: "12px", marginBottom: "4px" }}>Joined Date</div>
+                <div style={{ fontWeight: 500, color: "#1e293b" }}>
+                  {userData.joinedDate ? dayjs(userData.joinedDate).format("YYYY-MM-DD") : (userData.createdAt ? dayjs(userData.createdAt).format("YYYY-MM-DD") : 'N/A')}
                 </div>
               </div>
             </Col>
@@ -663,7 +672,7 @@ const PersonalDetailForm = ({ initialValues, userData }: PersonalDetailFormProps
           </Col>
         </Row>
       </Card>
-  <Button type="primary" htmlType="submit" loading={mutation.status === 'pending'}>
+      <Button type="primary" htmlType="submit" loading={mutation.status === 'pending'}>
         Save
       </Button>
     </Form>

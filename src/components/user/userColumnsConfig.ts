@@ -70,11 +70,19 @@ export const ALL_USER_EXPORT_COLUMNS: UserColumnDefinition[] = [
     defaultWidth: 140,
   },
   {
-    key: "createdAt",
-    title: "Joining / Created Date",
+    key: "joinedDate",
+    title: "Joined Date",
     category: "Account",
-    description: "Account registration or start date",
+    description: "Official employment joining date",
     defaultVisible: true,
+    defaultWidth: 140,
+  },
+  {
+    key: "createdAt",
+    title: "Account Created Date",
+    category: "Account",
+    description: "System registration timestamp",
+    defaultVisible: false,
     defaultWidth: 140,
   },
   {
@@ -329,10 +337,11 @@ export const ALL_USER_TABLE_COLUMNS: ColumnDefinition[] = [
   { key: "phoneNumber", title: "PhoneNumber", defaultVisible: true, defaultWidth: 160 },
   { key: "degination", title: "Designation", defaultVisible: true, defaultWidth: 160 },
   { key: "role", title: "Role", defaultVisible: true, defaultWidth: 140 },
+  { key: "joinedDate", title: "Joined Date", defaultVisible: true, defaultWidth: 140 },
   { key: "action", title: "Action", defaultVisible: true, required: true, defaultWidth: 100 },
 ];
 
-export const LS_USER_TABLE_COLUMNS_KEY = "artha_user_table_columns_v1";
+export const LS_USER_TABLE_COLUMNS_KEY = "artha_user_table_columns_v2";
 
 export const getSavedUserVisibleColumns = (): string[] => {
   try {

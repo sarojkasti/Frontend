@@ -382,6 +382,9 @@ export const UserExportPage: React.FC<UserExportPageProps> = ({
           case "hourlyRate":
             row[col.title] = u.hourlyRate !== undefined ? Number(u.hourlyRate) : "-";
             break;
+          case "joinedDate":
+            row[col.title] = u.joinedDate ? dayjs(u.joinedDate).format("YYYY-MM-DD") : (u.createdAt ? dayjs(u.createdAt).format("YYYY-MM-DD") : "-");
+            break;
           case "createdAt":
             row[col.title] = u.createdAt ? dayjs(u.createdAt).format("YYYY-MM-DD") : "-";
             break;

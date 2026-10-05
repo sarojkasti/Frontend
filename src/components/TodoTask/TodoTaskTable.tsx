@@ -47,6 +47,7 @@ const { Title, Text } = Typography;
 
 export const ALL_TODO_TASK_COLUMNS: ColumnConfig[] = [
     { key: 'title', label: 'Title', required: true },
+    { key: 'description', label: 'Description' },
     { key: 'type', label: 'Type' },
     { key: 'dueDate', label: 'Due Date' },
     { key: 'assignedTo', label: 'Assigned To' },
@@ -423,6 +424,32 @@ const TodoTaskTable = ({
             },
         },
         {
+            title: 'Description',
+            dataIndex: 'description',
+            key: 'description',
+            defaultWidth: 220,
+            ellipsis: true,
+            ...getColumnSearchProps('description', 'Description'),
+            render: (desc: string) => {
+                if (!desc) return <Text type="secondary">—</Text>;
+                const displayText = searchedColumn === 'description' ? (
+                    <Highlighter
+                        highlightStyle={{ backgroundColor: '#ffc069', padding: 0 }}
+                        searchWords={[searchText]}
+                        autoEscape
+                        textToHighlight={desc}
+                    />
+                ) : desc;
+                return (
+                    <Tooltip title={desc} placement="topLeft">
+                        <Text ellipsis style={{ maxWidth: 220, display: 'inline-block' }}>
+                            {displayText}
+                        </Text>
+                    </Tooltip>
+                );
+            },
+        },
+        {
             title: 'Type',
             dataIndex: ['taskType', 'name'],
             key: 'type',
@@ -577,22 +604,35 @@ const TodoTaskTable = ({
         {
             title: 'Actions',
             key: 'actions',
-            width: 90,
-            defaultWidth: 90,
+            width: 100,
+            defaultWidth: 100,
             required: true,
             fixed: 'right',
             render: (_: string, record: TodoTask) => {
                 const actions = getAvailableActions(record);
                 
                 return (
-                    <Dropdown 
-                        overlay={
-                            <Menu items={actions} />
-                        } 
-                        trigger={['click']}
-                    >
-                        <Button type="text" icon={<MoreOutlined />} />
-                    </Dropdown>
+                    <Space size={2}>
+                        <Tooltip title="View Details">
+                            <Button 
+                                type="text" 
+                                size="small"
+                                icon={<EyeOutlined style={{ color: '#1677ff', fontSize: '15px' }} />} 
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onViewTask && onViewTask(record);
+                                }}
+                            />
+                        </Tooltip>
+                        <Dropdown 
+                            overlay={
+                                <Menu items={actions} />
+                            } 
+                            trigger={['click']}
+                        >
+                            <Button type="text" size="small" icon={<MoreOutlined />} />
+                        </Dropdown>
+                    </Space>
                 );
             },
         },
@@ -745,7 +785,7 @@ const TodoTaskTable = ({
                 enableColumnSearch
                 visibleColumnKeys={visibleColumnKeys}
                 showToolbar={false}
-                persistenceKey="todo_task_table"
+                persistenceKey="todo_task_table_v2"
                 pagination={isMobile ? false : { 
                     pageSize: 10,
                     showSizeChanger: true, 
