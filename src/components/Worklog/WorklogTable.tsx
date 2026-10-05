@@ -9,8 +9,25 @@ import { fetchUsers } from "@/service/user.service";
 import { UserType } from "@/types/user";
 import useIsMobile from "@/hooks/useIsMobile";
 import { ResponsiveTable } from "@/components/ui/MobileCardList";
+import { PowerTable, PowerTableColumn } from "@/components/Table";
 
-const WorklogTable = ({ data }: { data: any }) => {
+export const ALL_WORKLOG_COLUMNS = [
+  { key: "requestTo", label: "Request To" },
+  { key: "approvedBy", label: "Approved By" },
+  { key: "rejectBy", label: "Rejected By" },
+  { key: "date", label: "Date" },
+  { key: "startTime", label: "Start Time" },
+  { key: "endTime", label: "End Time" },
+  { key: "userId", label: "Logged by" },
+  { key: "rejectedRemark", label: "Rejection Remark" },
+];
+
+interface WorklogTableProps {
+  data: any;
+  visibleColumnKeys?: string[];
+}
+
+const WorklogTable = ({ data, visibleColumnKeys }: WorklogTableProps) => {
   const { isMobile } = useIsMobile();
   const [searchText, setSearchText] = useState('');
   const [searchedColumn, setSearchedColumn] = useState('');
@@ -114,11 +131,12 @@ const WorklogTable = ({ data }: { data: any }) => {
       ),
   });
 
-  const columns = [
+  const columns: PowerTableColumn<any>[] = [
     {
       title: "Request To",
       dataIndex: "requestTo",
       key: "requestTo",
+      defaultWidth: 160,
       ...getColumnSearchProps('requestTo', 'Request To'),
       render: (_: any, record: any) => {
         if (!record?.requestTo) return "-";
@@ -129,6 +147,7 @@ const WorklogTable = ({ data }: { data: any }) => {
       title: "Approved By",
       dataIndex: "approvedBy",
       key: "approvedBy",
+      defaultWidth: 160,
       ...getColumnSearchProps('approvedBy', 'Approved By'),
       render: (_: any, record: any) => {
         if (!record?.approvedBy) return "-";
@@ -139,6 +158,7 @@ const WorklogTable = ({ data }: { data: any }) => {
       title: "Rejected By",
       dataIndex: "rejectBy",
       key: "rejectBy",
+      defaultWidth: 160,
       ...getColumnSearchProps('rejectBy', 'Rejected By'),
       render: (_: any, record: any) => {
         if (!record?.rejectBy) return "-";
@@ -149,6 +169,7 @@ const WorklogTable = ({ data }: { data: any }) => {
       title: "Date",
       dataIndex: "date",
       key: "date",
+      defaultWidth: 130,
       sorter: (a: any, b: any) => moment(a.startTime).unix() - moment(b.startTime).unix(),
       sortOrder: sortedInfo.columnKey === 'date' && sortedInfo.order,
       render: (_: any, record: any) => {
@@ -159,6 +180,7 @@ const WorklogTable = ({ data }: { data: any }) => {
       title: "Start Time",
       dataIndex: "startTime",
       key: "startTime",
+      defaultWidth: 120,
       sorter: (a: any, b: any) => moment(a.startTime).unix() - moment(b.startTime).unix(),
       sortOrder: sortedInfo.columnKey === 'startTime' && sortedInfo.order,
       render: (_: any, record: any) => {
@@ -169,6 +191,7 @@ const WorklogTable = ({ data }: { data: any }) => {
       title: "End Time",
       dataIndex: "endTime",
       key: "endTime",
+      defaultWidth: 120,
       sorter: (a: any, b: any) => moment(a.endTime).unix() - moment(b.endTime).unix(),
       sortOrder: sortedInfo.columnKey === 'endTime' && sortedInfo.order,
       render: (_: any, record: any) => {
@@ -179,6 +202,7 @@ const WorklogTable = ({ data }: { data: any }) => {
       title: "Logged by",
       dataIndex: "userId",
       key: "userId",
+      defaultWidth: 150,
       ...getColumnSearchProps('user.name', 'Logged by'),
       sorter: (a: any, b: any) => (a.user?.name || '').localeCompare(b.user?.name || ''),
       sortOrder: sortedInfo.columnKey === 'userId' && sortedInfo.order,
@@ -194,6 +218,7 @@ const WorklogTable = ({ data }: { data: any }) => {
       title: "Rejection Remark",
       dataIndex: "rejectedRemark",
       key: "rejectedRemark",
+      defaultWidth: 180,
       ...getColumnSearchProps('rejectedRemark', 'Rejection Remark'),
       render: (_: any, record: any) => {
         if (record?.status === 'rejected' && record?.rejectedRemark) {
@@ -211,12 +236,17 @@ const WorklogTable = ({ data }: { data: any }) => {
   }
 
   return (
-    <ResponsiveTable
+    <PowerTable
       dataSource={data}
       columns={columns}
       size="small"
       rowKey={"id"}
       bordered
+      enableResize
+      enableColumnSearch
+      showToolbar={false}
+      visibleColumnKeys={visibleColumnKeys}
+      persistenceKey="worklog_table"
       onChange={handleTableChange}
       pagination={isMobile ? false : {
         showSizeChanger: true,

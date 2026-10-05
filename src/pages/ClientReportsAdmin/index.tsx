@@ -40,6 +40,7 @@ import {
   KeyOutlined
 } from "@ant-design/icons";
 import ResponsiveTable from "@/components/ui/MobileCardList";
+import { PowerTable, PowerTableColumn, useColumnVisibility } from "@/components/Table";
 import {
   useClientReportById,
   useCreateClientReport,
@@ -307,7 +308,7 @@ const ClientReportsAdmin: React.FC = () => {
     }
   };
 
-  const columns = [
+  const columns: PowerTableColumn<ClientReportType>[] = [
     {
       title: "Title",
       dataIndex: "title",
@@ -439,6 +440,11 @@ const ClientReportsAdmin: React.FC = () => {
       )
     }
   ];
+
+  const { visibleColumnKeys, columnCustomizer } = useColumnVisibility({
+    persistenceKey: "client_reports_admin",
+    columns,
+  });
 
   const filteredReports = useMemo(() => {
     if (!reports) return [];
@@ -703,13 +709,16 @@ const ClientReportsAdmin: React.FC = () => {
               </Space>
             )}
             {!isMobile && (
-              <Button
-                type="primary"
-                icon={<PlusOutlined />}
-                onClick={() => setIsModalOpen(true)}
-              >
-                Upload Report
-              </Button>
+              <Space>
+                {columnCustomizer}
+                <Button
+                  type="primary"
+                  icon={<PlusOutlined />}
+                  onClick={() => setIsModalOpen(true)}
+                >
+                  Upload Report
+                </Button>
+              </Space>
             )}
           </Space>
         </div>
@@ -717,19 +726,21 @@ const ClientReportsAdmin: React.FC = () => {
 
       {/* Reports Table */}
       <Card>
-        <ResponsiveTable
-          tableProps={{
-            rowSelection: isMobile ? undefined : {
-              selectedRowKeys,
-              onChange: (keys) => setSelectedRowKeys(keys as string[])
-            },
-            dataSource: filteredReports,
-            columns: columns,
-            rowKey: "id",
-            loading: isLoading,
-            pagination: isMobile ? false : { pageSize: 10 },
-            scroll: { x: 'max-content' }
+        <PowerTable<ClientReportType>
+          rowSelection={isMobile ? undefined : {
+            selectedRowKeys,
+            onChange: (keys) => setSelectedRowKeys(keys as string[])
           }}
+          dataSource={filteredReports}
+          columns={columns}
+          rowKey="id"
+          loading={isLoading}
+          enableResize
+          enableColumnSearch
+          visibleColumnKeys={visibleColumnKeys}
+          showToolbar={false}
+          persistenceKey="client_reports_admin"
+          pagination={isMobile ? false : { pageSize: 10 }}
           renderMobileCard={renderClientReportCard}
         />
       </Card>

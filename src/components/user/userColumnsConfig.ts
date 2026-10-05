@@ -1,3 +1,5 @@
+import { ColumnDefinition } from "@/components/Table/types";
+
 export interface UserColumnDefinition {
   key: string;
   title: string;
@@ -318,5 +320,45 @@ export const saveUserExportColumns = (keys: string[]): void => {
     localStorage.setItem(LS_USER_EXPORT_COLUMNS_KEY, JSON.stringify(keys));
   } catch (e) {
     console.error("Failed to save user export columns:", e);
+  }
+};
+
+export const ALL_USER_TABLE_COLUMNS: ColumnDefinition[] = [
+  { key: "name", title: "Name", defaultVisible: true, required: true, defaultWidth: 200 },
+  { key: "email", title: "Email", defaultVisible: true, defaultWidth: 200 },
+  { key: "phoneNumber", title: "PhoneNumber", defaultVisible: true, defaultWidth: 160 },
+  { key: "degination", title: "Designation", defaultVisible: true, defaultWidth: 160 },
+  { key: "role", title: "Role", defaultVisible: true, defaultWidth: 140 },
+  { key: "action", title: "Action", defaultVisible: true, required: true, defaultWidth: 100 },
+];
+
+export const LS_USER_TABLE_COLUMNS_KEY = "artha_user_table_columns_v1";
+
+export const getSavedUserVisibleColumns = (): string[] => {
+  try {
+    const saved = localStorage.getItem(LS_USER_TABLE_COLUMNS_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        const validKeys = ALL_USER_TABLE_COLUMNS.map((c) => c.key);
+        const filtered = parsed.filter((k) => validKeys.includes(k));
+        if (filtered.length > 0) {
+          if (!filtered.includes("name")) filtered.unshift("name");
+          if (!filtered.includes("action")) filtered.push("action");
+          return filtered;
+        }
+      }
+    }
+  } catch (e) {
+    console.error("Failed to load saved user table columns:", e);
+  }
+  return ALL_USER_TABLE_COLUMNS.filter((col) => col.defaultVisible).map((col) => col.key);
+};
+
+export const saveUserVisibleColumns = (keys: string[]): void => {
+  try {
+    localStorage.setItem(LS_USER_TABLE_COLUMNS_KEY, JSON.stringify(keys));
+  } catch (e) {
+    console.error("Failed to save user table columns:", e);
   }
 };

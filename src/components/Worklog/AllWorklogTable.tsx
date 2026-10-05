@@ -9,6 +9,7 @@ import { useState, useRef, useMemo } from "react";
 import { SearchOutlined, EditOutlined, DeleteOutlined, DownOutlined, UpOutlined } from "@ant-design/icons";
 import Highlighter from "react-highlight-words";
 import ResponsiveTable from "@/components/ui/MobileCardList";
+import { PowerTable, PowerTableColumn } from "@/components/Table";
 import { Tag } from "antd";
 import { useIsMobile } from "@/hooks/useIsMobile";
 
@@ -38,6 +39,7 @@ const columns = (
       title: "Date",
       dataIndex: "date",
       key: "date",
+      defaultWidth: 130,
       ...getColumnSearchProps('startTime', 'Date'),
       sorter: (a: any, b: any) => moment(a.startTime).unix() - moment(b.startTime).unix(),
       sortOrder: sortedInfo.columnKey === 'date' && sortedInfo.order,
@@ -49,6 +51,7 @@ const columns = (
       title: "Project Name",
       dataIndex: "project",
       key: "project",
+      defaultWidth: 180,
       ...getColumnSearchProps('task.project.name', 'Project'),
       sorter: (a: any, b: any) => (a.task?.project?.name || '').localeCompare(b.task?.project?.name || ''),
       sortOrder: sortedInfo.columnKey === 'project' && sortedInfo.order,
@@ -60,6 +63,7 @@ const columns = (
       title: "Request To",
       dataIndex: "requestTo",
       key: "requestTo",
+      defaultWidth: 160,
       ...getColumnSearchProps('requestToUser.name', 'Request To'),
       sorter: (a: any, b: any) => (a.requestToUser?.name || '').localeCompare(b.requestToUser?.name || ''),
       sortOrder: sortedInfo.columnKey === 'requestTo' && sortedInfo.order,
@@ -77,6 +81,7 @@ const columns = (
       title: "Task",
       dataIndex: "Task",
       key: "task",
+      defaultWidth: 200,
       ...getColumnSearchProps('task.name', 'Task'),
       sorter: (a: any, b: any) => (a.task?.name || '').localeCompare(b.task?.name || ''),
       sortOrder: sortedInfo.columnKey === 'task' && sortedInfo.order,
@@ -88,6 +93,7 @@ const columns = (
       title: "Duration",
       dataIndex: "startTime",
       key: "startTime",
+      defaultWidth: 120,
       sorter: (a: any, b: any) => moment.duration(moment(a.endTime).diff(moment(a.startTime))).asMinutes() - 
                                  moment.duration(moment(b.endTime).diff(moment(b.startTime))).asMinutes(),
       sortOrder: sortedInfo.columnKey === 'startTime' && sortedInfo.order,
@@ -104,6 +110,7 @@ const columns = (
       title: getStatusTitle(status),
       dataIndex: "approvedBy",
       key: "approvedBy",
+      defaultWidth: 160,
       ...getColumnSearchProps(
         status.toLowerCase() === 'approved' ? 'approvedByUser.name' : 
         status.toLowerCase() === 'rejected' ? 'rejectByUser.name' : 
@@ -165,6 +172,7 @@ const columns = (
       title: "Rejection Remark",
       dataIndex: "rejectedRemark",
       key: "rejectedRemark",
+      defaultWidth: 180,
       ...getColumnSearchProps('rejectedRemark', 'Rejection Remark'),
       sorter: (a: any, b: any) => (a.rejectedRemark || '').localeCompare(b.rejectedRemark || ''),
       sortOrder: sortedInfo.columnKey === 'rejectedRemark' && sortedInfo.order,
@@ -188,6 +196,9 @@ const columns = (
     dataIndex: "o",
     key: "s",
     width: 120,
+    defaultWidth: 120,
+    required: true,
+    fixed: "right",
     render: (_: any, record: any) => {
       return (
         <Space size="small" wrap>
@@ -225,9 +236,10 @@ const columns = (
 interface AllWorklogTableProps {
   status: string;
   searchQuery?: string;
+  visibleColumnKeys?: string[];
 }
 
-const AllWorklogTable = ({ status, searchQuery }: AllWorklogTableProps) => {
+const AllWorklogTable = ({ status, searchQuery, visibleColumnKeys }: AllWorklogTableProps) => {
   const navigate = useNavigate();
   const { isMobile } = useIsMobile();
   const { data: worklogs, isPending } = useWorklog(status);
@@ -545,25 +557,28 @@ const AllWorklogTable = ({ status, searchQuery }: AllWorklogTableProps) => {
 
   return (
     <Card styles={{ body: { padding: '12px' } }}>
-      <ResponsiveTable
-        tableProps={{
-          loading: isPending || isEditPending,
-          dataSource: filteredWorklogs,
-          columns: columns(status, deleteWorklog, navigate, getColumnSearchProps, sortedInfo) as any,
-          expandable: {
-            expandedRowRender,
-            expandedRowKeys: expandedRows,
-            expandIcon: customExpandIcon,
-          },
-          onChange: handleTableChange,
-          rowKey: "id",
-          bordered: true,
-          pagination: isMobile ? false : {
-            showSizeChanger: true,
-            showQuickJumper: true,
-            pageSizeOptions: [5, 10, 20, 50],
-            showTotal: (total: number, range: [number, number]) => `${range[0]}-${range[1]} of ${total} items`,
-          },
+      <PowerTable
+        columns={columns(status, deleteWorklog, navigate, getColumnSearchProps, sortedInfo) as any}
+        dataSource={filteredWorklogs}
+        loading={isPending || isEditPending}
+        rowKey="id"
+        bordered
+        enableResize
+        enableColumnSearch
+        visibleColumnKeys={visibleColumnKeys}
+        showToolbar={false}
+        persistenceKey={`all_worklogs_${status}`}
+        expandable={{
+          expandedRowRender,
+          expandedRowKeys: expandedRows,
+          expandIcon: customExpandIcon,
+        }}
+        onChange={handleTableChange}
+        pagination={isMobile ? false : {
+          showSizeChanger: true,
+          showQuickJumper: true,
+          pageSizeOptions: [5, 10, 20, 50],
+          showTotal: (total: number, range: [number, number]) => `${range[0]}-${range[1]} of ${total} items`,
         }}
         renderMobileCard={renderWorklogCard}
       />

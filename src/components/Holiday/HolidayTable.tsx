@@ -21,7 +21,7 @@ import {
   DownloadOutlined,
   SearchOutlined
 } from '@ant-design/icons';
-import Highlighter from 'react-highlight-words';
+import { PowerTable, PowerTableColumn, useTableSearch, useColumnVisibility } from "@/components/Table";
 import { useHolidays, useDeleteHoliday, useImportHolidaysFromCSV } from '../../hooks/holiday/useHoliday';
 import { HolidayType } from '../../types/holiday';
 
@@ -35,11 +35,6 @@ interface HolidayTableProps {
 const HolidayTable: React.FC<HolidayTableProps> = ({ onEdit }) => {
   const [importModalVisible, setImportModalVisible] = useState(false);
   const [uploading, setUploading] = useState(false);
-  
-  // For search functionality
-  const [searchText, setSearchText] = useState('');
-  const [searchedColumn, setSearchedColumn] = useState('');
-  const searchInput = useRef<any>(null);
   
   // For sorting functionality
   const [sortedInfo, setSortedInfo] = useState<any>({});
@@ -76,82 +71,7 @@ const HolidayTable: React.FC<HolidayTableProps> = ({ onEdit }) => {
     }
   };
 
-  const handleSearch = (selectedKeys: any, confirm: any, dataIndex: any) => {
-    confirm();
-    setSearchText(selectedKeys[0]);
-    setSearchedColumn(dataIndex);
-  };
-
-  const handleReset = (clearFilters: any) => {
-    clearFilters();
-    setSearchText('');
-  };
-
-  const getColumnSearchProps = (dataIndex: string, title: string) => ({
-    filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }: any) => (
-      <div style={{ padding: 8 }}>
-        <Input
-          ref={searchInput}
-          placeholder={`Search ${title}`}
-          value={selectedKeys[0]}
-          onChange={e => setSelectedKeys(e.target.value ? [e.target.value] : [])}
-          onPressEnter={() => handleSearch(selectedKeys, confirm, dataIndex)}
-          style={{ marginBottom: 8, display: 'block' }}
-        />
-        <Space>
-          <Button
-            type="primary"
-            onClick={() => handleSearch(selectedKeys, confirm, dataIndex)}
-            icon={<SearchOutlined />}
-            size="small"
-            style={{ width: 90 }}
-          >
-            Search
-          </Button>
-          <Button
-            onClick={() => handleReset(clearFilters)}
-            size="small"
-            style={{ width: 90 }}
-          >
-            Reset
-          </Button>
-        </Space>
-      </div>
-    ),
-    filterIcon: (filtered: boolean) => (
-      <SearchOutlined style={{ color: filtered ? '#1890ff' : undefined }} />
-    ),
-    onFilter: (value: string, record: any) => {
-      if (dataIndex.includes('.')) {
-        const keys = dataIndex.split('.');
-        let nestedObj = record;
-        for (const key of keys) {
-          if (!nestedObj || !nestedObj[key]) return false;
-          nestedObj = nestedObj[key];
-        }
-        return nestedObj.toString().toLowerCase().includes(value.toLowerCase());
-      }
-      return record[dataIndex]
-        ? record[dataIndex].toString().toLowerCase().includes(value.toLowerCase())
-        : '';
-    },
-    onFilterDropdownOpenChange: (visible: boolean) => {
-      if (visible) {
-        setTimeout(() => searchInput.current?.select(), 100);
-      }
-    },
-    render: (text: string) =>
-      searchedColumn === dataIndex ? (
-        <Highlighter
-          highlightStyle={{ backgroundColor: '#ffc069', padding: 0 }}
-          searchWords={[searchText]}
-          autoEscape
-          textToHighlight={text ? text.toString() : ''}
-        />
-      ) : (
-        text
-      ),
-  });
+  const { getColumnSearchProps } = useTableSearch({ dataSource: holidays });
 
   const getHolidayTypeColor = (type: string) => {
     switch (type.toLowerCase()) {
@@ -257,6 +177,11 @@ const HolidayTable: React.FC<HolidayTableProps> = ({ onEdit }) => {
     }
   ];
 
+  const { visibleColumnKeys, columnCustomizer } = useColumnVisibility({
+    persistenceKey: "holiday_table",
+    columns: columns as any,
+  });
+
   const uploadProps = {
     name: 'file',
     multiple: false,
@@ -276,12 +201,13 @@ const HolidayTable: React.FC<HolidayTableProps> = ({ onEdit }) => {
   return (
     <Card
       title={
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
           <div style={{ display: 'flex', alignItems: 'center' }}>
             <CalendarOutlined style={{ marginRight: '8px' }} />
             <Title level={4} style={{ margin: 0 }}>Holidays</Title>
           </div>
           <Space>
+            {columnCustomizer}
             <Button
               icon={<UploadOutlined />}
               onClick={() => setImportModalVisible(true)}
@@ -308,11 +234,15 @@ const HolidayTable: React.FC<HolidayTableProps> = ({ onEdit }) => {
         </div>
       }
     >
-      <Table
+      <PowerTable
         columns={columns as any}
         dataSource={holidays}
         rowKey="id"
         loading={isLoading}
+        enableResize
+        visibleColumnKeys={visibleColumnKeys}
+        showToolbar={false}
+        persistenceKey="holiday_table"
         onChange={handleTableChange}
         pagination={{
           showSizeChanger: true,

@@ -23,7 +23,8 @@ import {
   ArrowLeftOutlined,
 } from "@ant-design/icons";
 import { useSession } from "@/context/SessionContext";
-import TodoTaskTable from "@/components/TodoTask/TodoTaskTable";
+import TodoTaskTable, { ALL_TODO_TASK_COLUMNS } from "@/components/TodoTask/TodoTaskTable";
+import { useColumnVisibility } from "@/components/Table";
 import TodoTaskForm from "@/components/TodoTask/TodoTaskForm";
 import TodoTaskDetails from "@/components/TodoTask/TodoTaskDetails";
 import { TodoTask, TodoTaskStatus } from "@/types/todoTask";
@@ -56,6 +57,10 @@ const TodoTaskPage = () => {
   const { profile } = useSession();
   const navigate = useNavigate();
   const { isMobile } = useIsMobile();
+  const { visibleColumnKeys, columnCustomizer } = useColumnVisibility({
+    persistenceKey: "todo_task_table",
+    columns: ALL_TODO_TASK_COLUMNS,
+  });
   const [showMobileSearch, setShowMobileSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("my-tasks");
@@ -423,6 +428,7 @@ const TodoTaskPage = () => {
           viewMode === "list" ? (
             !isMobile && (
               <Space>
+                {columnCustomizer}
                 {hasCreatePermission && (
                   <Button
                     type="primary"
@@ -560,6 +566,7 @@ const TodoTaskPage = () => {
                   onDeleteTask={
                     hasDeletePermission ? handleDeleteTask : undefined
                   }
+                  visibleColumnKeys={visibleColumnKeys}
                 />
               </TabPane>
               {hasCreatePermission && (
@@ -634,6 +641,7 @@ const TodoTaskPage = () => {
                     onDeleteTask={
                       hasDeletePermission ? handleDeleteTask : undefined
                     }
+                    visibleColumnKeys={visibleColumnKeys}
                   />
                 </TabPane>
               )}
@@ -706,6 +714,7 @@ const TodoTaskPage = () => {
                   onDeleteTask={
                     hasDeletePermission ? handleDeleteTask : undefined
                   }
+                  visibleColumnKeys={visibleColumnKeys}
                 />
               </TabPane>
               {shouldShowAllTasksTab && (
@@ -807,6 +816,7 @@ const TodoTaskPage = () => {
                     onDeleteTask={
                       hasDeletePermission ? handleDeleteTask : undefined
                     }
+                    visibleColumnKeys={visibleColumnKeys}
                   />
                 </TabPane>
               )}

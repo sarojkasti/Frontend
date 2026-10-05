@@ -64,6 +64,7 @@ import {
 import { hasPermission } from '@/utils/utils';
 import { permissionConfig } from '@/utils/permission-config';
 import ResponsiveTable from '@/components/ui/MobileCardList';
+import { PowerTable, PowerTableColumn, useColumnVisibility } from '@/components/Table';
 import { useIsMobile } from '@/hooks/useIsMobile';
 
 const { Title, Text } = Typography;
@@ -396,10 +397,11 @@ const LeaveManagement: React.FC<LeaveManagementProps> = ({ userId: profileUserId
     });
   }, [pendingApprovals, searchQuery]);
 
-  const myLeavesColumns = [
+  const myLeavesColumns: PowerTableColumn<LeaveType>[] = [
     {
       title: 'Type',
       dataIndex: 'type',
+      defaultWidth: 140,
       key: 'type',
       sorter: (a: LeaveType, b: LeaveType) => {
         const typeA = a.leaveType?.name || a.type;
@@ -421,6 +423,7 @@ const LeaveManagement: React.FC<LeaveManagementProps> = ({ userId: profileUserId
     {
       title: 'Period',
       key: 'period',
+      defaultWidth: 180,
       sorter: (a: LeaveType, b: LeaveType) => moment(a.startDate).diff(moment(b.startDate)),
       render: (record: LeaveType) => {
         if (record.isCustomDates && record.customDates) {
@@ -462,6 +465,7 @@ const LeaveManagement: React.FC<LeaveManagementProps> = ({ userId: profileUserId
     {
       title: 'Reason',
       dataIndex: 'reason',
+      defaultWidth: 200,
       key: 'reason',
       ellipsis: true,
       ...getColumnSearchProps(userLeaves, 'reason', 'Reason'),
@@ -484,6 +488,7 @@ const LeaveManagement: React.FC<LeaveManagementProps> = ({ userId: profileUserId
     {
       title: 'Status',
       dataIndex: 'status',
+      defaultWidth: 130,
       key: 'status',
       sorter: (a: LeaveType, b: LeaveType) => a.status.localeCompare(b.status),
       filters: [
@@ -500,6 +505,7 @@ const LeaveManagement: React.FC<LeaveManagementProps> = ({ userId: profileUserId
     {
       title: 'Request Date',
       dataIndex: 'createdAt',
+      defaultWidth: 140,
       key: 'createdAt',
       sorter: (a: LeaveType, b: LeaveType) => moment(a.createdAt).diff(moment(b.createdAt)),
       render: (date: string, record: LeaveType) => (
@@ -519,6 +525,7 @@ const LeaveManagement: React.FC<LeaveManagementProps> = ({ userId: profileUserId
     {
       title: 'Approvers',
       key: 'approvers',
+      defaultWidth: 160,
       render: (record: LeaveType) => (
         <div>
           {record.managerApproverId && (
@@ -574,6 +581,10 @@ const LeaveManagement: React.FC<LeaveManagementProps> = ({ userId: profileUserId
     {
       title: 'Actions',
       key: 'actions',
+      width: 110,
+      defaultWidth: 110,
+      required: true,
+      fixed: 'right',
       render: (record: LeaveType) => {
         const isOwnLeave = record.user.id === userId;
         const canEdit =
@@ -650,10 +661,11 @@ const LeaveManagement: React.FC<LeaveManagementProps> = ({ userId: profileUserId
     },
   ];
 
-  const approvalsColumns = [
+  const approvalsColumns: PowerTableColumn<LeaveType>[] = [
     {
       title: 'Employee',
       key: 'employee',
+      defaultWidth: 180,
       sorter: (a: LeaveType, b: LeaveType) => {
         const nameA = a.user.name;
         const nameB = b.user.name;
@@ -694,6 +706,7 @@ const LeaveManagement: React.FC<LeaveManagementProps> = ({ userId: profileUserId
       title: 'Type',
       dataIndex: 'type',
       key: 'type',
+      defaultWidth: 140,
       sorter: (a: LeaveType, b: LeaveType) => {
         const typeA = a.leaveType?.name || a.type;
         const typeB = b.leaveType?.name || b.type;
@@ -714,6 +727,7 @@ const LeaveManagement: React.FC<LeaveManagementProps> = ({ userId: profileUserId
     {
       title: 'Period',
       key: 'period',
+      defaultWidth: 180,
       sorter: (a: LeaveType, b: LeaveType) => moment(a.startDate).diff(moment(b.startDate)),
       render: (record: LeaveType) => {
         if (record.isCustomDates && record.customDates) {
@@ -754,6 +768,7 @@ const LeaveManagement: React.FC<LeaveManagementProps> = ({ userId: profileUserId
       title: 'Reason',
       dataIndex: 'reason',
       key: 'reason',
+      defaultWidth: 200,
       ellipsis: true,
       ...getColumnSearchProps(pendingApprovals, 'reason', 'Reason'),
       render: (reason: string) => {
@@ -776,6 +791,7 @@ const LeaveManagement: React.FC<LeaveManagementProps> = ({ userId: profileUserId
       title: 'Status',
       dataIndex: 'status',
       key: 'status',
+      defaultWidth: 130,
       sorter: (a: LeaveType, b: LeaveType) => a.status.localeCompare(b.status),
       filters: [
         { text: 'Pending', value: 'pending' },
@@ -792,6 +808,7 @@ const LeaveManagement: React.FC<LeaveManagementProps> = ({ userId: profileUserId
       title: 'Request Date',
       dataIndex: 'createdAt',
       key: 'createdAt',
+      defaultWidth: 140,
       sorter: (a: LeaveType, b: LeaveType) => moment(a.createdAt).diff(moment(b.createdAt)),
       render: (date: string, record: LeaveType) => (
         <Tooltip
@@ -810,6 +827,7 @@ const LeaveManagement: React.FC<LeaveManagementProps> = ({ userId: profileUserId
     {
       title: 'Approved By',
       key: 'approvedBy',
+      defaultWidth: 160,
       render: (record: LeaveType) => (
         <div style={{ minWidth: '150px' }}>
           {record.managerApprover && (
@@ -839,6 +857,10 @@ const LeaveManagement: React.FC<LeaveManagementProps> = ({ userId: profileUserId
     {
       title: 'Actions',
       key: 'actions',
+      width: 150,
+      defaultWidth: 150,
+      required: true,
+      fixed: 'right',
       render: (record: LeaveType) => {
         const isPending = ['pending', 'approved_by_manager'].includes(record.status);
         const isManagerApproved = record.status === 'approved_by_manager';
@@ -893,6 +915,18 @@ const LeaveManagement: React.FC<LeaveManagementProps> = ({ userId: profileUserId
       },
     },
   ];
+
+  const { visibleColumnKeys: myLeavesVisibleKeys, columnCustomizer: myLeavesCustomizer } =
+    useColumnVisibility({
+      persistenceKey: "leave_my_requests",
+      columns: myLeavesColumns,
+    });
+
+  const { visibleColumnKeys: approvalsVisibleKeys, columnCustomizer: approvalsCustomizer } =
+    useColumnVisibility({
+      persistenceKey: "leave_incoming_approvals",
+      columns: approvalsColumns,
+    });
 
   // Mobile card renderers
   const renderMyLeaveCard = (record: LeaveType) => {
@@ -1224,30 +1258,35 @@ const LeaveManagement: React.FC<LeaveManagementProps> = ({ userId: profileUserId
         title="My Leave Requests"
         extra={
           !isMobile && (
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={() => setIsRequestModalOpen(true)}
-              disabled={!canApplyForLeave}
-              title={!canApplyForLeave ? "You don't have permission to apply for leave" : undefined}
-            >
-              Request Leave
-            </Button>
+            <Space>
+              {myLeavesCustomizer}
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={() => setIsRequestModalOpen(true)}
+                disabled={!canApplyForLeave}
+                title={!canApplyForLeave ? "You don't have permission to apply for leave" : undefined}
+              >
+                Request Leave
+              </Button>
+            </Space>
           )
         }
         styles={{ body: { padding: isMobile ? '12px' : '24px' } }}
         style={{ marginBottom: '20px' }}
       >
-        <ResponsiveTable
-          tableProps={{
-            dataSource: filteredUserLeaves,
-            columns: myLeavesColumns,
-            loading: leavesLoading,
-            rowKey: 'id',
-            pagination: isMobile ? false : { pageSize: 10 },
-            locale: { emptyText: 'No leave requests found' },
-            scroll: { x: 'max-content' },
-          }}
+        <PowerTable<LeaveType>
+          columns={myLeavesColumns}
+          dataSource={filteredUserLeaves}
+          loading={leavesLoading}
+          rowKey="id"
+          enableResize
+          enableColumnSearch
+          visibleColumnKeys={myLeavesVisibleKeys}
+          showToolbar={false}
+          persistenceKey="leave_my_requests"
+          pagination={isMobile ? false : { pageSize: 10, showSizeChanger: true }}
+          locale={{ emptyText: 'No leave requests found' }}
           renderMobileCard={renderMyLeaveCard}
         />
       </Card>
@@ -1268,19 +1307,22 @@ const LeaveManagement: React.FC<LeaveManagementProps> = ({ userId: profileUserId
                 }{' '}
                 pending
               </Text>
+              {!isMobile && approvalsCustomizer}
             </Space>
           }
         >
-          <ResponsiveTable
-            tableProps={{
-              dataSource: filteredApprovals,
-              columns: approvalsColumns,
-              loading: approvalsLoading,
-              rowKey: 'id',
-              pagination: isMobile ? false : { pageSize: 10 },
-              locale: { emptyText: 'No leave requests requiring action' },
-              scroll: { x: 'max-content' },
-            }}
+          <PowerTable<LeaveType>
+            columns={approvalsColumns}
+            dataSource={filteredApprovals}
+            loading={approvalsLoading}
+            rowKey="id"
+            enableResize
+            enableColumnSearch
+            visibleColumnKeys={approvalsVisibleKeys}
+            showToolbar={false}
+            persistenceKey="leave_incoming_approvals"
+            pagination={isMobile ? false : { pageSize: 10, showSizeChanger: true }}
+            locale={{ emptyText: 'No leave requests requiring action' }}
             renderMobileCard={renderApprovalCard}
           />
         </Card>

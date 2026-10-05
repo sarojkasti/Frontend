@@ -17,7 +17,19 @@ import { useBulkApproveWorklogs } from "@/hooks/worklog/useBulkApproveWorklogs";
 import { useBulkRejectWorklogs } from "@/hooks/worklog/useBulkRejectWorklogs";
 import { getWorklogType, getWorklogTypeColor, getWorklogTypeDescription, WorklogStatus } from "@/utils/worklogUtils";
 import ResponsiveTable from "@/components/ui/MobileCardList";
+import { PowerTable, PowerTableColumn, useColumnVisibility } from "@/components/Table";
 import { useIsMobile } from "@/hooks/useIsMobile";
+
+const ADMIN_WORKLOG_COLUMNS = [
+  { key: "date", label: "Date", required: true },
+  { key: "user", label: "User" },
+  { key: "project", label: "Project" },
+  { key: "task", label: "Task" },
+  { key: "duration", label: "Duration" },
+  { key: "status", label: "Status" },
+  { key: "requestTo", label: "Request To" },
+  { key: "action", label: "Action", required: true },
+];
 
 const { TextArea } = Input;
 
@@ -25,6 +37,11 @@ const AdminWorklogTable = ({ headerControls }: { headerControls?: React.ReactNod
   const navigate = useNavigate();
   const { isMobile } = useIsMobile();
   const { profile } = useSession();
+  const { visibleColumnKeys, columnCustomizer } = useColumnVisibility({
+    persistenceKey: "admin_worklogs_table",
+    columns: ADMIN_WORKLOG_COLUMNS,
+    size: "small",
+  });
   const [filters, setFilters] = useState<WorklogFilters>({});
   const { data: worklogs, isPending, refetch } = useAllWorklog(filters);
   const { mutate: editWorklog, isPending: isEditPending } = useEditWorklog();
@@ -380,7 +397,8 @@ const AdminWorklogTable = ({ headerControls }: { headerControls?: React.ReactNod
         title: "Date",
         dataIndex: "startTime",
         key: "date",
-        width: 75,
+        width: 90,
+        defaultWidth: 90,
         ...getColumnSearchProps('startTime', 'Date'),
         sorter: (a: any, b: any) => moment(a.startTime).unix() - moment(b.startTime).unix(),
         sortOrder: sortedInfo.columnKey === 'date' && sortedInfo.order,
@@ -392,7 +410,8 @@ const AdminWorklogTable = ({ headerControls }: { headerControls?: React.ReactNod
         title: "User",
         dataIndex: "user",
         key: "user",
-        width: 90,
+        width: 140,
+        defaultWidth: 140,
         ...getColumnSearchProps('user.name', 'User'),
         sorter: (a: any, b: any) => (a.user?.name || '').localeCompare(b.user?.name || ''),
         sortOrder: sortedInfo.columnKey === 'user' && sortedInfo.order,
@@ -404,7 +423,8 @@ const AdminWorklogTable = ({ headerControls }: { headerControls?: React.ReactNod
         title: "Project",
         dataIndex: "project",
         key: "project",
-        width: 90,
+        width: 160,
+        defaultWidth: 160,
         ...getColumnSearchProps('task.project.name', 'Project'),
         sorter: (a: any, b: any) => (a.task?.project?.name || '').localeCompare(b.task?.project?.name || ''),
         sortOrder: sortedInfo.columnKey === 'project' && sortedInfo.order,
@@ -416,7 +436,8 @@ const AdminWorklogTable = ({ headerControls }: { headerControls?: React.ReactNod
         title: "Task",
         dataIndex: "task",
         key: "task",
-        width: 90,
+        width: 180,
+        defaultWidth: 180,
         ...getColumnSearchProps('task.name', 'Task'),
         sorter: (a: any, b: any) => (a.task?.name || '').localeCompare(b.task?.name || ''),
         sortOrder: sortedInfo.columnKey === 'task' && sortedInfo.order,
@@ -441,7 +462,8 @@ const AdminWorklogTable = ({ headerControls }: { headerControls?: React.ReactNod
         title: "Duration",
         dataIndex: "duration",
         key: "duration",
-        width: 90,
+        width: 120,
+        defaultWidth: 120,
         sorter: (a: any, b: any) => moment.duration(moment(a.endTime).diff(moment(a.startTime))).asMinutes() - 
                                    moment.duration(moment(b.endTime).diff(moment(b.startTime))).asMinutes(),
         sortOrder: sortedInfo.columnKey === 'duration' && sortedInfo.order,
@@ -465,7 +487,8 @@ const AdminWorklogTable = ({ headerControls }: { headerControls?: React.ReactNod
         title: "Status",
         dataIndex: "status",
         key: "status",
-        width: 75,
+        width: 110,
+        defaultWidth: 110,
         ...getColumnSearchProps('status', 'Status'),
         sorter: (a: any, b: any) => (a.status || '').localeCompare(b.status || ''),
         sortOrder: sortedInfo.columnKey === 'status' && sortedInfo.order,
@@ -489,7 +512,8 @@ const AdminWorklogTable = ({ headerControls }: { headerControls?: React.ReactNod
         title: "Request To",
         dataIndex: "requestTo",
         key: "requestTo",
-        width: 80,
+        width: 140,
+        defaultWidth: 140,
         render: (_: any, record: any) => {
           if (record.requestTo) {
             const requestToName = record.requestToUser?.name || record.requestTo;
@@ -512,7 +536,9 @@ const AdminWorklogTable = ({ headerControls }: { headerControls?: React.ReactNod
         title: "Action",
         dataIndex: "action",
         key: "action",
-        width: 115,
+        width: 130,
+        defaultWidth: 130,
+        required: true,
         fixed: 'right',
         render: (_: any, record: any) => {
           return (
@@ -584,7 +610,8 @@ const AdminWorklogTable = ({ headerControls }: { headerControls?: React.ReactNod
         title: "Approved By",
         dataIndex: "approvedBy",
         key: "approvedBy",
-        width: 80,
+        width: 140,
+        defaultWidth: 140,
         render: (_: any, record: any) => {
           if (record.status === "approved" && record.approvedBy) {
             const approverName = record.approvedByUser?.name || record.approvedBy;
@@ -611,7 +638,8 @@ const AdminWorklogTable = ({ headerControls }: { headerControls?: React.ReactNod
         title: "Rejected By",
         dataIndex: "rejectBy",
         key: "rejectBy",
-        width: 80,
+        width: 140,
+        defaultWidth: 140,
         render: (_: any, record: any) => {
           if (record.status === "rejected" && record.rejectBy) {
             const rejectorName = record.rejectByUser?.name || record.rejectBy;
@@ -991,6 +1019,7 @@ const AdminWorklogTable = ({ headerControls }: { headerControls?: React.ReactNod
 
             {!isMobile && (
               <Space size="small" style={{ marginLeft: '8px', marginBottom: '2px' }}>
+                {columnCustomizer}
                 {canBulkApproveWorklogs && (
                   <Popconfirm
                     title="Approve selected worklogs?"
@@ -1036,34 +1065,32 @@ const AdminWorklogTable = ({ headerControls }: { headerControls?: React.ReactNod
       </Form>
 
       <div className="table-container admin-worklog-table" style={{ overflowX: 'auto', width: '100%' }}>
-        <ResponsiveTable
-          tableProps={{
-            loading: isPending || isEditPending,
-            dataSource: filteredWorklogs || [],
-            columns: getColumns() as any,
-            rowSelection: rowSelection,
-            size: "small",
-            className: "text-xs compact-table admin-worklog-table",
-            style: { 
-              fontSize: '10px'
-            },
-            rowClassName: (record: any) => {
-              const worklogType = getWorklogType(record, activeWorkhour);
-              return `compact-row row-${worklogType}`;
-            },
-            onChange: handleTableChange,
-            rowKey: "id",
-            bordered: true,
-            pagination: isMobile ? false : {
-              showSizeChanger: true,
-              showQuickJumper: true,
-              defaultPageSize: 50,
-              pageSizeOptions: [10, 20, 50, 100],
-              showTotal: (total: number, range: [number, number]) => <span style={{ fontSize: '10px' }}>{`${range[0]}-${range[1]} of ${total} items`}</span>,
-              size: 'small'
-            },
-            scroll: { x: 'max-content' },
-            sticky: true,
+        <PowerTable
+          columns={getColumns() as any}
+          dataSource={filteredWorklogs || []}
+          loading={isPending || isEditPending}
+          rowSelection={rowSelection}
+          rowKey="id"
+          bordered
+          enableResize
+          enableColumnSearch
+          showToolbar={false}
+          visibleColumnKeys={visibleColumnKeys}
+          persistenceKey="admin_worklogs_table"
+          size="small"
+          className="text-xs compact-table admin-worklog-table"
+          rowClassName={(record: any) => {
+            const worklogType = getWorklogType(record, activeWorkhour);
+            return `compact-row row-${worklogType}`;
+          }}
+          onChange={handleTableChange}
+          pagination={isMobile ? false : {
+            showSizeChanger: true,
+            showQuickJumper: true,
+            defaultPageSize: 50,
+            pageSizeOptions: [10, 20, 50, 100],
+            showTotal: (total: number, range: [number, number]) => <span style={{ fontSize: '10px' }}>{`${range[0]}-${range[1]} of ${total} items`}</span>,
+            size: 'small'
           }}
           renderMobileCard={renderAdminWorklogCard}
         />

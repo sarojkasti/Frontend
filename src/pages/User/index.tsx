@@ -3,11 +3,17 @@ import UserForm from "@/components/user/UserForm";
 import UserTable from "@/components/user/UserTable";
 import UserExportPage from "@/components/user/UserExportPage";
 import { UserStatus } from "@/types/userStatus";
-import { Modal, Tabs, Button, Input, Tooltip } from "antd";
-import { PlusOutlined, SearchOutlined, DownloadOutlined } from "@ant-design/icons";
-import React, { useCallback, useState, useMemo } from "react";
+import { Modal, Tabs, Button, Input, Tooltip, Popover } from "antd";
+import { PlusOutlined, SearchOutlined, DownloadOutlined, SettingOutlined } from "@ant-design/icons";
+import React, { useCallback, useState, useMemo, useEffect } from "react";
 import { useIsMobile } from "@/hooks/useIsMobile";
-import { useUser } from "@/hooks/user/useUser";
+import { useUser, useExportUsers } from "@/hooks/user/useUser";
+import {
+  ALL_USER_TABLE_COLUMNS,
+  getSavedUserVisibleColumns,
+  saveUserVisibleColumns,
+} from "@/components/user/userColumnsConfig";
+import { SortableColumnCustomizer } from "@/components/Table/SortableColumnCustomizer";
 
 const User: React.FC = () => {
   const [open, setOpen] = useState(false);
@@ -18,10 +24,33 @@ const User: React.FC = () => {
   const [selectedUsers, setSelectedUsers] = useState<any[]>([]);
   const [isExportViewOpen, setIsExportViewOpen] = useState(false);
 
+  // Column Visibility State
+  const [visibleColumnKeys, setVisibleColumnKeys] = useState<string[]>(
+    getSavedUserVisibleColumns()
+  );
+
+  useEffect(() => {
+    saveUserVisibleColumns(visibleColumnKeys);
+  }, [visibleColumnKeys]);
+
+  const columnPopoverContent = (
+    <SortableColumnCustomizer
+      allColumns={ALL_USER_TABLE_COLUMNS}
+      visibleColumnKeys={visibleColumnKeys}
+      setVisibleColumnKeys={setVisibleColumnKeys}
+      onReset={() =>
+        setVisibleColumnKeys(
+          ALL_USER_TABLE_COLUMNS.filter((c) => c.defaultVisible).map((c) => c.key)
+        )
+      }
+    />
+  );
+
   // Fetch all users with relations for export helper
-  const { data: allUsersData } = useUser({ status: "all", limit: 2000 });
+  const { data: allUsersData, isLoading: isLoadingExportUsers } = useExportUsers("all");
   const allUsers = useMemo(() => {
-    return Array.isArray(allUsersData) ? allUsersData : allUsersData?.results || [];
+    if (Array.isArray(allUsersData)) return allUsersData;
+    return allUsersData?.results || [];
   }, [allUsersData]);
 
   const showModal = useCallback((task?: any) => {
@@ -42,6 +71,7 @@ const User: React.FC = () => {
         selectedUsers={selectedUsers}
         allUsers={allUsers}
         activeTabKey={activeKey}
+        isLoading={isLoadingExportUsers}
       />
     );
   }
@@ -83,6 +113,13 @@ const User: React.FC = () => {
         tabBarExtraContent={
           !isMobile ? (
             <div className="flex flex-wrap gap-2">
+              <Popover
+                content={columnPopoverContent}
+                trigger="click"
+                placement="bottomRight"
+              >
+                <Button icon={<SettingOutlined />}>Edit Columns</Button>
+              </Popover>
               <Tooltip title="Download / Export Users Helper">
                 <Button
                   icon={<DownloadOutlined />}
@@ -128,6 +165,7 @@ const User: React.FC = () => {
                 searchQuery={searchQuery}
                 selectedUsers={selectedUsers}
                 setSelectedUsers={setSelectedUsers}
+                visibleColumnKeys={visibleColumnKeys}
               />
             ),
           },
@@ -141,6 +179,7 @@ const User: React.FC = () => {
                 searchQuery={searchQuery}
                 selectedUsers={selectedUsers}
                 setSelectedUsers={setSelectedUsers}
+                visibleColumnKeys={visibleColumnKeys}
               />
             ),
           },
@@ -154,6 +193,7 @@ const User: React.FC = () => {
                 searchQuery={searchQuery}
                 selectedUsers={selectedUsers}
                 setSelectedUsers={setSelectedUsers}
+                visibleColumnKeys={visibleColumnKeys}
               />
             ),
           },

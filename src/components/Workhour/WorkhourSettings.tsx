@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { PowerTable, PowerTableColumn, useColumnVisibility } from '@/components/Table';
 import { 
   Card, 
   Table, 
@@ -127,39 +128,45 @@ const WorkhourSettings: React.FC<WorkhourSettingsProps> = ({ roles = [] }) => {
     return role ? role.displayName : 'Unknown Role';
   };
 
-  const activeColumns = [
+  const activeColumns: PowerTableColumn<WorkhourType>[] = [
     {
       title: 'Role',
       key: 'role',
+      defaultWidth: 160,
       render: (_: any, record: WorkhourType) => getRoleName(record.roleId)
     },
     {
       title: 'Work Hours',
       dataIndex: 'workHours',
       key: 'workHours',
+      defaultWidth: 130,
       render: (hours: number) => <strong>{hours}h</strong>
     },
     {
       title: 'Start Time',
       dataIndex: 'startTime',
       key: 'startTime',
+      defaultWidth: 130,
       render: (time: string) => time || 'Not set'
     },
     {
       title: 'End Time',
       dataIndex: 'endTime',
       key: 'endTime',
+      defaultWidth: 130,
       render: (time: string) => time || 'Not set'
     },
     {
       title: 'Valid From',
       dataIndex: 'validFrom',
       key: 'validFrom',
+      defaultWidth: 140,
       render: (date: string) => date ? new Date(date).toLocaleDateString() : 'Not set'
     },
     {
       title: 'Status',
       key: 'status',
+      defaultWidth: 120,
       render: (_: any, record: WorkhourType) => (
         <Tag color={record.isActive ? 'green' : 'default'}>
           {record.isActive ? 'Active' : 'Inactive'}
@@ -170,11 +177,16 @@ const WorkhourSettings: React.FC<WorkhourSettingsProps> = ({ roles = [] }) => {
       title: 'Created',
       dataIndex: 'createdAt',
       key: 'createdAt',
+      defaultWidth: 130,
       render: (date: string) => new Date(date).toLocaleDateString()
     },
     {
       title: 'Actions',
       key: 'actions',
+      width: 180,
+      defaultWidth: 180,
+      required: true,
+      fixed: 'right',
       render: (_: any, record: WorkhourType) => (
         <Space>
           <Button 
@@ -213,75 +225,96 @@ const WorkhourSettings: React.FC<WorkhourSettingsProps> = ({ roles = [] }) => {
     }
   ];
 
-  const historyColumns = [
+  const historyColumns: PowerTableColumn<WorkhourHistoryType>[] = [
     {
       title: 'Role',
       key: 'role',
+      defaultWidth: 160,
       render: (_: any, record: WorkhourHistoryType) => getRoleName(record.roleId)
     },
     {
       title: 'Work Hours',
       dataIndex: 'workHours',
       key: 'workHours',
+      defaultWidth: 130,
       render: (hours: number) => <strong>{hours}h</strong>
     },
     {
       title: 'Start Time',
       dataIndex: 'startTime',
       key: 'startTime',
+      defaultWidth: 130,
       render: (time: string) => time || 'Not set'
     },
     {
       title: 'End Time',
       dataIndex: 'endTime',
       key: 'endTime',
+      defaultWidth: 130,
       render: (time: string) => time || 'Not set'
     },
     {
       title: 'Valid From',
       dataIndex: 'validFrom',
       key: 'validFrom',
+      defaultWidth: 140,
       render: (date: string) => date ? new Date(date).toLocaleDateString() : 'Not set'
     },
     {
       title: 'Valid Until',
       dataIndex: 'validUntil',
       key: 'validUntil',
+      defaultWidth: 140,
       render: (date: string) => date ? new Date(date).toLocaleDateString() : 'Still Active'
     },
     {
       title: 'Created',
       dataIndex: 'createdAt',
       key: 'createdAt',
+      defaultWidth: 130,
       render: (date: string) => new Date(date).toLocaleDateString()
     }
   ];
 
+  const { visibleColumnKeys: activeVisibleKeys, columnCustomizer: activeCustomizer } =
+    useColumnVisibility({
+      persistenceKey: "workhour_active_settings",
+      columns: activeColumns,
+    });
+
   return (
     <Card
       title={
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
           <div style={{ display: 'flex', alignItems: 'center' }}>
             <SettingOutlined style={{ marginRight: '8px' }} />
             <Title level={4} style={{ margin: 0 }}>Work Hour Settings</Title>
           </div>
-          <Button 
-            type="primary" 
-            icon={<PlusOutlined />} 
-            onClick={handleAdd}
-          >
-            Add Configuration
-          </Button>
+          <Space>
+            {activeCustomizer}
+            <Button 
+              type="primary" 
+              icon={<PlusOutlined />} 
+              onClick={handleAdd}
+            >
+              Add Configuration
+            </Button>
+          </Space>
         </div>
       }
     >
       <Tabs defaultActiveKey="active">
         <TabPane tab="Active Workhours" key="active">
-          <Table
+          <PowerTable<WorkhourType>
             columns={activeColumns}
             dataSource={workhours}
             rowKey="id"
             loading={isLoading}
+            enableResize
+            enableColumnSearch
+            visibleColumnKeys={activeVisibleKeys}
+            showToolbar={false}
+            persistenceKey="workhour_active_settings"
             pagination={{
               showSizeChanger: true,
               showQuickJumper: true,
@@ -291,11 +324,15 @@ const WorkhourSettings: React.FC<WorkhourSettingsProps> = ({ roles = [] }) => {
         </TabPane>
         {selectedRole && (
           <TabPane tab={`History for ${getRoleName(selectedRole)}`} key="history">
-            <Table
+            <PowerTable<WorkhourHistoryType>
               columns={historyColumns}
               dataSource={workhourHistory}
               rowKey="id"
               loading={historyLoading}
+              enableResize
+              enableColumnSearch
+              showToolbar={false}
+              persistenceKey="workhour_history_settings"
               pagination={{
                 showSizeChanger: true,
                 showQuickJumper: true,

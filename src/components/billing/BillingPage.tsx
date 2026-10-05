@@ -1,9 +1,12 @@
 import { useBilling } from "@/hooks/billing/useBilling";
 import { BillingType } from "@/types/billing";
-import { Button, Card, Modal, Spin, Tabs } from "antd";
-import { useState } from "react";
+import { Button, Card, Modal, Spin, Tabs, Popover } from "antd";
+import { SettingOutlined, PlusOutlined } from "@ant-design/icons";
+import { useState, useEffect } from "react";
 import BillingForm from "./BillingForm";
 import BillingTable from "./BillingTable";
+import { useColumnVisibility } from "@/components/Table";
+import { ALL_BILLING_COLUMNS } from "./billingColumnsConfig";
 
 const BillingPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -13,6 +16,12 @@ const BillingPage = () => {
   const { data: activeBillings, isLoading: activeLoading, refetch: refetchActive } = useBilling("active");
   const { data: suspendedBillings, isLoading: suspendedLoading, refetch: refetchSuspended } = useBilling("suspended");
   const { data: archivedBillings, isLoading: archivedLoading, refetch: refetchArchived } = useBilling("archived");
+
+  // Standard Column Visibility Hook with LocalStorage Persistence
+  const { visibleColumnKeys, setVisibleColumnKeys, columnCustomizer } = useColumnVisibility({
+    persistenceKey: "billing_table",
+    columns: ALL_BILLING_COLUMNS,
+  });
 
   const handleCancel = () => {
     setIsModalOpen(false);
@@ -43,6 +52,8 @@ const BillingPage = () => {
           data={activeBillings || []} 
           showModal={showModal}
           onRefresh={refreshAll}
+          visibleColumnKeys={visibleColumnKeys}
+          onVisibleColumnKeysChange={setVisibleColumnKeys}
         />
       ),
     },
@@ -58,6 +69,8 @@ const BillingPage = () => {
           data={suspendedBillings || []} 
           showModal={showModal}
           onRefresh={refreshAll}
+          visibleColumnKeys={visibleColumnKeys}
+          onVisibleColumnKeysChange={setVisibleColumnKeys}
         />
       ),
     },
@@ -73,6 +86,8 @@ const BillingPage = () => {
           data={archivedBillings || []} 
           showModal={showModal}
           onRefresh={refreshAll}
+          visibleColumnKeys={visibleColumnKeys}
+          onVisibleColumnKeysChange={setVisibleColumnKeys}
         />
       ),
     },
@@ -85,9 +100,12 @@ const BillingPage = () => {
           defaultActiveKey="1" 
           items={items} 
           tabBarExtraContent={
-            <Button type="primary" onClick={() => showModal()}>
-              Add Billing Entity
-            </Button>
+            <div className="flex items-center gap-2">
+              {columnCustomizer}
+              <Button type="primary" icon={<PlusOutlined />} onClick={() => showModal()}>
+                Add Billing Entity
+              </Button>
+            </div>
           }
         />
       </Card>

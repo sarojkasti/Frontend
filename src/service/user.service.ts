@@ -37,6 +37,31 @@ export const fetchUsers = async ({
   }
 };
 
+export const fetchExportUsers = async (status?: string) => {
+  try {
+    const url = status && status !== "all"
+      ? `${backendURI}/users/export?status=${status}`
+      : `${backendURI}/users/export`;
+    const response = await axios.get(url, {});
+    if (Array.isArray(response.data)) {
+      return response.data;
+    }
+    return response.data?.results || [];
+  } catch (error) {
+    try {
+      const fallback = await axios.get(
+        `${backendURI}/users?status=${status || "all"}&limit=2000&page=1&keywords=`
+      );
+      if (Array.isArray(fallback.data)) {
+        return fallback.data;
+      }
+      return fallback.data?.results || [];
+    } catch {
+      return [];
+    }
+  }
+};
+
 export const fetchUserById = async ({ id }: { id: string | undefined }) => {
   const response = await axios.get(`${backendURI}/users/${id}`);
   return response.data;

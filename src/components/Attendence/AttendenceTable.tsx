@@ -6,10 +6,21 @@ import { Table, Button, Input, Space, Tooltip } from "antd";
 import { SearchOutlined, EnvironmentOutlined, DownOutlined, UpOutlined } from "@ant-design/icons";
 import moment from "moment";
 import { useState, useRef, useMemo } from "react";
-import Highlighter from 'react-highlight-words';
-import ResponsiveTable from "@/components/ui/MobileCardList";
+import { PowerTable, PowerTableColumn, ColumnConfig, useTableSearch } from "@/components/Table";
 import { Tag } from "antd";
 import { useIsMobile } from "@/hooks/useIsMobile";
+
+export const ALL_ATTENDANCE_TABLE_COLUMNS: ColumnConfig[] = [
+  { key: 'userName', label: 'User' },
+  { key: 'date', label: 'Date', required: true },
+  { key: 'clockIn', label: 'Clock In' },
+  { key: 'clockInRemark', label: 'Clock In Remark' },
+  { key: 'clockOut', label: 'Clock Out' },
+  { key: 'clockOutRemark', label: 'Clock Out Remark' },
+  { key: 'duration', label: 'Duration' },
+  { key: 'worklogs', label: 'Worklogs' },
+  { key: 'location', label: 'Location' },
+];
 
 interface AttendenceTableProps {
   viewType?: 'my' | 'all-users' | 'today-all' | 'by-user' | 'date-wise';
@@ -18,6 +29,7 @@ interface AttendenceTableProps {
   dateWiseData?: any[];
   isPending?: boolean;
   searchQuery?: string;
+  visibleColumnKeys?: string[];
 }
 
 const AttendenceTable = ({ 
@@ -26,7 +38,8 @@ const AttendenceTable = ({
   selectedDate,
   dateWiseData,
   isPending: externalPending,
-  searchQuery
+  searchQuery,
+  visibleColumnKeys,
 }: AttendenceTableProps) => {
   const { isMobile } = useIsMobile();
   const [searchText, setSearchText] = useState('');
@@ -75,12 +88,6 @@ const AttendenceTable = ({
 
   const { data: attendence, loading: isPending } = getAttendanceData();
 
-  const handleSearch = (selectedKeys: string[], confirm: () => void, dataIndex: string) => {
-    confirm();
-    setSearchText(selectedKeys[0]);
-    setSearchedColumn(dataIndex);
-  };
-
   const handleTableChange = (_pagination: any, _filters: any, sorter: any) => {
     setSortedInfo(sorter);
   };
@@ -116,142 +123,7 @@ const AttendenceTable = ({
     return `${latitude}, ${longitude}`;
   };
 
-  const getColumnSearchProps = (dataIndex: string, title: string): any => {
-    // Get unique values for autocomplete
-    const getUniqueValues = () => {
-      const getValue = (obj: any, path: string): any => {
-        if (path === 'userName') {
-          return obj.user?.name || obj.user?.email || '';
-        }
-        if (path.includes('.')) {
-          const keys = path.split('.');
-          let val = obj;
-          for (const key of keys) {
-            if (!val) return null;
-            val = val[key];
-          }
-          return val;
-        }
-        return obj[path];
-      };
-
-      const values = new Set<string>();
-      attendence?.forEach((record: any) => {
-        const value = getValue(record, dataIndex);
-        if (value) {
-          values.add(value.toString());
-        }
-      });
-      return Array.from(values).sort();
-    };
-
-    return {
-      filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }: any) => {
-        const uniqueValues = getUniqueValues();
-        const currentValue = selectedKeys[0] || '';
-        const filteredOptions = currentValue 
-          ? uniqueValues.filter(val => 
-              val.toLowerCase().includes(currentValue.toLowerCase())
-            ).slice(0, 10)
-          : uniqueValues.slice(0, 10);
-
-        return (
-          <div style={{ padding: 8 }}>
-            <Input
-              ref={searchInput}
-              placeholder={`Search ${title}`}
-              value={currentValue}
-              onChange={e => setSelectedKeys(e.target.value ? [e.target.value] : [])}
-              onPressEnter={() => handleSearch(selectedKeys, confirm, dataIndex)}
-              style={{ marginBottom: 8, display: 'block' }}
-            />
-            {filteredOptions.length > 0 && (
-              <div style={{ 
-                maxHeight: 200, 
-                overflowY: 'auto', 
-                marginBottom: 8,
-                border: '1px solid #d9d9d9',
-                borderRadius: 4
-              }}>
-                {filteredOptions.map((option, idx) => (
-                  <div
-                    key={idx}
-                    style={{
-                      padding: '4px 8px',
-                      cursor: 'pointer',
-                      backgroundColor: 'white',
-                      borderBottom: idx < filteredOptions.length - 1 ? '1px solid #f0f0f0' : 'none'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = '#f0f0f0';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = 'white';
-                    }}
-                    onClick={() => {
-                      setSelectedKeys([option]);
-                      handleSearch([option], confirm, dataIndex);
-                    }}
-                  >
-                    {option}
-                  </div>
-                ))}
-              </div>
-            )}
-            <Space>
-              <Button
-                type="primary"
-                onClick={() => handleSearch(selectedKeys, confirm, dataIndex)}
-                icon={<SearchOutlined />}
-                size="small"
-                style={{ width: 90 }}
-              >
-                Search
-              </Button>
-              <Button
-                onClick={() => {
-                  clearFilters();
-                  setSelectedKeys([]);
-                  setSearchText('');
-                  setSearchedColumn('');
-                  confirm({ closeDropdown: false });
-                }}
-                size="small"
-                style={{ width: 90 }}
-              >
-                Reset
-              </Button>
-            </Space>
-          </div>
-        );
-      },
-    filterIcon: (filtered: boolean) => (
-      <SearchOutlined style={{ color: filtered ? '#1890ff' : undefined }} />
-    ),
-    onFilter: (value: string, record: any) =>
-      record[dataIndex]
-        ? record[dataIndex].toString().toLowerCase().includes(value.toLowerCase())
-        : dataIndex === 'userName' && record.user
-        ? (record.user.name || record.user.email || '').toLowerCase().includes(value.toLowerCase())
-        : '',
-    onFilterDropdownVisibleChange: (visible: boolean) => {
-      if (visible) {
-        setTimeout(() => searchInput.current?.select(), 100);
-      }
-    },
-    render: (text: string) =>
-      searchedColumn === dataIndex ? (
-        <Highlighter
-          highlightStyle={{ backgroundColor: '#ffc069', padding: 0 }}
-          searchWords={[searchText]}
-          autoEscape
-          textToHighlight={text ? text.toString() : ''}
-        />
-      ) : (
-        text
-      ),
-    };
-  };
+  const { getColumnSearchProps } = useTableSearch({ dataSource: attendence });
 
   const columns = [
     // Conditionally show user column for all-users, today-all, and date-wise views
@@ -629,26 +501,33 @@ const AttendenceTable = ({
 
   return (
     <div className="card-container">
-      <ResponsiveTable
-        tableProps={{
-          loading: isPending,
-          dataSource: filteredAttendence,
-          columns: columns,
-          size: "middle",
-          rowKey: "id",
-          bordered: true,
-          expandable: {
-            expandedRowRender,
-            rowExpandable: (record: any) => record.history && record.history.length > 0,
-          },
-          onChange: handleTableChange,
-          pagination: isMobile ? false : {
-            showSizeChanger: true,
-            showQuickJumper: true,
-            pageSizeOptions: [5, 10, 20, 50],
-            showTotal: (total: number, range: [number, number]) => `${range[0]}-${range[1]} of ${total} items`,
-          },
+      <PowerTable
+        loading={isPending}
+        dataSource={filteredAttendence}
+        columns={columns as any}
+        enableResize
+        visibleColumnKeys={visibleColumnKeys}
+        showToolbar={false}
+        persistenceKey={`attendence_table_${viewType}`}
+        size="middle"
+        rowKey="id"
+        bordered
+        expandable={{
+          expandedRowRender,
+          rowExpandable: (record: any) => record.history && record.history.length > 0,
         }}
+        onChange={handleTableChange}
+        pagination={
+          isMobile
+            ? false
+            : {
+                showSizeChanger: true,
+                showQuickJumper: true,
+                pageSizeOptions: [5, 10, 20, 50],
+                showTotal: (total: number, range: [number, number]) =>
+                  `${range[0]}-${range[1]} of ${total} items`,
+              }
+        }
         renderMobileCard={renderAttendenceCard}
       />
     </div>

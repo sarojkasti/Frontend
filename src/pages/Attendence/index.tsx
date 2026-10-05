@@ -1,4 +1,6 @@
-import AttendenceTable from "@/components/Attendence/AttendenceTable";
+import AttendenceTable, { ALL_ATTENDANCE_TABLE_COLUMNS } from "@/components/Attendence/AttendenceTable";
+import { useColumnVisibility } from "@/components/Table";
+import AttendanceExportPage from "@/components/Attendence/AttendanceExportPage";
 import { useSession } from "@/context/SessionContext";
 import { useUser } from "@/hooks/user/useUser";
 import { useDateWiseAllUsersAttendence } from "@/hooks/attendence/useDateWiseAllUsersAttendence";
@@ -12,12 +14,14 @@ import {
     Button,
     Alert,
     DatePicker,
-    Input
+    Input,
+    Tooltip
 } from "antd";
 import { 
     ClockCircleOutlined,
     SearchOutlined,
-    CloseOutlined
+    CloseOutlined,
+    DownloadOutlined
 } from "@ant-design/icons";
 import { useState, useEffect } from "react";
 import moment from "moment";
@@ -29,11 +33,16 @@ const { Title } = Typography;
 const Attendence = () => {
     const { profile } = useSession();
     const { isMobile } = useIsMobile();
+    const { visibleColumnKeys, columnCustomizer } = useColumnVisibility({
+        persistenceKey: "attendance_table",
+        columns: ALL_ATTENDANCE_TABLE_COLUMNS,
+    });
     const [showMobileSearch, setShowMobileSearch] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
     const [personalViewUserId, setPersonalViewUserId] = useState<string>(""); // For the personal section
     const [selectedDate, setSelectedDate] = useState<string>(""); // For date-wise view
     const [hasInitializedDefaultView, setHasInitializedDefaultView] = useState(false);
+    const [isExportViewOpen, setIsExportViewOpen] = useState(false);
     
     // Fetch users for the dropdown (only if super user)
     const { data: usersData } = useUser({
@@ -114,6 +123,20 @@ const Attendence = () => {
         setSelectedDate(dateStr || "");
     };
 
+    if (isExportViewOpen) {
+        return (
+            <AttendanceExportPage
+                onBack={() => setIsExportViewOpen(false)}
+                initialDate={selectedDate || undefined}
+                initialUserId={
+                    personalViewUserId && personalViewUserId !== "all-today" && personalViewUserId !== "date-wise"
+                        ? personalViewUserId
+                        : undefined
+                }
+            />
+        );
+    }
+
     return (
         <>
             <Space direction="vertical" size="large" style={{ width: '100%' }}>
@@ -128,7 +151,7 @@ const Attendence = () => {
                         </Space>
                     }
                     extra={
-                        <Space wrap className="flex-wrap">
+                        <Space wrap className="flex-wrap" size="middle">
                             {/* Only show dropdown for superusers/admins */}
                             {isSuperUser && (
                                 <Select
@@ -157,16 +180,16 @@ const Attendence = () => {
                                     ))}
                                 </Select>
                             )}
-                            {isSuperUser && (
-                                <Badge 
-                                    count="Super User" 
-                                    style={{ backgroundColor: '#f50' }} 
-                                />
-                            )}
-                            <Badge 
-                                count={personalViewUserId ? "Viewing Other" : "Personal"} 
-                                style={{ backgroundColor: personalViewUserId ? '#fa8c16' : '#52c41a' }} 
-                            />
+                            <Tooltip title="Download / Export Attendance Records Helper">
+                                <Button
+                                    icon={<DownloadOutlined />}
+                                    onClick={() => setIsExportViewOpen(true)}
+                                    size="small"
+                                >
+                                    Export Attendance
+                                </Button>
+                            </Tooltip>
+                            {columnCustomizer}
                         </Space>
                     }
                 >
@@ -197,7 +220,7 @@ const Attendence = () => {
                                 }
                                 style={{ marginBottom: 16 }}
                             />
-                            <AttendenceTable viewType="today-all" searchQuery={searchQuery} />
+                            <AttendenceTable viewType="today-all" searchQuery={searchQuery} visibleColumnKeys={visibleColumnKeys} />
                         </Space>
                     ) : personalViewUserId === "date-wise" && isSuperUser ? (
                         <Space direction="vertical" style={{ width: '100%' }}>
@@ -228,6 +251,7 @@ const Attendence = () => {
                                     dateWiseData={dateWiseAttendance}
                                     isPending={dateWisePending}
                                     searchQuery={searchQuery}
+                                    visibleColumnKeys={visibleColumnKeys}
                                 />
                             )}
                         </Space>
@@ -244,17 +268,34 @@ const Attendence = () => {
                                 }
                                 style={{ marginBottom: 16 }}
                             />
-                            <AttendenceTable viewType="by-user" selectedUserId={personalViewUserId} searchQuery={searchQuery} />
+                            <AttendenceTable viewType="by-user" selectedUserId={personalViewUserId} searchQuery={searchQuery} visibleColumnKeys={visibleColumnKeys} />
                         </Space>
                     ) : (
-                        <AttendenceTable viewType="my" searchQuery={searchQuery} />
+                        <AttendenceTable viewType="my" searchQuery={searchQuery} visibleColumnKeys={visibleColumnKeys} />
                     )}
                 </Card>
             </Space>
 
-            {/* Floating Search Action Button on Mobile */}
+            {/* Floating Action Buttons on Mobile */}
             {isMobile && (
-                <div className="fixed bottom-6 right-5 z-40">
+                <div className="fixed bottom-6 right-5 z-40 flex flex-col gap-3">
+                    <Tooltip title="Export Attendance" placement="left">
+                        <Button
+                            type="primary"
+                            shape="circle"
+                            size="large"
+                            icon={<DownloadOutlined style={{ fontSize: 20 }} />}
+                            onClick={() => setIsExportViewOpen(true)}
+                            className="shadow-xl"
+                            style={{
+                                width: 56,
+                                height: 56,
+                                backgroundColor: "#21a366",
+                                borderColor: "#21a366",
+                            }}
+                            aria-label="Export Attendance"
+                        />
+                    </Tooltip>
                     <button
                         onClick={() => setShowMobileSearch(!showMobileSearch)}
                         className="w-14 h-14 bg-blue-600 text-white rounded-full shadow-xl flex items-center justify-center text-xl active:scale-95 transition-all hover:bg-blue-700"

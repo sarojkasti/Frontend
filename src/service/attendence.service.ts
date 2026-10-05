@@ -47,3 +47,28 @@ export const getMyAttendence = async () => {
   return response.data;
 };
 
+export interface ExportAttendanceParams {
+  startDate?: string;
+  endDate?: string;
+  userId?: string;
+  departmentId?: string;
+}
+
+export const fetchExportAttendance = async (params: ExportAttendanceParams = {}) => {
+  const queryParams = new URLSearchParams();
+  if (params.startDate) queryParams.append("startDate", params.startDate);
+  if (params.endDate) queryParams.append("endDate", params.endDate);
+  if (params.userId) queryParams.append("userId", params.userId);
+  if (params.departmentId) queryParams.append("departmentId", params.departmentId);
+
+  const queryStr = queryParams.toString() ? `?${queryParams.toString()}` : "";
+  try {
+    const response = await axios.get(`${backendURI}/attendance/export${queryStr}`);
+    return response.data;
+  } catch (error) {
+    console.warn("Failed to fetch /attendance/export, falling back to /attendance/all-users:", error);
+    const fallbackResponse = await axios.get(`${backendURI}/attendance/all-users`);
+    return fallbackResponse.data;
+  }
+};
+

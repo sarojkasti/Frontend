@@ -1,6 +1,6 @@
-import React from "react";
-import { Checkbox, Button, Divider } from "antd";
-import { HolderOutlined, RotateLeftOutlined } from "@ant-design/icons";
+import React, { useState, useMemo } from "react";
+import { Checkbox, Button, Input, Space, Divider } from "antd";
+import { HolderOutlined, RotateLeftOutlined, SearchOutlined } from "@ant-design/icons";
 import {
   DndContext,
   closestCenter,
@@ -8,23 +8,25 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
-  DragEndEvent
+  DragEndEvent,
 } from "@dnd-kit/core";
 import {
   arrayMove,
   SortableContext,
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
-  useSortable
+  useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { ColumnDefinition } from "@/components/Client/clientColumnsConfig";
+import { ColumnDefinition } from "./types";
+export type { ColumnDefinition };
 
 interface SortableItemProps {
   id: string;
   title: string;
   isChecked: boolean;
   isRequired?: boolean;
+  isAction?: boolean;
   onToggle: (key: string, checked: boolean) => void;
 }
 
@@ -33,7 +35,8 @@ const SortableItem: React.FC<SortableItemProps> = ({
   title,
   isChecked,
   isRequired,
-  onToggle
+  isAction,
+  onToggle,
 }) => {
   const {
     attributes,
@@ -41,102 +44,139 @@ const SortableItem: React.FC<SortableItemProps> = ({
     setNodeRef,
     transform,
     transition,
-    isDragging
-  } = useSortable({ id });
+    isDragging,
+  } = useSortable({ id, disabled: isAction });
 
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.6 : 1,
+    opacity: isDragging ? 0.5 : 1,
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
-    padding: "6px 10px",
+    padding: "6px 8px",
     marginBottom: "4px",
-    backgroundColor: isDragging ? "#e6f4ff" : "#f8fafc",
+    backgroundColor: isDragging ? "#e6f4ff" : "#ffffff",
     border: "1px solid",
-    borderColor: isDragging ? "#1677ff" : "#e2e8f0",
+    borderColor: isDragging ? "#1677ff" : "#f1f5f9",
     borderRadius: "6px",
     userSelect: "none",
-    boxShadow: isDragging ? "0 4px 12px rgba(0,0,0,0.1)" : "none"
+    boxShadow: isDragging ? "0 4px 12px rgba(0,0,0,0.12)" : "none",
   };
 
   return (
     <div ref={setNodeRef} style={style}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, width: "100%" }}>
-        <span
-          {...attributes}
-          {...listeners}
-          style={{
-            cursor: "grab",
-            color: "#94a3b8",
-            display: "flex",
-            alignItems: "center",
-            padding: "2px 4px",
-            borderRadius: "4px"
-          }}
-          className="hover:text-blue-600 hover:bg-slate-200/50"
-        >
-          <HolderOutlined />
-        </span>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, flex: 1 }}>
+        {!isAction ? (
+          <span
+            {...attributes}
+            {...listeners}
+            style={{
+              cursor: "grab",
+              color: "#94a3b8",
+              display: "flex",
+              alignItems: "center",
+              padding: "2px",
+            }}
+            className="hover:text-blue-600"
+            title="Drag to reorder"
+          >
+            <HolderOutlined />
+          </span>
+        ) : (
+          <span style={{ width: 14 }} />
+        )}
         <Checkbox
           checked={isChecked}
-          disabled={isRequired}
+          disabled={isRequired || isAction}
           onChange={(e) => onToggle(id, e.target.checked)}
-          style={{ width: "100%" }}
+          style={{ minWidth: 0, overflow: "hidden" }}
         >
-          <span style={{ fontSize: "12px", color: isChecked ? "#1e293b" : "#64748b", fontWeight: isChecked ? 600 : 400 }}>
+          <span
+            style={{
+              fontSize: "13px",
+              color: isChecked ? "#1e293b" : "#64748b",
+              fontWeight: isRequired || isChecked ? 500 : 400,
+            }}
+            className="truncate"
+          >
             {title}
           </span>
         </Checkbox>
       </div>
+      {isAction ? (
+        <span className="text-[11px] text-slate-400 font-mono px-1.5 py-0.5 bg-slate-100 rounded shrink-0">
+          Fixed End
+        </span>
+      ) : isRequired ? (
+        <span className="text-[11px] text-blue-500 font-medium px-1.5 py-0.5 bg-blue-50 rounded shrink-0">
+          Required
+        </span>
+      ) : null}
     </div>
   );
 };
 
-interface SortableColumnCustomizerProps {
+export interface SortableColumnCustomizerProps {
   allColumns: ColumnDefinition[];
   visibleColumnKeys: string[];
   setVisibleColumnKeys: (keys: string[] | ((prev: string[]) => string[])) => void;
-  onReset: () => void;
+  onReset?: () => void;
+  title?: string;
 }
 
 export const SortableColumnCustomizer: React.FC<SortableColumnCustomizerProps> = ({
   allColumns,
   visibleColumnKeys,
   setVisibleColumnKeys,
-  onReset
+  onReset,
+  title = "Customize Columns",
 }) => {
+  const [searchText, setSearchText] = useState("");
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 2
-      }
+        distance: 2,
+      },
     }),
     useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates
+      coordinateGetter: sortableKeyboardCoordinates,
     })
   );
 
-  // Construct master order array ensuring all column keys are included
-  const currentOrderedKeys = React.useMemo(() => {
+  // Construct master ordered keys list preserving current active order + missing columns + action last
+  const currentOrderedKeys = useMemo(() => {
     const activeKeys = [...visibleColumnKeys];
     const missingKeys = allColumns
       .map((c) => c.key)
-      .filter((k) => !activeKeys.includes(k));
+      .filter((k) => !activeKeys.includes(k) && k !== "action" && k !== "operations");
 
-    // Keep action at the very end
-    const actionIndex = activeKeys.indexOf("action");
+    // Remove action if in active
+    const actionIndex = activeKeys.findIndex((k) => k === "action" || k === "operations");
+    let actionKey: string | null = null;
     if (actionIndex !== -1) {
-      activeKeys.splice(actionIndex, 1);
+      actionKey = activeKeys.splice(actionIndex, 1)[0];
+    } else if (allColumns.some((c) => c.key === "action")) {
+      actionKey = "action";
     }
 
     const fullOrder = [...activeKeys, ...missingKeys];
-    if (allColumns.some((c) => c.key === "action")) {
-      fullOrder.push("action");
+    if (actionKey) {
+      fullOrder.push(actionKey);
     }
     return fullOrder;
   }, [allColumns, visibleColumnKeys]);
+
+  // Filter keys by search query if any
+  const filteredKeys = useMemo(() => {
+    if (!searchText.trim()) return currentOrderedKeys;
+    const q = searchText.trim().toLowerCase();
+    return currentOrderedKeys.filter((key) => {
+      const col = allColumns.find((c) => c.key === key);
+      return col?.title.toLowerCase().includes(q) || key.toLowerCase().includes(q);
+    });
+  }, [currentOrderedKeys, allColumns, searchText]);
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -146,10 +186,8 @@ export const SortableColumnCustomizer: React.FC<SortableColumnCustomizerProps> =
 
       if (oldIndex !== -1 && newIndex !== -1) {
         const reorderedAll = arrayMove(currentOrderedKeys, oldIndex, newIndex);
-        // Filter reordered keys to only include currently checked visible keys
-        const newVisibleKeys = reorderedAll.filter((k) =>
-          visibleColumnKeys.includes(k)
-        );
+        // Only keep visible keys in their newly ordered sequence
+        const newVisibleKeys = reorderedAll.filter((k) => visibleColumnKeys.includes(k));
         setVisibleColumnKeys(newVisibleKeys);
       }
     }
@@ -157,7 +195,6 @@ export const SortableColumnCustomizer: React.FC<SortableColumnCustomizerProps> =
 
   const handleToggle = (key: string, checked: boolean) => {
     if (checked) {
-      // Find position of key in currentOrderedKeys
       const position = currentOrderedKeys.indexOf(key);
       const newVisible = [...visibleColumnKeys];
       if (position !== -1) {
@@ -165,7 +202,6 @@ export const SortableColumnCustomizer: React.FC<SortableColumnCustomizerProps> =
       } else {
         newVisible.push(key);
       }
-      // Remove duplicates while preserving order
       const uniqueVisible = Array.from(new Set(newVisible));
       setVisibleColumnKeys(uniqueVisible);
     } else {
@@ -173,40 +209,76 @@ export const SortableColumnCustomizer: React.FC<SortableColumnCustomizerProps> =
     }
   };
 
-  return (
-    <div style={{ width: 260, padding: 4 }}>
-      <div className="flex justify-between items-center mb-2 font-semibold text-slate-700 text-xs">
-        <span>Customize & Reorder Columns</span>
-        <Button
-          size="small"
-          type="link"
-          icon={<RotateLeftOutlined />}
-          onClick={onReset}
-          style={{ padding: 0, fontSize: 11 }}
-        >
-          Reset
-        </Button>
-      </div>
-      <div style={{ fontSize: 11, color: "#64748b", marginBottom: 8 }}>
-        Drag handle <HolderOutlined /> to reorder columns up or down
-      </div>
-      <Divider style={{ margin: "6px 0 10px 0" }} />
+  const handleSelectAll = () => {
+    const allKeys = allColumns.map((c) => c.key);
+    setVisibleColumnKeys(allKeys);
+  };
 
+  const handleReset = () => {
+    if (onReset) {
+      onReset();
+    } else {
+      const defaultKeys = allColumns
+        .filter((c) => c.defaultVisible !== false)
+        .map((c) => c.key);
+      setVisibleColumnKeys(defaultKeys);
+    }
+  };
+
+  return (
+    <div style={{ width: 280, padding: "4px 2px" }}>
+      {/* Header: Title + Select All / Reset Actions */}
+      <div className="flex justify-between items-center mb-2">
+        <span className="font-semibold text-slate-700 text-sm">{title}</span>
+        <Space size={4}>
+          <Button
+            size="small"
+            type="link"
+            onClick={handleSelectAll}
+            style={{ padding: 0, fontSize: "12px" }}
+          >
+            Select All
+          </Button>
+          <span className="text-slate-300">|</span>
+          <Button
+            size="small"
+            type="link"
+            onClick={handleReset}
+            style={{ padding: 0, fontSize: "12px" }}
+          >
+            Reset
+          </Button>
+        </Space>
+      </div>
+
+      {/* Column Search Bar */}
+      <Input
+        size="small"
+        placeholder="Search column..."
+        prefix={<SearchOutlined style={{ color: "#bfbfbf" }} />}
+        value={searchText}
+        onChange={(e) => setSearchText(e.target.value)}
+        allowClear
+        className="mb-2.5 rounded"
+      />
+
+      {/* Draggable Column List */}
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
         onDragEnd={handleDragEnd}
       >
         <SortableContext
-          items={currentOrderedKeys}
+          items={filteredKeys}
           strategy={verticalListSortingStrategy}
         >
-          <div style={{ maxHeight: 280, overflowY: "auto", paddingRight: 2 }}>
-            {currentOrderedKeys.map((key) => {
+          <div style={{ maxHeight: 300, overflowY: "auto", paddingRight: 2 }}>
+            {filteredKeys.map((key) => {
               const colDef = allColumns.find((c) => c.key === key);
               if (!colDef) return null;
 
               const isChecked = visibleColumnKeys.includes(key);
+              const isAction = key === "action" || key === "operations";
 
               return (
                 <SortableItem
@@ -215,6 +287,7 @@ export const SortableColumnCustomizer: React.FC<SortableColumnCustomizerProps> =
                   title={colDef.title}
                   isChecked={isChecked}
                   isRequired={colDef.required}
+                  isAction={isAction}
                   onToggle={handleToggle}
                 />
               );
@@ -222,6 +295,12 @@ export const SortableColumnCustomizer: React.FC<SortableColumnCustomizerProps> =
           </div>
         </SortableContext>
       </DndContext>
+
+      <div className="text-[11px] text-slate-400 mt-2 text-center">
+        Drag handle to reorder columns
+      </div>
     </div>
   );
 };
+
+export default SortableColumnCustomizer;

@@ -8,9 +8,18 @@ import { useState, useRef, useMemo } from "react";
 import NoticeBoardDetail from "@/components/NoticeBoard/NoticeBoardDetail";
 import Highlighter from "react-highlight-words";
 import ResponsiveTable from "@/components/ui/MobileCardList";
+import { PowerTable, PowerTableColumn, useColumnVisibility } from "@/components/Table";
 import { useIsMobile } from "@/hooks/useIsMobile";
 
 const { Title, Text } = Typography;
+
+const NOTICE_BOARD_COLUMNS = [
+  { key: 'title', label: 'Title', required: true },
+  { key: 'distribution', label: 'Distribution' },
+  { key: 'createdAt', label: 'Created' },
+  { key: 'readStats', label: 'Read Statistics' },
+  { key: 'actions', label: 'Actions', required: true },
+];
 
 const NoticeBoardAdmin = () => {
   const { data: notices, isLoading } = useAllNoticeBoards();
@@ -18,6 +27,10 @@ const NoticeBoardAdmin = () => {
   const { profile } = useSession();
   const navigate = useNavigate();
   const { isMobile } = useIsMobile();
+  const { visibleColumnKeys, columnCustomizer } = useColumnVisibility({
+    persistenceKey: "notice_board_admin_table",
+    columns: NOTICE_BOARD_COLUMNS,
+  });
   
   const [selectedNotice, setSelectedNotice] = useState<string | null>(null);
   const [detailVisible, setDetailVisible] = useState(false);
@@ -199,11 +212,12 @@ const NoticeBoardAdmin = () => {
     });
   }, [notices, searchQuery]);
 
-  const columns = [
+  const columns: PowerTableColumn<any>[] = [
     {
       title: 'Title',
       dataIndex: 'title',
       key: 'title',
+      defaultWidth: 260,
       ...getColumnSearchProps('title', 'Title'),
       render: (text: string, record: any) => {
         const displayText = searchedColumn === 'title' ? (
@@ -241,6 +255,7 @@ const NoticeBoardAdmin = () => {
     {
       title: 'Distribution',
       key: 'distribution',
+      defaultWidth: 150,
       render: (_text: string, record: any) => (
         <Badge 
           status={record.sendToAll ? "success" : "warning"} 
@@ -252,11 +267,13 @@ const NoticeBoardAdmin = () => {
       title: 'Created',
       dataIndex: 'createdAt',
       key: 'createdAt',
+      defaultWidth: 150,
       render: (date: string) => new Date(date).toLocaleString(),
     },
     {
       title: 'Read Statistics',
       key: 'readStats',
+      defaultWidth: 150,
       render: (_text: string, record: any) => {
         const totalTargets = record.sendToAll 
           ? 'All Users' 
@@ -274,6 +291,10 @@ const NoticeBoardAdmin = () => {
     {
       title: 'Actions',
       key: 'actions',
+      width: 140,
+      defaultWidth: 140,
+      required: true,
+      fixed: 'right',
       render: (_text: string, record: any) => (
         <Space>
           <Button 
@@ -420,13 +441,16 @@ const NoticeBoardAdmin = () => {
         }
         extra={
           !isMobile && (
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={() => navigate('/notice-board/create')}
-            >
-              Create Notice
-            </Button>
+            <Space>
+              {columnCustomizer}
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={() => navigate('/notice-board/create')}
+              >
+                Create Notice
+              </Button>
+            </Space>
           )
         }
         styles={{ body: { padding: isMobile ? '12px' : '24px' } }}
@@ -445,14 +469,17 @@ const NoticeBoardAdmin = () => {
           </div>
         )}
 
-        <ResponsiveTable
-          tableProps={{
-            columns: columns,
-            dataSource: filteredNotices,
-            rowKey: "id",
-            loading: isLoading,
-            pagination: isMobile ? false : { pageSize: 10 },
-          }}
+        <PowerTable
+          columns={columns}
+          dataSource={filteredNotices}
+          rowKey="id"
+          loading={isLoading}
+          enableResize
+          enableColumnSearch
+          showToolbar={false}
+          visibleColumnKeys={visibleColumnKeys}
+          persistenceKey="notice_board_admin_table"
+          pagination={isMobile ? false : { pageSize: 10, showSizeChanger: true }}
           renderMobileCard={renderNoticeCard}
         />
 

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { PowerTable, PowerTableColumn, useColumnVisibility } from "@/components/Table";
 import { Table, Button, Modal, Form, Input, Space, Popconfirm, message } from "antd";
 import {
   fetchBusinessSizes,
@@ -72,12 +73,16 @@ const BusinessSizeManager: React.FC = () => {
     }
   };
 
-  const columns = [
-    { title: "Name", dataIndex: "name", key: "name" },
-    { title: "Short Name", dataIndex: "shortName", key: "shortName" },
+  const columns: PowerTableColumn<BusinessSize>[] = [
+    { title: "Name", dataIndex: "name", key: "name", defaultWidth: 200 },
+    { title: "Short Name", dataIndex: "shortName", key: "shortName", defaultWidth: 150 },
     {
       title: "Actions",
       key: "actions",
+      width: 140,
+      defaultWidth: 140,
+      required: true,
+      fixed: "right",
       render: (_: any, record: BusinessSize) => (
         <Space>
           <Button type="link" onClick={() => handleEdit(record)}>
@@ -93,12 +98,31 @@ const BusinessSizeManager: React.FC = () => {
     },
   ];
 
+  const { visibleColumnKeys, columnCustomizer } = useColumnVisibility({
+    persistenceKey: "customer_business_size",
+    columns,
+  });
+
   return (
     <>
-      <Button type="primary" onClick={handleAdd} style={{ marginBottom: 16 }}>
-        Add Business Size
-      </Button>
-      <Table columns={columns} dataSource={data} rowKey="id" loading={loading} pagination={false} />
+      <div className="flex justify-between items-center mb-4 flex-wrap gap-2">
+        <Button type="primary" onClick={handleAdd}>
+          Add Business Size
+        </Button>
+        {columnCustomizer}
+      </div>
+      <PowerTable<BusinessSize>
+        columns={columns}
+        dataSource={data}
+        rowKey="id"
+        loading={loading}
+        enableResize
+        enableColumnSearch
+        visibleColumnKeys={visibleColumnKeys}
+        showToolbar={false}
+        persistenceKey="customer_business_size"
+        pagination={false}
+      />
       <Modal
         title={editing ? "Edit Business Size" : "Add Business Size"}
         open={modalVisible}

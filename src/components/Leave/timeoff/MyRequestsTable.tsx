@@ -12,6 +12,7 @@ import {
   message,
 } from "antd";
 import { MessageOutlined } from "@ant-design/icons";
+import { PowerTable, PowerTableColumn, useColumnVisibility } from "@/components/Table";
 import type { ColumnsType } from "antd/es/table";
 import { useQueryClient } from "@tanstack/react-query";
 import { useMyLeaves } from "../../../hooks/leave/useMyLeaves";
@@ -22,6 +23,16 @@ import { formatLeaveRange, formatLeaveDate, inclusiveDays } from "../../../utils
 import { leaveColor, statusMeta } from "./leaveMeta";
 import type { LeaveType } from "../../../types/leave";
 
+const MY_REQUESTS_COLUMNS = [
+  { key: "type", label: "Type", required: true },
+  { key: "dates", label: "Dates" },
+  { key: "days", label: "Days" },
+  { key: "approver", label: "Approver" },
+  { key: "status", label: "Status" },
+  { key: "createdAt", label: "Requested" },
+  { key: "actions", label: "Actions", required: true },
+];
+
 const { TextArea } = Input;
 
 const MyRequestsTable: React.FC = () => {
@@ -30,6 +41,11 @@ const MyRequestsTable: React.FC = () => {
   const [status, setStatus] = useState<string>("all");
   const { data, isLoading } = useMyLeaves(status);
   const del = useDeleteLeave();
+  const { visibleColumnKeys, columnCustomizer } = useColumnVisibility({
+    persistenceKey: "leave_my_requests_table",
+    columns: MY_REQUESTS_COLUMNS,
+    size: "middle",
+  });
 
   // Clarification Response Modal State
   const [respondTarget, setRespondTarget] = useState<LeaveType | null>(null);
@@ -59,10 +75,12 @@ const MyRequestsTable: React.FC = () => {
     }
   };
 
-  const columns: ColumnsType<LeaveType> = [
+  const columns: PowerTableColumn<LeaveType>[] = [
     {
       title: "Type",
       dataIndex: "type",
+      key: "type",
+      defaultWidth: 160,
       render: (_, r) => {
         const name = r.leaveType?.name ?? r.type;
         return (
@@ -89,6 +107,8 @@ const MyRequestsTable: React.FC = () => {
     },
     {
       title: "Dates",
+      key: "dates",
+      defaultWidth: 200,
       render: (_, r) =>
         r.isCustomDates && r.customDates?.length
           ? `${r.customDates.length} days`
@@ -96,6 +116,8 @@ const MyRequestsTable: React.FC = () => {
     },
     {
       title: "Days",
+      key: "days",
+      defaultWidth: 100,
       align: "right",
       render: (_, r) => {
         if (r.isFractional) return r.fractionalDuration || 0.5;
@@ -105,11 +127,15 @@ const MyRequestsTable: React.FC = () => {
     },
     {
       title: "Approver",
+      key: "approver",
+      defaultWidth: 160,
       render: (_, r) => r.requestedManager?.name ?? "—",
     },
     {
       title: "Status",
       dataIndex: "status",
+      key: "status",
+      defaultWidth: 150,
       render: (s: string) => {
         const m = statusMeta(s);
         return <Tag color={m.color}>{m.text}</Tag>;
@@ -118,10 +144,17 @@ const MyRequestsTable: React.FC = () => {
     {
       title: "Requested",
       dataIndex: "createdAt",
+      key: "createdAt",
+      defaultWidth: 140,
       render: (d: string) => formatLeaveDate(d, system, false),
     },
     {
       title: "Actions",
+      key: "actions",
+      width: 140,
+      defaultWidth: 140,
+      required: true,
+      fixed: "right",
       align: "right",
       render: (_, r) => (
         <Space size={4}>
@@ -165,7 +198,7 @@ const MyRequestsTable: React.FC = () => {
 
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
+      <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8, marginBottom: 12 }}>
         <Select
           value={status}
           style={{ width: 180 }}
@@ -179,14 +212,19 @@ const MyRequestsTable: React.FC = () => {
             { value: "rejected", label: "Rejected" },
           ]}
         />
+        {columnCustomizer}
       </div>
-      <Table
+      <PowerTable<LeaveType>
         rowKey="id"
         loading={isLoading}
         columns={columns}
         dataSource={rows}
+        enableResize
+        enableColumnSearch
+        showToolbar={false}
+        visibleColumnKeys={visibleColumnKeys}
+        persistenceKey="leave_my_requests_table"
         pagination={{ pageSize: 8, hideOnSinglePage: true }}
-        scroll={{ x: 720 }}
         expandable={{
           expandedRowRender: (r) => (
             <div style={{ padding: "8px 12px", background: "#fcfcfc", borderRadius: 6 }}>

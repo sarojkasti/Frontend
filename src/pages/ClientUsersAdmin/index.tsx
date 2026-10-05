@@ -43,6 +43,7 @@ import { ClientUserType, ClientUserStatus } from "@/types/clientUser";
 import { formatDistanceToNow, format } from "date-fns";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import ResponsiveTable from "@/components/ui/MobileCardList";
+import { PowerTable, PowerTableColumn, useColumnVisibility } from "@/components/Table";
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -128,10 +129,11 @@ const ClientUsersAdmin: React.FC = () => {
     }
   };
 
-  const columns = [
+  const columns: PowerTableColumn<ClientUserType>[] = [
     {
       title: "User",
       key: "user",
+      defaultWidth: 230,
       render: (_: any, record: ClientUserType) => (
         <div className="flex items-center gap-3">
           <Avatar icon={<UserOutlined />} />
@@ -148,6 +150,7 @@ const ClientUsersAdmin: React.FC = () => {
       title: "Clients",
       dataIndex: "customers",
       key: "customers",
+      defaultWidth: 200,
       render: (customers: any[]) => 
         customers?.length > 0 ? (
           <Space wrap>
@@ -161,6 +164,7 @@ const ClientUsersAdmin: React.FC = () => {
       title: "Phone",
       dataIndex: "phoneNumber",
       key: "phoneNumber",
+      defaultWidth: 140,
       render: (phone: string) =>
         phone ? (
           <span className="flex items-center gap-1">
@@ -174,12 +178,14 @@ const ClientUsersAdmin: React.FC = () => {
       title: "Status",
       dataIndex: "status",
       key: "status",
+      defaultWidth: 120,
       render: (status: ClientUserStatus) => getStatusTag(status)
     },
     {
       title: "Downloads",
       dataIndex: "isDownloadDisabled",
       key: "isDownloadDisabled",
+      defaultWidth: 120,
       render: (disabled: boolean, record: ClientUserType) => (
         <Tooltip title={disabled ? "Downloads disabled for this user" : "Downloads enabled"}>
           <Switch
@@ -209,6 +215,7 @@ const ClientUsersAdmin: React.FC = () => {
       title: "Last Login",
       dataIndex: "lastLoginAt",
       key: "lastLoginAt",
+      defaultWidth: 140,
       render: (date: string) =>
         date ? formatDistanceToNow(new Date(date), { addSuffix: true }) : "Never"
     },
@@ -216,11 +223,15 @@ const ClientUsersAdmin: React.FC = () => {
       title: "Created",
       dataIndex: "createdAt",
       key: "createdAt",
+      defaultWidth: 130,
       render: (date: string) => format(new Date(date), "PP")
     },
     {
       title: "Actions",
       key: "actions",
+      width: 100,
+      defaultWidth: 100,
+      fixed: "right",
       render: (_: any, record: ClientUserType) => (
         <Space>
           <Button
@@ -251,6 +262,11 @@ const ClientUsersAdmin: React.FC = () => {
       )
     }
   ];
+
+  const { visibleColumnKeys, columnCustomizer } = useColumnVisibility({
+    persistenceKey: "client_users_admin",
+    columns,
+  });
 
   const filteredUsers = useMemo(() => {
     if (!users) return [];
@@ -393,13 +409,16 @@ const ClientUsersAdmin: React.FC = () => {
           </Title>
         </div>
         {!isMobile && (
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => setIsModalOpen(true)}
-          >
-            Add Client User
-          </Button>
+          <Space>
+            {columnCustomizer}
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={() => setIsModalOpen(true)}
+            >
+              Add Client User
+            </Button>
+          </Space>
         )}
       </div>
 
@@ -443,15 +462,17 @@ const ClientUsersAdmin: React.FC = () => {
 
       {/* Users Table */}
       <Card styles={{ body: { padding: isMobile ? '12px' : '20px' } }}>
-        <ResponsiveTable
-          tableProps={{
-            dataSource: filteredUsers,
-            columns: columns,
-            rowKey: "id",
-            loading: isLoading,
-            pagination: isMobile ? false : { pageSize: 10 },
-            scroll: { x: 'max-content' },
-          }}
+        <PowerTable<ClientUserType>
+          dataSource={filteredUsers}
+          columns={columns}
+          rowKey="id"
+          loading={isLoading}
+          enableResize
+          enableColumnSearch
+          visibleColumnKeys={visibleColumnKeys}
+          showToolbar={false}
+          persistenceKey="client_users_admin"
+          pagination={isMobile ? false : { pageSize: 10 }}
           renderMobileCard={renderClientUserCard}
         />
       </Card>

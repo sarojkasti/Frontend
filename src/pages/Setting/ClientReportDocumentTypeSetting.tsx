@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { PowerTable, PowerTableColumn, useColumnVisibility } from "@/components/Table";
 import {
   Card,
   Table,
@@ -37,11 +38,23 @@ import {
   UpdateClientReportDocumentTypePayload,
 } from "@/types/clientReportDocumentType";
 
+const CLIENT_REPORT_DOC_TYPE_COLUMNS = [
+  { key: "name", label: "Name", required: true },
+  { key: "scope", label: "Scope" },
+  { key: "sortOrder", label: "Sort Order" },
+  { key: "isActive", label: "Status" },
+  { key: "actions", label: "Actions", required: true },
+];
+
 const { Title, Text } = Typography;
 const { Option } = Select;
 const { TextArea } = Input;
 
 const ClientReportDocumentTypeSetting: React.FC = () => {
+  const { visibleColumnKeys, columnCustomizer } = useColumnVisibility({
+    persistenceKey: "client_report_doc_types",
+    columns: CLIENT_REPORT_DOC_TYPE_COLUMNS,
+  });
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingType, setEditingType] = useState<ClientReportDocumentTypeType | null>(null);
   const [form] = Form.useForm();
@@ -132,11 +145,12 @@ const ClientReportDocumentTypeSetting: React.FC = () => {
     });
   };
 
-  const columns = [
+  const columns: PowerTableColumn<ClientReportDocumentTypeType>[] = [
     {
       title: "Name",
       dataIndex: "name",
       key: "name",
+      defaultWidth: 220,
       render: (name: string, record: ClientReportDocumentTypeType) => (
         <div>
           <div className="font-medium">{name}</div>
@@ -151,6 +165,7 @@ const ClientReportDocumentTypeSetting: React.FC = () => {
     {
       title: "Scope",
       key: "scope",
+      defaultWidth: 140,
       render: (_: any, record: ClientReportDocumentTypeType) => (
         record.isGlobal ? (
           <Tag icon={<GlobalOutlined />} color="blue">Global</Tag>
@@ -168,12 +183,14 @@ const ClientReportDocumentTypeSetting: React.FC = () => {
       dataIndex: "sortOrder",
       key: "sortOrder",
       width: 100,
+      defaultWidth: 100,
       align: "center" as const,
     },
     {
       title: "Status",
       dataIndex: "isActive",
       key: "isActive",
+      defaultWidth: 120,
       render: (isActive: boolean, record: ClientReportDocumentTypeType) => (
         <Switch
           checked={isActive}
@@ -186,7 +203,10 @@ const ClientReportDocumentTypeSetting: React.FC = () => {
     {
       title: "Actions",
       key: "actions",
-      width: 120,
+      width: 140,
+      defaultWidth: 140,
+      required: true,
+      fixed: "right",
       render: (_: any, record: ClientReportDocumentTypeType) => (
         <Space>
           <Tooltip title="Edit">
@@ -223,22 +243,30 @@ const ClientReportDocumentTypeSetting: React.FC = () => {
             Manage document types for client reports. Global types are available for all clients.
           </Text>
         </div>
-        <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          onClick={() => handleOpenModal()}
-        >
-          Add Document Type
-        </Button>
+        <Space>
+          {columnCustomizer}
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={() => handleOpenModal()}
+          >
+            Add Document Type
+          </Button>
+        </Space>
       </div>
 
       <Card>
-        <Table
+        <PowerTable<ClientReportDocumentTypeType>
           dataSource={documentTypes}
           columns={columns}
           rowKey="id"
           loading={isLoading}
-          pagination={{ pageSize: 10 }}
+          enableResize
+          enableColumnSearch
+          showToolbar={false}
+          visibleColumnKeys={visibleColumnKeys}
+          persistenceKey="client_report_doc_types"
+          pagination={{ pageSize: 10, showSizeChanger: true }}
         />
       </Card>
 

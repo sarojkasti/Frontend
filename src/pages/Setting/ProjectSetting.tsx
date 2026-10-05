@@ -1,15 +1,11 @@
 import React from "react";
-import { Card, Typography } from "antd";
 import NatureOfWorkManager from "../../components/project/NatureOfWorkManager";
-
-const { Title } = Typography;
 
 const ProjectSetting: React.FC = () => {
   return (
-    <Card>
-      <Title level={3}>Nature of Work Management</Title>
+    <div className="pb-16 sm:pb-0 px-2 sm:px-0">
       <NatureOfWorkManager />
-    </Card>
+    </div>
   );
 };
 

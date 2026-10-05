@@ -1,10 +1,11 @@
 
 import React, { useState } from "react";
-import { Card, Modal, message } from "antd";
-import WorkhourTable from "../../components/Workhour/WorkhourTable";
+import { Card, Modal, message, Space, Button } from "antd";
+import WorkhourTable, { ALL_WORKHOUR_COLUMNS } from "../../components/Workhour/WorkhourTable";
 import WorkhourForm from "../../components/Workhour/WorkhourForm";
 import { useCreateWorkhour, useUpdateWorkhour } from "../../hooks/workhour/useWorkhour";
 import { WorkhourType } from "../../types/workhour";
+import { useColumnVisibility } from "@/components/Table";
 
 // Dummy users for select (replace with API call in real app)
 const users = [
@@ -17,6 +18,11 @@ const WorkhourPage: React.FC = () => {
 	const [editing, setEditing] = useState<WorkhourType | null>(null);
 	const createMutation = useCreateWorkhour();
 	const updateMutation = useUpdateWorkhour();
+	const { visibleColumnKeys, columnCustomizer } = useColumnVisibility({
+		persistenceKey: "workhour_table",
+		columns: ALL_WORKHOUR_COLUMNS,
+		size: "small",
+	});
 
 	const handleAdd = () => {
 		setEditing(null);
@@ -50,8 +56,18 @@ const WorkhourPage: React.FC = () => {
 	};
 
 	return (
-		<Card title="Workhour Configurations" extra={<a onClick={handleAdd}>Add Workhour</a>}>
-			<WorkhourTable onEdit={handleEdit} />
+		<Card
+			title="Workhour Configurations"
+			extra={
+				<Space>
+					{columnCustomizer}
+					<Button type="primary" size="small" onClick={handleAdd}>
+						Add Workhour
+					</Button>
+				</Space>
+			}
+		>
+			<WorkhourTable onEdit={handleEdit} visibleColumnKeys={visibleColumnKeys} />
 			<Modal
 				open={modalOpen}
 				onCancel={() => setModalOpen(false)}

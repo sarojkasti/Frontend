@@ -1,7 +1,9 @@
 import React, { useMemo, useState } from "react";
+import { PowerTable, PowerTableColumn, useColumnVisibility } from "@/components/Table";
 import {
   Alert,
   Button,
+  Card,
   Form,
   Input,
   InputNumber,
@@ -15,9 +17,12 @@ import {
   Table,
   Tabs,
   Tag,
+  Tooltip,
   Typography,
   message,
 } from "antd";
+import { DownloadOutlined } from "@ant-design/icons";
+import NatureExportPage from "./NatureExportPage";
 
 const { Text } = Typography;
 import {
@@ -50,8 +55,12 @@ const NatureOfWorkManager: React.FC = () => {
   const [natureForm] = Form.useForm();
   const [groupForm] = Form.useForm();
 
+  const [isExportViewOpen, setIsExportViewOpen] = useState(false);
+  const [activeTabKey, setActiveTabKey] = useState<string>("nature");
+
   const { data: natures = [], isLoading: isNaturesLoading } = useNatureOfWorkList(includeInactive);
   const { data: groups = [], isLoading: isGroupsLoading } = useNatureOfWorkGroupList();
+  const { data: allNaturesForExport = [], isLoading: isAllNaturesLoading } = useNatureOfWorkList(true);
 
   const { data: activeAffectedProjects = [], isLoading: isActiveAffectedLoading } = useActiveAffectedProjects(
     editingNature?.id,
@@ -239,23 +248,29 @@ const NatureOfWorkManager: React.FC = () => {
 
   const selectedAction: EditAction = Form.useWatch("editAction", natureForm) || "in_place";
 
-  const natureColumns = [
-    { title: "Name", dataIndex: "name", key: "name" },
-    { title: "Short Name", dataIndex: "shortName", key: "shortName" },
+  const natureColumns: PowerTableColumn<NatureOfWork>[] = [
+    { title: "Name", dataIndex: "name", key: "name", defaultWidth: 200 },
+    { title: "Short Name", dataIndex: "shortName", key: "shortName", defaultWidth: 140 },
     {
       title: "Group",
       key: "group",
+      defaultWidth: 160,
       render: (_: unknown, record: NatureOfWork) => record.group?.name || "-",
     },
     {
       title: "Status",
       key: "status",
+      defaultWidth: 120,
       render: (_: unknown, record: NatureOfWork) =>
         record.isActive === false ? <Tag color="default">Inactive</Tag> : <Tag color="green">Active</Tag>,
     },
     {
       title: "Actions",
       key: "actions",
+      width: 140,
+      defaultWidth: 140,
+      required: true,
+      fixed: "right",
       render: (_: unknown, record: NatureOfWork) => (
         <Space>
           <Button type="link" onClick={() => openEditNatureModal(record)}>
@@ -275,13 +290,17 @@ const NatureOfWorkManager: React.FC = () => {
     },
   ];
 
-  const groupColumns = [
-    { title: "Name", dataIndex: "name", key: "name" },
-    { title: "Description", dataIndex: "description", key: "description", render: (v: string) => v || "-" },
-    { title: "Rank", dataIndex: "rank", key: "rank", render: (v: number) => v ?? 0 },
+  const groupColumns: PowerTableColumn<NatureOfWorkGroup>[] = [
+    { title: "Name", dataIndex: "name", key: "name", defaultWidth: 200 },
+    { title: "Description", dataIndex: "description", key: "description", defaultWidth: 250, render: (v: string) => v || "-" },
+    { title: "Rank", dataIndex: "rank", key: "rank", defaultWidth: 100, render: (v: number) => v ?? 0 },
     {
       title: "Actions",
       key: "actions",
+      width: 140,
+      defaultWidth: 140,
+      required: true,
+      fixed: "right",
       render: (_: unknown, record: NatureOfWorkGroup) => (
         <Space>
           <Button type="link" onClick={() => openEditGroupModal(record)}>
@@ -301,54 +320,136 @@ const NatureOfWorkManager: React.FC = () => {
     },
   ];
 
+  const { visibleColumnKeys: natureVisibleKeys, columnCustomizer: natureCustomizer } =
+    useColumnVisibility({
+      persistenceKey: "nature_of_work_table",
+      columns: natureColumns,
+    });
+
+  const { visibleColumnKeys: groupVisibleKeys, columnCustomizer: groupCustomizer } =
+    useColumnVisibility({
+      persistenceKey: "nature_group_table",
+      columns: groupColumns,
+    });
+
+  if (isExportViewOpen) {
+    return (
+      <NatureExportPage
+        onBack={() => setIsExportViewOpen(false)}
+        natures={allNaturesForExport.length > 0 ? allNaturesForExport : natures}
+        groups={groups}
+        initialTab={activeTabKey as "nature" | "groups"}
+        isLoading={isNaturesLoading || isGroupsLoading || isAllNaturesLoading}
+      />
+    );
+  }
+
   return (
     <>
-      <Tabs
-        items={[
-          {
-            key: "nature",
-            label: "Nature of Work",
-            children: (
-              <>
-                <Space style={{ marginBottom: 16 }} wrap>
-                  <Button type="primary" onClick={openCreateNatureModal}>
-                    Add Nature of Work
-                  </Button>
-                  <Space>
-                    <span>Show inactive</span>
-                    <Switch checked={includeInactive} onChange={setIncludeInactive} />
-                  </Space>
-                </Space>
-                <Table
-                  rowKey="id"
-                  loading={isNaturesLoading}
-                  columns={natureColumns}
-                  dataSource={natures}
-                  pagination={false}
-                />
-              </>
-            ),
-          },
-          {
-            key: "groups",
-            label: "Nature Groups",
-            children: (
-              <>
-                <Button type="primary" onClick={openCreateGroupModal} style={{ marginBottom: 16 }}>
-                  Add Group
-                </Button>
-                <Table
-                  rowKey="id"
-                  loading={isGroupsLoading}
-                  columns={groupColumns}
-                  dataSource={groups}
-                  pagination={false}
-                />
-              </>
-            ),
-          },
-        ]}
-      />
+      <Card
+        title={
+          <Typography.Title level={3} style={{ margin: 0 }}>
+            Nature of Work Management
+          </Typography.Title>
+        }
+        extra={
+          <Tooltip title="Download Nature of Work & Groups in Excel">
+            <Button
+              icon={<DownloadOutlined />}
+              onClick={() => setIsExportViewOpen(true)}
+            >
+              Export to Excel
+            </Button>
+          </Tooltip>
+        }
+      >
+        <Tabs
+          activeKey={activeTabKey}
+          onChange={(k) => setActiveTabKey(k as "nature" | "groups")}
+          items={[
+            {
+              key: "nature",
+              label: "Nature of Work",
+              children: (
+                <>
+                  <div className="flex justify-between items-center mb-4 flex-wrap gap-2">
+                    <Space wrap>
+                      <Button type="primary" onClick={openCreateNatureModal}>
+                        Add Nature of Work
+                      </Button>
+                      <Space>
+                        <span>Show inactive</span>
+                        <Switch checked={includeInactive} onChange={setIncludeInactive} />
+                      </Space>
+                    </Space>
+                    <Space>
+                      {natureCustomizer}
+                      <Button
+                        icon={<DownloadOutlined />}
+                        onClick={() => {
+                          setActiveTabKey("nature");
+                          setIsExportViewOpen(true);
+                        }}
+                      >
+                        Export Natures
+                      </Button>
+                    </Space>
+                  </div>
+                  <PowerTable<NatureOfWork>
+                    rowKey="id"
+                    loading={isNaturesLoading}
+                    columns={natureColumns}
+                    dataSource={natures}
+                    enableResize
+                    enableColumnSearch
+                    visibleColumnKeys={natureVisibleKeys}
+                    showToolbar={false}
+                    persistenceKey="nature_of_work_table"
+                    pagination={false}
+                  />
+                </>
+              ),
+            },
+            {
+              key: "groups",
+              label: "Nature Groups",
+              children: (
+                <>
+                  <div className="flex justify-between items-center mb-4 flex-wrap gap-2">
+                    <Button type="primary" onClick={openCreateGroupModal}>
+                      Add Group
+                    </Button>
+                    <Space>
+                      {groupCustomizer}
+                      <Button
+                        icon={<DownloadOutlined />}
+                        onClick={() => {
+                          setActiveTabKey("groups");
+                          setIsExportViewOpen(true);
+                        }}
+                      >
+                        Export Groups
+                      </Button>
+                    </Space>
+                  </div>
+                  <PowerTable<NatureOfWorkGroup>
+                    rowKey="id"
+                    loading={isGroupsLoading}
+                    columns={groupColumns}
+                    dataSource={groups}
+                    enableResize
+                    enableColumnSearch
+                    visibleColumnKeys={groupVisibleKeys}
+                    showToolbar={false}
+                    persistenceKey="nature_group_table"
+                    pagination={false}
+                  />
+                </>
+              ),
+            },
+          ]}
+        />
+      </Card>
 
       <Modal
         title={editingNature ? "Edit Nature of Work" : "Add Nature of Work"}

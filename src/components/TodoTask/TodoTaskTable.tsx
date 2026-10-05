@@ -39,10 +39,23 @@ import { TodoTask, TodoTaskStatus } from "@/types/todoTask";
 import moment from "moment";
 import ResponsiveTable from "@/components/ui/MobileCardList";
 import { useIsMobile } from "@/hooks/useIsMobile";
+import { PowerTable, PowerTableColumn, ColumnConfig } from "@/components/Table";
 
 const { Option } = Select;
 const { TextArea } = Input;
 const { Title, Text } = Typography;
+
+export const ALL_TODO_TASK_COLUMNS: ColumnConfig[] = [
+    { key: 'title', label: 'Title', required: true },
+    { key: 'type', label: 'Type' },
+    { key: 'dueDate', label: 'Due Date' },
+    { key: 'assignedTo', label: 'Assigned To' },
+    { key: 'informTo', label: 'Inform To' },
+    { key: 'createdByUser', label: 'Created By' },
+    { key: 'createdOn', label: 'Created On' },
+    { key: 'status', label: 'Status' },
+    { key: 'actions', label: 'Actions', required: true },
+];
 
 interface TodoTaskTableProps {
     viewType: 'my' | 'created' | 'all' | 'by-status' | 'by-user';
@@ -55,6 +68,7 @@ interface TodoTaskTableProps {
     onEditTask?: (task: TodoTask) => void;
     onStatusChange?: (taskId: string, status: TodoTaskStatus, remark: string) => void;
     onDeleteTask?: (taskId: string) => void;
+    visibleColumnKeys?: string[];
 }
 
 const TodoTaskTable = ({
@@ -67,7 +81,8 @@ const TodoTaskTable = ({
     onViewTask,
     onEditTask,
     onStatusChange,
-    onDeleteTask
+    onDeleteTask,
+    visibleColumnKeys,
 }: TodoTaskTableProps) => {
     const { isMobile } = useIsMobile();
     const { profile } = useSession();
@@ -374,10 +389,11 @@ const TodoTaskTable = ({
         return actions;
     };
 
-    const columns = [
+    const columns: PowerTableColumn<TodoTask>[] = [
         {
             title: 'Title',
             key: 'title',
+            defaultWidth: 200,
             ellipsis: true,
             ...getColumnSearchProps('title', 'Title'),
             render: (_: any, record: TodoTask) => {
@@ -410,6 +426,7 @@ const TodoTaskTable = ({
             title: 'Type',
             dataIndex: ['taskType', 'name'],
             key: 'type',
+            defaultWidth: 140,
             ...getColumnSearchProps(['taskType', 'name'], 'Type'),
             render: (text: string) => {
                 const displayText = searchedColumn === 'taskType,name' ? (
@@ -428,12 +445,14 @@ const TodoTaskTable = ({
                 title: 'Due Date',
                 dataIndex: 'dueDate',
                 key: 'dueDate',
+                defaultWidth: 140,
                 render: (date: string) => date ? moment(date).format('YYYY-MM-DD') : <Tag color="default">No Due Date</Tag>,
             },
         {
             title: 'Assigned To',
             dataIndex: ['assignedTo', 'name'],
             key: 'assignedTo',
+            defaultWidth: 160,
             ...getColumnSearchProps(['assignedTo', 'name'], 'Assigned To'),
             render: (text: string, record: TodoTask) => {
                 const displayName = text || record.assignedTo?.email;
@@ -459,6 +478,7 @@ const TodoTaskTable = ({
         {
             title: 'Inform To',
             key: 'informTo',
+            defaultWidth: 160,
             render: (_: any, record: TodoTask) => {
                 if (!record.informTo || record.informTo.length === 0) {
                     return <Tag color="default">—</Tag>;
@@ -483,6 +503,7 @@ const TodoTaskTable = ({
             title: 'Created By',
             dataIndex: ['createdByUser', 'name'],
             key: 'createdByUser',
+            defaultWidth: 160,
             ...getColumnSearchProps(['createdByUser', 'name'], 'Created By'),
             render: (text: string, record: TodoTask) => {
                 const displayName = text || record.createdByUser?.email;
@@ -509,12 +530,14 @@ const TodoTaskTable = ({
             title: 'Created On',
             dataIndex: 'createdTimestamp',
             key: 'createdOn',
+            defaultWidth: 150,
             render: (date: string) => moment(date).format('YYYY-MM-DD HH:mm'),
         },
         {
             title: 'Status',
             dataIndex: 'status',
             key: 'status',
+            defaultWidth: 140,
             render: (status: TodoTaskStatus, record: TodoTask) => {
                 const statusInfo = statusConfig[status];
                 let statusTimeInfo = '';
@@ -554,6 +577,10 @@ const TodoTaskTable = ({
         {
             title: 'Actions',
             key: 'actions',
+            width: 90,
+            defaultWidth: 90,
+            required: true,
+            fixed: 'right',
             render: (_: string, record: TodoTask) => {
                 const actions = getAvailableActions(record);
                 
@@ -709,18 +736,21 @@ const TodoTaskTable = ({
 
     return (
         <>
-            <ResponsiveTable 
-                tableProps={{
-                    columns: columns, 
-                    dataSource: filteredTaskData, 
-                    rowKey: "id",
-                    loading: isPending,
-                    pagination: isMobile ? false : { 
-                        pageSize: 10,
-                        showSizeChanger: true, 
-                        pageSizeOptions: ['10', '20', '50', '100'],
-                        showTotal: (total: number, range: [number, number]) => `${range[0]}-${range[1]} of ${total} tasks`
-                    }
+            <PowerTable<TodoTask>
+                columns={columns}
+                dataSource={filteredTaskData}
+                rowKey="id"
+                loading={isPending}
+                enableResize
+                enableColumnSearch
+                visibleColumnKeys={visibleColumnKeys}
+                showToolbar={false}
+                persistenceKey="todo_task_table"
+                pagination={isMobile ? false : { 
+                    pageSize: 10,
+                    showSizeChanger: true, 
+                    pageSizeOptions: ['10', '20', '50', '100'],
+                    showTotal: (total: number, range: [number, number]) => `${range[0]}-${range[1]} of ${total} tasks`
                 }}
                 renderMobileCard={renderTodoTaskCard}
             />

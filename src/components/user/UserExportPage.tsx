@@ -9,15 +9,14 @@ import {
   Row,
   Col,
   Space,
-  Divider,
   Statistic,
   Tooltip,
   Select,
   DatePicker,
   Input,
   message,
-  Tabs,
-  Badge,
+  Avatar,
+  Segmented,
 } from "antd";
 import {
   ArrowLeftOutlined,
@@ -29,11 +28,11 @@ import {
   SearchOutlined,
   ClockCircleOutlined,
   UserOutlined,
+  AppstoreOutlined,
   CalendarOutlined,
-  ApartmentOutlined,
   BankOutlined,
-  CheckSquareOutlined,
-  BorderOutlined,
+  ApartmentOutlined,
+  ProjectOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
 import * as XLSX from "xlsx";
@@ -51,6 +50,7 @@ interface UserExportPageProps {
   selectedUsers: any[];
   allUsers: any[];
   activeTabKey: string;
+  isLoading?: boolean;
 }
 
 const STATUS_OPTIONS = [
@@ -67,9 +67,10 @@ const TAB_STATUS_MAP: Record<string, string> = {
 
 export const UserExportPage: React.FC<UserExportPageProps> = ({
   onBack,
-  selectedUsers,
-  allUsers,
+  selectedUsers = [],
+  allUsers = [],
   activeTabKey,
+  isLoading = false,
 }) => {
   const hasSelected = selectedUsers && selectedUsers.length > 0;
 
@@ -78,7 +79,7 @@ export const UserExportPage: React.FC<UserExportPageProps> = ({
     hasSelected ? "selected" : "filtered"
   );
 
-  // 2. Status Scope Selection
+  // 2. Status Scope Selection (defaults to active tab)
   const initialStatus = TAB_STATUS_MAP[activeTabKey] || "active";
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>([initialStatus]);
 
@@ -86,15 +87,18 @@ export const UserExportPage: React.FC<UserExportPageProps> = ({
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [selectedDepartments, setSelectedDepartments] = useState<string[]>([]);
 
-  // 4. Analysis Month for Project Work Hour & Monthly Analysis
+  // 4. Analysis Month for Work Hour & Monthly Analysis
   const [analysisMonth, setAnalysisMonth] = useState<dayjs.Dayjs>(dayjs());
 
-  // 5. Column / Field Selection State
+  // 5. Category filter for columns / fields
+  const [activeCategoryTab, setActiveCategoryTab] = useState<string>("All");
+
+  // 6. Selected Export Column Keys
   const [selectedFields, setSelectedFields] = useState<string[]>(() =>
     getSavedUserExportColumns()
   );
 
-  // 6. Preview Table Search State
+  // 7. Preview Search
   const [previewSearch, setPreviewSearch] = useState<string>("");
 
   // Save selected fields preferences
@@ -115,15 +119,23 @@ export const UserExportPage: React.FC<UserExportPageProps> = ({
     saveUserExportColumns(allKeys);
   };
 
-  const handleDeselectAllFields = () => {
-    setSelectedFields(["name"]);
-    saveUserExportColumns(["name"]);
-  };
-
   const handleResetFields = () => {
     const defaultKeys = ALL_USER_EXPORT_COLUMNS.filter((c) => c.defaultVisible).map((c) => c.key);
     setSelectedFields(defaultKeys);
     saveUserExportColumns(defaultKeys);
+  };
+
+  // Status selection handlers
+  const handleSelectAllStatuses = () => {
+    setSelectedStatuses(["active", "inactive", "blocked"]);
+  };
+
+  const handleSelectActiveOnly = () => {
+    setSelectedStatuses(["active"]);
+  };
+
+  const handleClearStatuses = () => {
+    setSelectedStatuses([]);
   };
 
   // Fetch Monthly Working Time Stats for the chosen analysis month
@@ -149,32 +161,41 @@ export const UserExportPage: React.FC<UserExportPageProps> = ({
   // Derive unique Role options
   const roleOptions = useMemo(() => {
     const set = new Set<string>();
-    allUsers.forEach((u: any) => {
+    const pool = allUsers && allUsers.length > 0 ? allUsers : (selectedUsers || []);
+    pool.forEach((u: any) => {
       const roleName = u.role?.displayName || u.role?.name;
       if (roleName) set.add(roleName);
     });
     return Array.from(set).sort().map((r) => ({ value: r, label: r }));
-  }, [allUsers]);
+  }, [allUsers, selectedUsers]);
 
   // Derive unique Department options
   const departmentOptions = useMemo(() => {
     const set = new Set<string>();
-    allUsers.forEach((u: any) => {
+    const pool = allUsers && allUsers.length > 0 ? allUsers : (selectedUsers || []);
+    pool.forEach((u: any) => {
       const deptName = u.profile?.department?.name;
       if (deptName) set.add(deptName);
     });
     return Array.from(set).sort().map((d) => ({ value: d, label: d }));
-  }, [allUsers]);
+  }, [allUsers, selectedUsers]);
 
   // Filtered Users based on scope, status, role, department
   const filteredUsers = useMemo(() => {
-    if (!allUsers) return [];
+    let list: any[] = [];
+    if (exportScope === "selected") {
+      // Map selected rows against full allUsers objects so they contain profile, department, bank & project relations
+      list = (selectedUsers || []).map((su: any) => {
+        const full = (allUsers || []).find((au: any) => String(au.id) === String(su.id));
+        return full || su;
+      });
+    } else {
+      list = allUsers && allUsers.length > 0 ? [...allUsers] : [...(selectedUsers || [])];
 
-    let list = exportScope === "selected" ? [...selectedUsers] : [...allUsers];
-
-    // Status filter
-    if (exportScope === "filtered" && selectedStatuses.length > 0) {
-      list = list.filter((u: any) => selectedStatuses.includes(u.status));
+      // Status filter
+      if (selectedStatuses.length > 0) {
+        list = list.filter((u: any) => selectedStatuses.includes(u.status));
+      }
     }
 
     // Role filter
@@ -290,10 +311,6 @@ export const UserExportPage: React.FC<UserExportPageProps> = ({
   // Total summary statistics
   const totalMonthlyHours = useMemo(() => {
     return enrichedUsers.reduce((sum, u) => sum + (u.monthlyWorklogHours || 0), 0).toFixed(1);
-  }, [enrichedUsers]);
-
-  const activeUsersCount = useMemo(() => {
-    return enrichedUsers.filter((u) => u.status === "active").length;
   }, [enrichedUsers]);
 
   // Helper to create worksheets with formatted auto column widths
@@ -467,19 +484,19 @@ export const UserExportPage: React.FC<UserExportPageProps> = ({
       "Total Monthly Logged Hours (hrs)": Number(u.monthlyWorklogHours),
       "Total Clocked Attendance (hrs)": Number(u.monthlyAttendanceHours),
       "Days with Logged Work": Number(u.daysWithWorklog),
-      "Days Clocked In": Number(u.daysWithAttendance),
-      "Overtime Days This Month": Number(u.overtimeDays),
-      "Discrepancy (Worklog > Clock) Days": Number(u.worklogExceedsAttendanceDays),
-      "Average Worklog Hours / Day": Number(u.averageWorklogHoursPerDay),
-      "Assigned Projects Count": Number(u.assignedProjectsCount),
-      "Status": u.status ? u.status.toUpperCase() : "-",
+      "Days with Clocked Attendance": Number(u.daysWithAttendance),
+      "Days Exceeding Daily Expectation (Overtime)": Number(u.overtimeDays),
+      "Days Worklog Exceeded Clocked Attendance": Number(u.worklogExceedsAttendanceDays),
+      "Average Worklog Hours / Active Day (hrs)": Number(u.averageWorklogHoursPerDay),
+      "Active Assigned Projects Count": Number(u.assignedProjectsCount),
     }));
 
-    // 3. Sheet 3: Project Assignments Breakdown
+    // 3. Sheet 3: User to Project Assignment Breakdown
     const projectAssignmentRows: any[] = [];
     enrichedUsers.forEach((u: any) => {
-      if (u.assignedProjects && u.assignedProjects.length > 0) {
-        u.assignedProjects.forEach((proj: any, pIdx: number) => {
+      const projects = u.assignedProjects || [];
+      if (projects.length > 0) {
+        projects.forEach((proj: any, pIdx: number) => {
           projectAssignmentRows.push({
             "S.N.": projectAssignmentRows.length + 1,
             "Employee Name": u.name,
@@ -518,32 +535,63 @@ export const UserExportPage: React.FC<UserExportPageProps> = ({
     message.success(`Successfully exported ${enrichedUsers.length} user records to Excel!`);
   };
 
-  // Columns for Preview Table
+  // Visible filtered column list for Column Selector card
+  const visibleColumnPills = useMemo(() => {
+    if (activeCategoryTab === "All") return ALL_USER_EXPORT_COLUMNS;
+    return ALL_USER_EXPORT_COLUMNS.filter((c) => c.category === activeCategoryTab);
+  }, [activeCategoryTab]);
+
+  // Clean, focused columns for Live Data Preview (NO horizontal overflow clutter / junkies!)
   const previewColumns = useMemo(() => {
-    const cols: any[] = [
+    return [
       {
         title: "Employee",
         dataIndex: "name",
         key: "name",
-        fixed: "left",
-        width: 180,
-        render: (text: string, record: any) => (
-          <div>
-            <span style={{ fontWeight: 600, color: "#1e293b", display: "block" }}>{text}</span>
-            <span style={{ fontSize: 11, color: "#64748b" }}>{record.email}</span>
+        width: 220,
+        render: (name: string, record: any) => (
+          <div className="flex items-center gap-2.5">
+            <Avatar
+              size={32}
+              style={{
+                backgroundColor: record.status === "active" ? "#1677ff" : "#94a3b8",
+                fontWeight: 600,
+                fontSize: 13,
+                flexShrink: 0,
+              }}
+            >
+              {name ? name.charAt(0).toUpperCase() : "U"}
+            </Avatar>
+            <div className="min-w-0">
+              <div style={{ fontWeight: 600, color: "#1e293b", fontSize: 13 }} className="truncate">
+                {name}
+              </div>
+              <div style={{ fontSize: 11, color: "#64748b" }} className="truncate">
+                {record.email || "-"}
+              </div>
+              {record.phoneNumber && (
+                <div style={{ fontSize: 11, color: "#94a3b8" }}>
+                  {record.phoneNumber}
+                </div>
+              )}
+            </div>
           </div>
         ),
       },
       {
-        title: "Role & Dept",
+        title: "Role & Department",
         key: "roleDept",
-        width: 170,
+        width: 190,
         render: (_: any, record: any) => (
           <div>
-            <Tag color="blue" style={{ fontSize: 11, marginBottom: 2 }}>{record.roleName}</Tag>
-            {record.departmentName !== "-" && (
-              <span style={{ fontSize: 11, color: "#64748b", display: "block" }}>{record.departmentName}</span>
-            )}
+            <Tag color="blue" style={{ fontSize: 11, marginBottom: 2 }}>
+              {record.roleName || "No Role"}
+            </Tag>
+            {record.departmentName && record.departmentName !== "-" ? (
+              <div style={{ fontSize: 11, color: "#475569" }} className="truncate">
+                {record.departmentName}
+              </div>
+            ) : null}
           </div>
         ),
       },
@@ -551,316 +599,437 @@ export const UserExportPage: React.FC<UserExportPageProps> = ({
         title: "Status",
         dataIndex: "status",
         key: "status",
-        width: 100,
-        align: "center",
-        render: (status: string) => {
+        width: 95,
+        align: "center" as const,
+        render: (st: string) => {
           let color = "default";
-          if (status === "active") color = "green";
-          else if (status === "inactive") color = "orange";
-          else if (status === "blocked") color = "red";
-          return <Tag color={color}>{status ? status.toUpperCase() : "-"}</Tag>;
+          if (st === "active") color = "green";
+          else if (st === "inactive") color = "orange";
+          else if (st === "blocked") color = "red";
+          return <Tag color={color}>{st ? st.toUpperCase() : "-"}</Tag>;
         },
       },
-    ];
-
-    // Append dynamic columns according to selected fields
-    const dynamicFields = ALL_USER_EXPORT_COLUMNS.filter(
-      (c) => selectedFields.includes(c.key) && !["name", "email", "role", "status"].includes(c.key)
-    );
-
-    dynamicFields.forEach((f) => {
-      cols.push({
-        title: f.title,
-        dataIndex: f.key,
-        key: f.key,
-        width: f.defaultWidth || 150,
-        render: (val: any) => {
-          if (val === undefined || val === null || val === "") return "-";
-          if (typeof val === "boolean") return val ? "Yes" : "No";
-          if (f.key === "monthlyWorklogHours" || f.key === "monthlyAttendanceHours") {
-            return <span style={{ fontWeight: 600, color: "#1677ff" }}>{val} hrs</span>;
-          }
-          if (f.key === "overtimeDays" && Number(val) > 0) {
-            return <Tag color="orange">{val} days</Tag>;
-          }
-          if (f.key === "worklogExceedsAttendanceDays" && Number(val) > 0) {
-            return <Tag color="red">{val} days</Tag>;
-          }
-          return String(val);
+      {
+        title: `Work Hours (${analysisMonth.format("MMM YYYY")})`,
+        key: "workHours",
+        width: 170,
+        render: (_: any, record: any) => (
+          <div>
+            <span style={{ fontWeight: 700, color: "#1677ff", fontSize: 13 }}>
+              {record.monthlyWorklogHours} hrs
+            </span>
+            <div style={{ fontSize: 11, color: "#64748b" }}>
+              {record.daysWithWorklog || 0} work days
+              {Number(record.overtimeDays) > 0 && (
+                <Tag color="orange" style={{ fontSize: 10, marginLeft: 4, padding: "0 3px" }}>
+                  +{record.overtimeDays}d OT
+                </Tag>
+              )}
+            </div>
+          </div>
+        ),
+      },
+      {
+        title: "Assigned Projects",
+        key: "assignedProjects",
+        width: 200,
+        render: (_: any, record: any) => {
+          const count = record.assignedProjectsCount || 0;
+          return (
+            <div>
+              <Tag color={count > 0 ? "cyan" : "default"} style={{ fontSize: 11, marginBottom: 2 }}>
+                {count} {count === 1 ? "Project" : "Projects"}
+              </Tag>
+              {count > 0 && (
+                <Tooltip title={record.assignedProjectsList}>
+                  <div style={{ fontSize: 11, color: "#475569" }} className="truncate max-w-[190px]">
+                    {record.assignedProjectsList}
+                  </div>
+                </Tooltip>
+              )}
+            </div>
+          );
         },
-      });
-    });
-
-    return cols;
-  }, [selectedFields]);
-
-  // Categories for field selection
-  const categories: ("Account" | "Profile" | "Bank" | "Work Hours")[] = [
-    "Account",
-    "Profile",
-    "Bank",
-    "Work Hours",
-  ];
+      },
+      {
+        title: "Bank & Verification",
+        key: "bankInfo",
+        width: 160,
+        render: (_: any, record: any) => (
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 500, color: "#334155" }} className="truncate">
+              {record.bankName !== "-" ? record.bankName : "No Bank Added"}
+            </div>
+            {record.bankName !== "-" && (
+              <Tag
+                color={record.isBankVerified === "Verified" ? "success" : "warning"}
+                style={{ fontSize: 10, marginTop: 2 }}
+              >
+                {record.isBankVerified}
+              </Tag>
+            )}
+          </div>
+        ),
+      },
+    ];
+  }, [analysisMonth]);
 
   return (
-    <div style={{ padding: "0 4px 32px 4px", maxWidth: 1400, margin: "0 auto" }}>
-      {/* Top Header Bar */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          flexWrap: "wrap",
-          gap: 12,
-          marginBottom: 16,
-        }}
-      >
-        <Space size="middle" align="center">
-          <Button icon={<ArrowLeftOutlined />} onClick={onBack} size="middle">
+    <div style={{ padding: "0 4px", minHeight: "85vh" }}>
+      {/* Top Header Bar matching ProjectExportPage */}
+      <div className="flex justify-between items-center bg-white p-4 rounded-lg shadow-sm border border-slate-200 mb-6">
+        <Space size={12}>
+          <Button icon={<ArrowLeftOutlined />} onClick={onBack} size="large">
             Back to Users
           </Button>
           <div>
-            <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#1e293b" }}>
+            <h1 className="text-xl font-bold text-slate-800 m-0 flex items-center gap-2">
               Users Data & Monthly Work Hour Export Helper
-            </h2>
-            <span style={{ fontSize: 12, color: "#64748b" }}>
-              Select custom user details, profile attributes, and monthly project work hour analytics for Excel generation.
-            </span>
+            </h1>
+            <p className="text-xs text-slate-500 m-0">
+              Configure target users, status scopes, role/department filters, and export user & workhour analytics to Excel
+            </p>
           </div>
         </Space>
-
-        <Button
-          type="primary"
-          size="large"
-          icon={<DownloadOutlined style={{ color: "#ffffff" }} />}
-          onClick={handleExportExcel}
-          style={{
-            borderRadius: "6px",
-            backgroundColor: "#21a366",
-            borderColor: "#21a366",
-            fontWeight: 600,
-            boxShadow: "0 2px 8px rgba(33, 163, 102, 0.35)",
-          }}
-        >
-          Export to Excel ({enrichedUsers.length} Users)
-        </Button>
       </div>
 
-      {/* Metrics Banner */}
-      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-        <Col xs={12} sm={6}>
-          <Card size="small" style={{ borderRadius: "8px", border: "1px solid #e2e8f0" }}>
-            <Statistic
-              title={<span style={{ color: "#64748b", fontSize: 12 }}>Users in Scope</span>}
-              value={enrichedUsers.length}
-              suffix={`/ ${allUsers.length}`}
-              prefix={<UserOutlined style={{ color: "#1677ff" }} />}
-            />
-          </Card>
-        </Col>
-        <Col xs={12} sm={6}>
-          <Card size="small" style={{ borderRadius: "8px", border: "1px solid #e2e8f0" }}>
-            <Statistic
-              title={<span style={{ color: "#64748b", fontSize: 12 }}>Active Users</span>}
-              value={activeUsersCount}
-              prefix={<CheckCircleOutlined style={{ color: "#52c41a" }} />}
-            />
-          </Card>
-        </Col>
-        <Col xs={12} sm={6}>
-          <Card size="small" style={{ borderRadius: "8px", border: "1px solid #e2e8f0" }}>
-            <Statistic
-              title={<span style={{ color: "#64748b", fontSize: 12 }}>Fields Selected</span>}
-              value={selectedFields.length}
-              suffix={`/ ${ALL_USER_EXPORT_COLUMNS.length}`}
-              prefix={<TableOutlined style={{ color: "#722ed1" }} />}
-            />
-          </Card>
-        </Col>
-        <Col xs={12} sm={6}>
-          <Card size="small" style={{ borderRadius: "8px", border: "1px solid #e2e8f0" }}>
-            <Statistic
+      {/* Main 2-Column Section matching ProjectExportPage */}
+      <Row gutter={[20, 20]}>
+        {/* Left Column: Scope, Status, and Profile Filters */}
+        <Col xs={24} lg={12}>
+          <Space direction="vertical" size={20} style={{ width: "100%" }}>
+            {/* 1. Scope & Status Selection */}
+            <Card
               title={
-                <span style={{ color: "#64748b", fontSize: 12 }}>
-                  Monthly Logged Hours ({analysisMonth.format("MMM YYYY")})
-                </span>
+                <Space>
+                  <AppstoreOutlined className="text-blue-600" />
+                  <span style={{ fontWeight: 600 }}>1. Choose User Scope & Status Filters</span>
+                </Space>
               }
-              value={totalMonthlyHours}
-              suffix="hrs"
-              prefix={<ClockCircleOutlined style={{ color: "#fa8c16" }} />}
-            />
-          </Card>
+              size="small"
+              className="shadow-sm border-slate-200"
+            >
+              <Radio.Group
+                value={exportScope}
+                onChange={(e) => setExportScope(e.target.value)}
+                style={{ width: "100%", marginBottom: 16 }}
+              >
+                <Row gutter={16}>
+                  <Col span={12}>
+                    <Card
+                      size="small"
+                      className={`cursor-pointer transition-all ${
+                        exportScope === "selected" ? "border-blue-500 bg-blue-50/50" : "border-slate-200"
+                      }`}
+                      onClick={() => hasSelected && setExportScope("selected")}
+                    >
+                      <Radio value="selected" disabled={!hasSelected}>
+                        <span style={{ fontWeight: 600, color: "#1e293b" }}>
+                          Selected Users ({selectedUsers.length})
+                        </span>
+                        {!hasSelected && (
+                          <div style={{ fontSize: "11px", color: "#94a3b8", marginTop: 2 }}>
+                            (Check checkboxes in table to select)
+                          </div>
+                        )}
+                      </Radio>
+                    </Card>
+                  </Col>
+                  <Col span={12}>
+                    <Card
+                      size="small"
+                      className={`cursor-pointer transition-all ${
+                        exportScope === "filtered" ? "border-blue-500 bg-blue-50/50" : "border-slate-200"
+                      }`}
+                      onClick={() => setExportScope("filtered")}
+                    >
+                      <Radio value="filtered">
+                        <span style={{ fontWeight: 600, color: "#1e293b" }}>
+                          All Users in Scope ({allUsers.length})
+                        </span>
+                      </Radio>
+                    </Card>
+                  </Col>
+                </Row>
+              </Radio.Group>
+
+              {/* Status Selector Checkboxes when exportScope is 'filtered' */}
+              {exportScope === "filtered" && (
+                <div style={{ padding: "12px", backgroundColor: "#f8fafc", borderRadius: 8, border: "1px solid #e2e8f0", marginBottom: 16 }}>
+                  <div className="flex justify-between items-center mb-2">
+                    <span style={{ fontWeight: 600, fontSize: "13px", color: "#334155" }}>
+                      Select Statuses to Include ({selectedStatuses.length} selected):
+                    </span>
+                    <Space size={4}>
+                      <Button size="small" type="link" onClick={handleSelectAllStatuses} style={{ padding: 0 }}>
+                        Select All
+                      </Button>
+                      <span style={{ color: "#cbd5e1" }}>|</span>
+                      <Button size="small" type="link" onClick={handleSelectActiveOnly} style={{ padding: 0 }}>
+                        Active Only
+                      </Button>
+                      <span style={{ color: "#cbd5e1" }}>|</span>
+                      <Button size="small" type="link" onClick={handleClearStatuses} style={{ padding: 0 }}>
+                        Clear
+                      </Button>
+                    </Space>
+                  </div>
+
+                  <Checkbox.Group
+                    value={selectedStatuses}
+                    onChange={(vals) => setSelectedStatuses(vals as string[])}
+                    style={{ width: "100%" }}
+                  >
+                    <Row gutter={[12, 10]}>
+                      {STATUS_OPTIONS.map((st) => {
+                        const count = allUsers.filter((u) => u.status === st.value).length;
+                        return (
+                          <Col span={8} key={st.value}>
+                            <Checkbox value={st.value}>
+                              <Tag color={st.color} style={{ margin: 0 }}>
+                                {st.label} ({count})
+                              </Tag>
+                            </Checkbox>
+                          </Col>
+                        );
+                      })}
+                    </Row>
+                  </Checkbox.Group>
+                </div>
+              )}
+
+              {/* Selected Users Mini Preview Table matching ProjectExportPage */}
+              {exportScope === "selected" && (
+                <div style={{ marginBottom: 16 }}>
+                  <Table
+                    dataSource={selectedUsers}
+                    rowKey={(r: any) => r.id?.toString() || Math.random().toString()}
+                    pagination={false}
+                    size="small"
+                    scroll={{ y: 150 }}
+                    columns={[
+                      {
+                        title: "Selected Employee",
+                        dataIndex: "name",
+                        key: "name",
+                        render: (name: string, r: any) => (
+                          <div>
+                            <strong style={{ color: "#1e293b", display: "block" }}>{name}</strong>
+                            <span style={{ fontSize: 11, color: "#64748b" }}>{r.email}</span>
+                          </div>
+                        ),
+                      },
+                      {
+                        title: "Role",
+                        key: "role",
+                        render: (_: any, r: any) => (
+                          <Tag color="blue">{r.role?.displayName || r.role?.name || "N/A"}</Tag>
+                        ),
+                      },
+                      {
+                        title: "Status",
+                        dataIndex: "status",
+                        key: "status",
+                        render: (st: string) => {
+                          let color = "default";
+                          if (st === "active") color = "green";
+                          else if (st === "inactive") color = "orange";
+                          else if (st === "blocked") color = "red";
+                          return <Tag color={color}>{st ? st.toUpperCase() : "-"}</Tag>;
+                        },
+                      },
+                    ]}
+                  />
+                </div>
+              )}
+
+              {/* Role, Department & Work Hour Month Filters */}
+              <div style={{ borderTop: "1px solid #f1f5f9", paddingTop: 12 }}>
+                <Row gutter={[16, 12]}>
+                  <Col span={12}>
+                    <div style={{ fontSize: "12px", fontWeight: 600, color: "#475569", marginBottom: 4 }}>
+                      Filter by Role:
+                    </div>
+                    <Select
+                      mode="multiple"
+                      placeholder="All Roles"
+                      value={selectedRoles}
+                      onChange={setSelectedRoles}
+                      options={roleOptions}
+                      allowClear
+                      style={{ width: "100%" }}
+                      maxTagCount="responsive"
+                    />
+                  </Col>
+                  <Col span={12}>
+                    <div style={{ fontSize: "12px", fontWeight: 600, color: "#475569", marginBottom: 4 }}>
+                      Filter by Department:
+                    </div>
+                    <Select
+                      mode="multiple"
+                      placeholder="All Departments"
+                      value={selectedDepartments}
+                      onChange={setSelectedDepartments}
+                      options={departmentOptions}
+                      allowClear
+                      style={{ width: "100%" }}
+                      maxTagCount="responsive"
+                    />
+                  </Col>
+                  <Col span={24}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 4 }}>
+                      <span style={{ fontSize: "12px", fontWeight: 600, color: "#475569" }}>
+                        Work Hour Analysis Month:
+                      </span>
+                      <DatePicker
+                        picker="month"
+                        value={analysisMonth}
+                        onChange={(d) => d && setAnalysisMonth(d)}
+                        format="MMMM YYYY"
+                        allowClear={false}
+                        style={{ width: 180 }}
+                      />
+                    </div>
+                  </Col>
+                </Row>
+              </div>
+            </Card>
+          </Space>
+        </Col>
+
+        {/* Right Column: Live Summary & Column Field Checkboxes matching ProjectExportPage */}
+        <Col xs={24} lg={12}>
+          <Space direction="vertical" size={20} style={{ width: "100%" }}>
+            {/* Live Summary Card matching ProjectExportPage */}
+            <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200 shadow-sm" size="small">
+              <Row gutter={16} align="middle">
+                <Col span={14}>
+                  <Statistic
+                    title="Users Matching All Filters"
+                    value={enrichedUsers.length}
+                    suffix={`/ ${allUsers.length || selectedUsers.length}`}
+                    prefix={<CheckCircleOutlined style={{ color: "#1677ff" }} />}
+                    valueStyle={{ color: "#1e3a8a", fontWeight: 700 }}
+                  />
+                  <div style={{ fontSize: "11px", color: "#475569", marginTop: 4 }}>
+                    Statuses: {exportScope === "selected" ? "Selected" : selectedStatuses.join(", ") || "All"} | Columns: {selectedFields.length} | Monthly Hours: {totalMonthlyHours} hrs
+                  </div>
+                </Col>
+                <Col span={10} style={{ textAlign: "right" }}>
+                  <Button
+                    type="primary"
+                    size="large"
+                    icon={<DownloadOutlined />}
+                    onClick={handleExportExcel}
+                    disabled={enrichedUsers.length === 0}
+                    style={{
+                      borderRadius: "6px",
+                      backgroundColor: "#21a366",
+                      borderColor: "#21a366",
+                      fontWeight: 600,
+                      boxShadow: "0 2px 8px rgba(33, 163, 102, 0.35)",
+                    }}
+                  >
+                    Export to Excel
+                  </Button>
+                </Col>
+              </Row>
+            </Card>
+
+            {/* 2. Select Columns to Export */}
+            <Card
+              title={
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
+                  <Space>
+                    <TableOutlined className="text-indigo-600" />
+                    <span style={{ fontWeight: 600 }}>2. Select Columns to Export ({selectedFields.length})</span>
+                  </Space>
+                  <Space size={4}>
+                    <Button size="small" type="link" onClick={handleSelectAllFields} style={{ padding: 0 }}>
+                      Select All
+                    </Button>
+                    <span style={{ color: "#cbd5e1" }}>|</span>
+                    <Button size="small" type="link" icon={<ReloadOutlined />} onClick={handleResetFields} style={{ padding: 0 }}>
+                      Reset
+                    </Button>
+                  </Space>
+                </div>
+              }
+              size="small"
+              className="shadow-sm border-slate-200"
+            >
+              {/* Category Filter Tabs */}
+              <div style={{ marginBottom: 12 }}>
+                <Segmented
+                  options={[
+                    { label: `All (${ALL_USER_EXPORT_COLUMNS.length})`, value: "All" },
+                    { label: `Account (10)`, value: "Account" },
+                    { label: `Profile (10)`, value: "Profile" },
+                    { label: `Bank (4)`, value: "Bank" },
+                    { label: `Work Hours (10)`, value: "Work Hours" },
+                  ]}
+                  value={activeCategoryTab}
+                  onChange={(val) => setActiveCategoryTab(val as string)}
+                  block
+                  size="small"
+                />
+              </div>
+
+              {/* 2-Column Grid Layout matching ProjectExportPage with NO scrollbar clutter */}
+              <Row gutter={[10, 8]}>
+                {visibleColumnPills.map((col) => {
+                  const isChecked = selectedFields.includes(col.key);
+
+                  return (
+                    <Col span={12} key={col.key}>
+                      <div
+                        style={{
+                          padding: "7px 10px",
+                          borderRadius: 6,
+                          border: "1px solid",
+                          borderColor: isChecked ? "#93c5fd" : "#f1f5f9",
+                          backgroundColor: isChecked ? "#eff6ff" : "#f8fafc",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          cursor: "pointer",
+                          transition: "all 0.15s ease",
+                        }}
+                        onClick={() => handleToggleField(col.key, !isChecked)}
+                      >
+                        <Checkbox
+                          checked={isChecked}
+                          onChange={(e) => handleToggleField(col.key, e.target.checked)}
+                          onClick={(e) => e.stopPropagation()}
+                          disabled={col.required}
+                        >
+                          <span
+                            style={{
+                              fontSize: "12px",
+                              color: isChecked ? "#1e40af" : "#475569",
+                              fontWeight: isChecked ? 600 : 400,
+                            }}
+                          >
+                            {col.title}
+                          </span>
+                        </Checkbox>
+
+                        {col.required && (
+                          <Tag color="blue" style={{ fontSize: "10px", margin: 0, padding: "0 4px" }}>
+                            Required
+                          </Tag>
+                        )}
+                      </div>
+                    </Col>
+                  );
+                })}
+              </Row>
+            </Card>
+          </Space>
         </Col>
       </Row>
 
-      {/* Step 1: Export Scope & Configuration Card */}
-      <Card
-        title={
-          <Space>
-            <FilterOutlined style={{ color: "#1677ff" }} />
-            <span style={{ fontWeight: 600 }}>1. Export Scope & Filters</span>
-          </Space>
-        }
-        size="small"
-        style={{ borderRadius: "8px", marginBottom: 16, border: "1px solid #e2e8f0" }}
-      >
-        <Row gutter={[20, 16]} align="middle">
-          {/* Scope Selector */}
-          <Col xs={24} md={6}>
-            <div style={{ marginBottom: 6, fontSize: 12, fontWeight: 600, color: "#475569" }}>
-              Export Population:
-            </div>
-            <Radio.Group
-              value={exportScope}
-              onChange={(e) => setExportScope(e.target.value)}
-              buttonStyle="solid"
-            >
-              <Radio.Button value="filtered">
-                All / Filtered Users ({allUsers.length})
-              </Radio.Button>
-              <Radio.Button value="selected" disabled={!hasSelected}>
-                Selected ({selectedUsers.length})
-              </Radio.Button>
-            </Radio.Group>
-          </Col>
-
-          {/* Status Multi-select */}
-          {exportScope === "filtered" && (
-            <Col xs={24} md={6}>
-              <div style={{ marginBottom: 6, fontSize: 12, fontWeight: 600, color: "#475569" }}>
-                Account Statuses:
-              </div>
-              <Checkbox.Group
-                options={STATUS_OPTIONS.map((s) => ({ label: s.label, value: s.value }))}
-                value={selectedStatuses}
-                onChange={(vals) => setSelectedStatuses(vals as string[])}
-              />
-            </Col>
-          )}
-
-          {/* Role Filter */}
-          <Col xs={24} md={6}>
-            <div style={{ marginBottom: 6, fontSize: 12, fontWeight: 600, color: "#475569" }}>
-              Filter by Role:
-            </div>
-            <Select
-              mode="multiple"
-              placeholder="All Roles"
-              value={selectedRoles}
-              onChange={setSelectedRoles}
-              options={roleOptions}
-              style={{ width: "100%" }}
-              allowClear
-              maxTagCount="responsive"
-            />
-          </Col>
-
-          {/* Analysis Month */}
-          <Col xs={24} md={6}>
-            <div style={{ marginBottom: 6, fontSize: 12, fontWeight: 600, color: "#475569" }}>
-              Work Hour Analysis Month:
-            </div>
-            <DatePicker
-              picker="month"
-              value={analysisMonth}
-              onChange={(date) => {
-                if (date) setAnalysisMonth(date);
-              }}
-              allowClear={false}
-              style={{ width: "100%" }}
-            />
-          </Col>
-        </Row>
-      </Card>
-
-      {/* Step 2: Custom Field / Column Selection Card */}
-      <Card
-        title={
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-            <Space>
-              <TableOutlined style={{ color: "#722ed1" }} />
-              <span style={{ fontWeight: 600 }}>2. Choose Fields to Download ({selectedFields.length} selected)</span>
-            </Space>
-            <Space size="small">
-              <Button size="small" icon={<CheckSquareOutlined />} onClick={handleSelectAllFields}>
-                Select All
-              </Button>
-              <Button size="small" icon={<BorderOutlined />} onClick={handleDeselectAllFields}>
-                Deselect All
-              </Button>
-              <Button size="small" icon={<ReloadOutlined />} onClick={handleResetFields}>
-                Reset to Defaults
-              </Button>
-            </Space>
-          </div>
-        }
-        size="small"
-        style={{ borderRadius: "8px", marginBottom: 16, border: "1px solid #e2e8f0" }}
-      >
-        <Tabs
-          type="card"
-          size="small"
-          items={categories.map((cat) => {
-            const catColumns = ALL_USER_EXPORT_COLUMNS.filter((c) => c.category === cat);
-            const catSelectedCount = catColumns.filter((c) => selectedFields.includes(c.key)).length;
-
-            return {
-              key: cat,
-              label: (
-                <span>
-                  {cat === "Account" && <UserOutlined style={{ marginRight: 6 }} />}
-                  {cat === "Profile" && <ApartmentOutlined style={{ marginRight: 6 }} />}
-                  {cat === "Bank" && <BankOutlined style={{ marginRight: 6 }} />}
-                  {cat === "Work Hours" && <ClockCircleOutlined style={{ marginRight: 6 }} />}
-                  {cat} ({catSelectedCount}/{catColumns.length})
-                </span>
-              ),
-              children: (
-                <div style={{ padding: "12px 6px" }}>
-                  <Row gutter={[16, 12]}>
-                    {catColumns.map((col) => {
-                      const isChecked = selectedFields.includes(col.key);
-                      return (
-                        <Col xs={24} sm={12} md={8} lg={6} key={col.key}>
-                          <div
-                            onClick={() => handleToggleField(col.key, !isChecked)}
-                            style={{
-                              padding: "8px 12px",
-                              borderRadius: "6px",
-                              border: isChecked ? "1px solid #91caff" : "1px solid #f0f0f0",
-                              background: isChecked ? "#f0f7ff" : "#ffffff",
-                              cursor: "pointer",
-                              transition: "all 0.15s ease",
-                            }}
-                          >
-                            <Checkbox
-                              checked={isChecked}
-                              onChange={(e) => handleToggleField(col.key, e.target.checked)}
-                              onClick={(e) => e.stopPropagation()}
-                              disabled={col.required}
-                            >
-                              <span style={{ fontWeight: isChecked ? 600 : 400, fontSize: 13, color: "#1e293b" }}>
-                                {col.title}
-                              </span>
-                            </Checkbox>
-                            {col.description && (
-                              <div style={{ fontSize: 11, color: "#64748b", marginTop: 2, paddingLeft: 24 }}>
-                                {col.description}
-                              </div>
-                            )}
-                          </div>
-                        </Col>
-                      );
-                    })}
-                  </Row>
-                </div>
-              ),
-            };
-          })}
-        />
-      </Card>
-
-      {/* Step 3: Live Preview Table */}
+      {/* 3. Clean, Human-Readable Live Data Preview (NO horizontal overflow junkies!) */}
       <Card
         title={
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
@@ -872,7 +1041,7 @@ export const UserExportPage: React.FC<UserExportPageProps> = ({
             </Space>
             <Input
               prefix={<SearchOutlined style={{ color: "#94a3b8" }} />}
-              placeholder="Search preview by name, role, email..."
+              placeholder="Search preview by name, role, email, dept..."
               value={previewSearch}
               onChange={(e) => setPreviewSearch(e.target.value)}
               allowClear
@@ -882,15 +1051,14 @@ export const UserExportPage: React.FC<UserExportPageProps> = ({
           </div>
         }
         size="small"
-        style={{ borderRadius: "8px", border: "1px solid #e2e8f0" }}
+        style={{ borderRadius: "8px", border: "1px solid #e2e8f0", marginTop: 20 }}
       >
         <Table
           dataSource={previewItems}
           columns={previewColumns}
-          rowKey="rawId"
+          rowKey={(record) => record.rawId || record.id}
           size="small"
-          scroll={{ x: 1200 }}
-          loading={isLoadingWorkingTime}
+          loading={isLoading || isLoadingWorkingTime}
           pagination={{
             pageSize: 8,
             showSizeChanger: true,

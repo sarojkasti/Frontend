@@ -24,7 +24,7 @@ import {
 } from "antd";
 import { useState, useRef, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import Highlighter from "react-highlight-words";
+import { ResizableHeader as ResizableTitle, useTableSearch } from "@/components/Table";
 import ResponsiveTable from "@/components/ui/MobileCardList";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import dayjs from "dayjs";
@@ -35,66 +35,6 @@ import {
   getSavedClientPageSize,
   saveClientPageSize
 } from "./clientColumnsConfig";
-
-// Header cell component supporting mouse drag column width resizing
-const ResizableTitle = (props: any) => {
-  const { onResize, width, children, columnKey, ...restProps } = props;
-
-  if (!width || columnKey === "action") {
-    return <th {...restProps}>{children}</th>;
-  }
-
-  return (
-    <th
-      {...restProps}
-      style={{
-        ...restProps.style,
-        position: "relative",
-        userSelect: "none"
-      }}
-    >
-      {children}
-      <div
-        style={{
-          position: "absolute",
-          right: 0,
-          top: 0,
-          bottom: 0,
-          width: 10,
-          cursor: "col-resize",
-          zIndex: 10
-        }}
-        onClick={(e) => {
-          e.stopPropagation();
-          e.preventDefault();
-        }}
-        onMouseDown={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          const startX = e.clientX;
-          const startWidth = width;
-
-          const onMouseMove = (moveEvent: MouseEvent) => {
-            moveEvent.preventDefault();
-            moveEvent.stopPropagation();
-            const newWidth = Math.max(70, startWidth + moveEvent.clientX - startX);
-            onResize(newWidth);
-          };
-
-          const onMouseUp = (upEvent: MouseEvent) => {
-            upEvent.preventDefault();
-            upEvent.stopPropagation();
-            document.removeEventListener("mousemove", onMouseMove);
-            document.removeEventListener("mouseup", onMouseUp);
-          };
-
-          document.addEventListener("mousemove", onMouseMove);
-          document.addEventListener("mouseup", onMouseUp);
-        }}
-      />
-    </th>
-  );
-};
 
 interface ClientTableProps {
   status?: string;
@@ -161,20 +101,10 @@ const ClientTable = ({
     });
   };
 
-  const [searchText, setSearchText] = useState("");
-  const [searchedColumn, setSearchedColumn] = useState("");
   const [sortedInfo, setSortedInfo] = useState<any>({});
-  const searchInput = useRef<any>(null);
-
-  const handleSearch = (
-    selectedKeys: string[],
-    confirm: () => void,
-    dataIndex: string
-  ) => {
-    confirm();
-    setSearchText(selectedKeys[0]);
-    setSearchedColumn(dataIndex);
-  };
+  const { getColumnSearchProps, searchedColumn, searchText } = useTableSearch({
+    dataSource: clientData,
+  });
 
   const handleTableChange = (pagination: any, _filters: any, sorter: any) => {
     setPage(pagination.current);
@@ -194,168 +124,6 @@ const ClientTable = ({
       return "-";
     }
     return String(text).replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
-  };
-
-  const getColumnSearchProps = (dataIndex: string, title: string): any => {
-    const getUniqueValues = () => {
-      const getValue = (obj: any, path: string): any => {
-        if (path.includes(".")) {
-          const keys = path.split(".");
-          let val = obj;
-          for (const key of keys) {
-            if (!val) return null;
-            val = val[key];
-          }
-          return val;
-        }
-        return obj[path];
-      };
-
-      const values = new Set<string>();
-      clientData?.forEach((record: any) => {
-        const value = getValue(record, dataIndex);
-        if (value) {
-          values.add(value.toString());
-        }
-      });
-      return Array.from(values).sort();
-    };
-
-    return {
-      filterDropdown: ({
-        setSelectedKeys,
-        selectedKeys,
-        confirm,
-        clearFilters
-      }: any) => {
-        const uniqueValues = getUniqueValues();
-        const currentValue = selectedKeys[0] || "";
-        const filteredOptions = currentValue
-          ? uniqueValues
-              .filter((val) =>
-                val.toLowerCase().includes(currentValue.toLowerCase())
-              )
-              .slice(0, 10)
-          : uniqueValues.slice(0, 10);
-
-        return (
-          <div style={{ padding: 8 }}>
-            <Input
-              ref={searchInput}
-              placeholder={`Search ${title}`}
-              value={currentValue}
-              onChange={(e) =>
-                setSelectedKeys(e.target.value ? [e.target.value] : [])
-              }
-              onPressEnter={() =>
-                handleSearch(selectedKeys, confirm, dataIndex)
-              }
-              style={{ marginBottom: 8, display: "block" }}
-            />
-            {filteredOptions.length > 0 && (
-              <div
-                style={{
-                  maxHeight: 200,
-                  overflowY: "auto",
-                  marginBottom: 8,
-                  border: "1px solid #d9d9d9",
-                  borderRadius: 4
-                }}
-              >
-                {filteredOptions.map((option, idx) => (
-                  <div
-                    key={idx}
-                    style={{
-                      padding: "4px 8px",
-                      cursor: "pointer",
-                      backgroundColor: "white",
-                      borderBottom:
-                        idx < filteredOptions.length - 1
-                          ? "1px solid #f0f0f0"
-                          : "none"
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = "#f0f0f0";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = "white";
-                    }}
-                    onClick={() => {
-                      setSelectedKeys([option]);
-                      handleSearch([option], confirm, dataIndex);
-                    }}
-                  >
-                    {option}
-                  </div>
-                ))}
-              </div>
-            )}
-            <Space>
-              <Button
-                type="primary"
-                onClick={() => handleSearch(selectedKeys, confirm, dataIndex)}
-                icon={<SearchOutlined />}
-                size="small"
-                style={{ width: 90 }}
-              >
-                Search
-              </Button>
-              <Button
-                onClick={() => {
-                  clearFilters();
-                  setSelectedKeys([]);
-                  setSearchText("");
-                  setSearchedColumn("");
-                  confirm({ closeDropdown: false });
-                }}
-                size="small"
-                style={{ width: 90 }}
-              >
-                Reset
-              </Button>
-            </Space>
-          </div>
-        );
-      },
-      filterIcon: (filtered: boolean) => (
-        <SearchOutlined style={{ color: filtered ? "#1890ff" : undefined }} />
-      ),
-      onFilter: (value: string, record: any) => {
-        if (dataIndex.includes(".")) {
-          const keys = dataIndex.split(".");
-          let val = record;
-          for (const key of keys) {
-            if (!val) return false;
-            val = val[key];
-          }
-          return val
-            ? val.toString().toLowerCase().includes(value.toLowerCase())
-            : false;
-        }
-        return record[dataIndex]
-          ? record[dataIndex]
-              .toString()
-              .toLowerCase()
-              .includes(value.toLowerCase())
-          : "";
-      },
-      onFilterDropdownVisibleChange: (visible: boolean) => {
-        if (visible) {
-          setTimeout(() => searchInput.current?.select(), 100);
-        }
-      },
-      render: (text: string) =>
-        searchedColumn === dataIndex ? (
-          <Highlighter
-            highlightStyle={{ backgroundColor: "#ffc069", padding: 0 }}
-            searchWords={[searchText]}
-            autoEscape
-            textToHighlight={text ? text.toString() : ""}
-          />
-        ) : (
-          text
-        )
-    };
   };
 
   // Full Column Definitions List with Resizable Headers
@@ -813,6 +581,7 @@ const ClientTable = ({
         onChange={handleTableChange}
         rowKey="id"
         size="small"
+        tableLayout="fixed"
         scroll={isMobile ? undefined : { x: "max-content" }}
         pagination={
           isMobile

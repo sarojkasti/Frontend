@@ -27,7 +27,17 @@ import {
   AuditOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
+import { PowerTable, PowerTableColumn, useColumnVisibility } from '@/components/Table';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+
+const LEDGER_COLUMNS = [
+  { key: 'createdAt', label: 'Timestamp' },
+  { key: 'leaveType', label: 'Leave Type' },
+  { key: 'action', label: 'Action' },
+  { key: 'changeType', label: 'Change' },
+  { key: 'resultingBalance', label: 'Resulting Balance' },
+  { key: 'remarks', label: 'Remarks' },
+];
 import {
   allocateLeaveToUser,
   allocateLeaveToAllUsers,
@@ -65,6 +75,11 @@ const LeaveBalanceManagement: React.FC = () => {
   // Ledger state
   const [selectedLedgerUserId, setSelectedLedgerUserId] = useState<string | undefined>();
   const [selectedLedgerYear, setSelectedLedgerYear] = useState<number>(currentYear);
+  const { visibleColumnKeys: ledgerVisibleKeys, columnCustomizer: ledgerCustomizer } = useColumnVisibility({
+    persistenceKey: "leave_balance_ledger_table",
+    columns: LEDGER_COLUMNS,
+    size: "small",
+  });
 
   useEffect(() => {
     loadUsers();
@@ -211,23 +226,26 @@ const LeaveBalanceManagement: React.FC = () => {
     });
   };
 
-  const ledgerColumns: ColumnsType<LeaveBalanceLedgerItem> = [
+  const ledgerColumns: PowerTableColumn<LeaveBalanceLedgerItem>[] = [
     {
       title: 'Timestamp',
       dataIndex: 'createdAt',
       key: 'createdAt',
+      defaultWidth: 170,
       render: (d: string) => moment(d).format('YYYY-MM-DD HH:mm:ss'),
     },
     {
       title: 'Leave Type',
       dataIndex: ['leaveType', 'name'],
       key: 'leaveType',
+      defaultWidth: 160,
       render: (_: any, r: LeaveBalanceLedgerItem) => r.leaveType?.name || '—',
     },
     {
       title: 'Action',
       dataIndex: 'action',
       key: 'action',
+      defaultWidth: 130,
       render: (action: string) => {
         const meta = actionTagMeta[action] || { color: 'default', label: action };
         return <Tag color={meta.color}>{meta.label}</Tag>;
@@ -237,6 +255,7 @@ const LeaveBalanceManagement: React.FC = () => {
       title: 'Change',
       dataIndex: 'changeType',
       key: 'changeType',
+      defaultWidth: 130,
       render: (type: string, r: LeaveBalanceLedgerItem) => {
         const sign = type === 'CREDIT' ? '+' : type === 'DEBIT' ? '-' : '';
         const color = type === 'CREDIT' ? 'green' : type === 'DEBIT' ? 'red' : 'gold';
@@ -252,12 +271,14 @@ const LeaveBalanceManagement: React.FC = () => {
       title: 'Resulting Balance',
       dataIndex: 'resultingBalance',
       key: 'resultingBalance',
+      defaultWidth: 140,
       render: (bal: number) => <b>{bal} days</b>,
     },
     {
       title: 'Remarks',
       dataIndex: 'remarks',
       key: 'remarks',
+      defaultWidth: 200,
       render: (rem: string) => rem || '—',
     },
   ];
@@ -522,14 +543,20 @@ const LeaveBalanceManagement: React.FC = () => {
               min={2024}
               max={2050}
             />
+            {ledgerCustomizer}
           </Space>
 
-          <Table
+          <PowerTable<LeaveBalanceLedgerItem>
             rowKey="id"
             loading={isLoadingLedger}
             columns={ledgerColumns}
             dataSource={ledgerEntries}
-            pagination={{ pageSize: 10 }}
+            enableResize
+            enableColumnSearch
+            showToolbar={false}
+            visibleColumnKeys={ledgerVisibleKeys}
+            persistenceKey="leave_balance_ledger_table"
+            pagination={{ pageSize: 10, showSizeChanger: true }}
             locale={{
               emptyText: selectedLedgerUserId
                 ? 'No ledger audit transactions found for this user and year'

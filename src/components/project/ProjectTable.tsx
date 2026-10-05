@@ -45,6 +45,7 @@ import moment from "moment";
 import dayjs from "dayjs";
 import useIsMobile from "@/hooks/useIsMobile";
 import { ResponsiveTable } from "@/components/ui/MobileCardList";
+import { ResizableHeader as ResizableTitle } from "@/components/Table";
 import {
   ALL_PROJECT_COLUMNS,
   getSavedColumnWidths,
@@ -52,66 +53,6 @@ import {
   getSavedPageSize,
   savePageSize
 } from "./projectColumnsConfig";
-
-// Header cell component supporting mouse drag column width resizing
-const ResizableTitle = (props: any) => {
-  const { onResize, width, children, columnKey, ...restProps } = props;
-
-  if (!width || columnKey === "action") {
-    return <th {...restProps}>{children}</th>;
-  }
-
-  return (
-    <th
-      {...restProps}
-      style={{
-        ...restProps.style,
-        position: "relative",
-        userSelect: "none",
-      }}
-    >
-      {children}
-      <div
-        style={{
-          position: "absolute",
-          right: 0,
-          top: 0,
-          bottom: 0,
-          width: 10,
-          cursor: "col-resize",
-          zIndex: 10,
-        }}
-        onClick={(e) => {
-          e.stopPropagation();
-          e.preventDefault();
-        }}
-        onMouseDown={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          const startX = e.clientX;
-          const startWidth = width;
-
-          const onMouseMove = (moveEvent: MouseEvent) => {
-            moveEvent.preventDefault();
-            moveEvent.stopPropagation();
-            const newWidth = Math.max(60, startWidth + moveEvent.clientX - startX);
-            onResize(newWidth);
-          };
-
-          const onMouseUp = (upEvent: MouseEvent) => {
-            upEvent.preventDefault();
-            upEvent.stopPropagation();
-            document.removeEventListener("mousemove", onMouseMove);
-            document.removeEventListener("mouseup", onMouseUp);
-          };
-
-          document.addEventListener("mousemove", onMouseMove);
-          document.addEventListener("mouseup", onMouseUp);
-        }}
-      />
-    </th>
-  );
-};
 
 interface ProjectTableProps {
   showModal: (project?: ProjectType) => void;
@@ -1136,6 +1077,7 @@ const ProjectTable: React.FC<ProjectTableProps> = ({
           onChange={handleTableChange}
           rowKey={"id"}
           size="small"
+          tableLayout="fixed"
           scroll={{ x: "max-content" }}
           mobileRenderCard={renderMobileProjectCard}
         />
