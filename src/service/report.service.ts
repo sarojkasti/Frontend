@@ -8,18 +8,26 @@ axios.defaults.withCredentials = true;
 const backendURI = import.meta.env.VITE_BACKEND_URI;
 
 export interface ReportFilterParams {
+  startDate?: string;
+  endDate?: string;
   dateRange?: [string, string];
   projectId?: string;
   userId?: string;
+  departmentId?: string;
   status?: string;
 }
 
 export const fetchWorklogReportData = async (filters: ReportFilterParams = {}) => {
+  const startDate = filters.startDate || (filters.dateRange ? filters.dateRange[0] : undefined);
+  const endDate = filters.endDate || (filters.dateRange ? filters.dateRange[1] : undefined);
+
   const [worklogsRes, projectsRes, usersRes] = await Promise.all([
     fetchAllWorklogs({
       userId: filters.userId,
       projectId: filters.projectId,
       status: filters.status,
+      startDate,
+      endDate,
     }),
     fetchProjects({ status: "all" }),
     axios

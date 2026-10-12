@@ -30,6 +30,8 @@ export function useColumnVisibility({
       title:
         typeof col.title === "string"
           ? col.title
+          : typeof col.label === "string"
+          ? col.label
           : typeof col.key === "string"
           ? col.key.charAt(0).toUpperCase() + col.key.slice(1)
           : String(col.key),

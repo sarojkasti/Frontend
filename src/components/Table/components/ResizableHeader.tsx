@@ -12,9 +12,12 @@ export interface ResizableHeaderProps
 
 /**
  * High-performance resizable table header cell for Ant Design Table.
- * Supports interactive drag-to-resize with mouse events, visual indicator,
- * and strict click suppression to prevent column sorting or filter triggers
- * when dragging to resize.
+ * Supports:
+ *  - Interactive Drag-to-Resize with mouse events, visual indicator, and drag click suppression.
+ *  - Header Click Search Trigger: When selecting/clicking on the table header (title or cell),
+ *    it triggers the column's search/filter dropdown instead of sorting the table.
+ *  - Sorter Icon Isolation: Sorting remains fully available by clicking directly on the sorter
+ *    icon (.ant-table-column-sorter).
  */
 export const ResizableHeader: React.FC<ResizableHeaderProps> = ({
   width,
@@ -32,16 +35,15 @@ export const ResizableHeader: React.FC<ResizableHeaderProps> = ({
   const isDraggingRef = useRef(false);
   const dragOccurredRef = useRef(false);
 
-  // If not resizable, no width, action column, or no onResize callback, render standard <th>
-  if (!resizable || !width || !onResize || columnKey === "action" || columnKey === "operations") {
-    return (
-      <th style={style} className={className} {...restProps}>
-        {children}
-      </th>
-    );
-  }
+  const { onClick: thOnClick, onClickCapture: thOnClickCapture, ...domProps } = restProps;
 
-  const { onClick: thOnClick, ...domProps } = restProps;
+  const isResizable = Boolean(
+    resizable &&
+    width &&
+    onResize &&
+    columnKey !== "action" &&
+    columnKey !== "operations"
+  );
 
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -51,7 +53,7 @@ export const ResizableHeader: React.FC<ResizableHeaderProps> = ({
     const thElement = (e.currentTarget as HTMLElement).closest("th");
     const currentRenderedWidth = thElement
       ? Math.round(thElement.getBoundingClientRect().width)
-      : width;
+      : width || 150;
 
     const startX = e.clientX;
     const startWidth = currentRenderedWidth;
@@ -75,7 +77,7 @@ export const ResizableHeader: React.FC<ResizableHeaderProps> = ({
       }
       const rawWidth = startWidth + delta;
       const clampedWidth = Math.min(Math.max(minWidth, rawWidth), maxWidth);
-      onResize(clampedWidth);
+      onResize?.(clampedWidth);
     };
 
     const onMouseUp = (upEvent: MouseEvent) => {
@@ -111,6 +113,72 @@ export const ResizableHeader: React.FC<ResizableHeaderProps> = ({
     document.addEventListener("mouseup", onMouseUp);
   };
 
+  /**
+   * When user clicks on the table header:
+   * Instead of triggering column sort, open/trigger the search filter dropdown!
+   * If the user specifically clicks the sort icon (.ant-table-column-sorter),
+   * let Ant Design's sorter handle it.
+   */
+  const handleHeaderClickCapture = (e: React.MouseEvent<HTMLTableCellElement>) => {
+    // 1. If dragging or drag just finished, drop click entirely
+    if (isDraggingRef.current || dragOccurredRef.current) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+
+    const target = e.target as HTMLElement;
+
+    // 2. If click is on the resize handle, let resize handler work
+    if (target.closest(".cursor-col-resize")) {
+      return;
+    }
+
+    // 3. If user clicked specifically on the sort icon (.ant-table-column-sorter),
+    // allow Ant Design's sorter to handle it!
+    if (target.closest(".ant-table-column-sorter")) {
+      return;
+    }
+
+    // 4. If user clicked directly on the filter trigger / search icon or inside dropdown,
+    // let Ant Design's filter dropdown toggle naturally
+    if (
+      target.closest(".ant-table-filter-trigger") ||
+      target.closest(".ant-table-filter-dropdown")
+    ) {
+      return;
+    }
+
+    // 5. User clicked on the table header (title, cell background, etc.)
+    // Find the filter trigger inside this th element
+    const th = e.currentTarget;
+    const filterTrigger = th.querySelector<HTMLElement>(".ant-table-filter-trigger");
+
+    if (filterTrigger) {
+      // Prevent Ant Design's onSorterClick from firing on div.ant-table-column-sorters
+      e.stopPropagation();
+      e.preventDefault();
+      if (e.nativeEvent) {
+        e.nativeEvent.stopImmediatePropagation?.();
+      }
+
+      // Trigger the column search / filter
+      setTimeout(() => {
+        filterTrigger.click();
+      }, 0);
+    } else {
+      // If there is no search filter on this column, prevent the title click
+      // from accidentally sorting the table. Sorter can still be triggered via sort icon.
+      const hasSorter = th.querySelector(".ant-table-column-sorters");
+      if (hasSorter) {
+        e.stopPropagation();
+        e.preventDefault();
+      }
+    }
+
+    thOnClickCapture?.(e);
+  };
+
   return (
     <th
       {...domProps}
@@ -118,8 +186,10 @@ export const ResizableHeader: React.FC<ResizableHeaderProps> = ({
         ...style,
         position: "relative",
         userSelect: "none",
+        paddingRight: isResizable ? 14 : undefined,
       }}
-      className={`${className || ""} group`}
+      className={`${className || ""} ${isResizable ? "group" : ""}`}
+      onClickCapture={handleHeaderClickCapture}
       onClick={(e) => {
         // Drop any click that was triggered by dragging or resizing
         if (isDraggingRef.current || dragOccurredRef.current) {
@@ -144,35 +214,36 @@ export const ResizableHeader: React.FC<ResizableHeaderProps> = ({
 
       {children}
 
-      <div
-        className={`absolute right-0 top-0 bottom-0 w-3 cursor-col-resize z-20 flex items-center justify-center select-none transition-opacity duration-150 ${
-          isDragging ? "opacity-100" : "opacity-0 group-hover:opacity-100 hover:opacity-100"
-        }`}
-        style={{
-          touchAction: "none",
-        }}
-        onClickCapture={(e) => {
-          e.stopPropagation();
-          e.preventDefault();
-        }}
-        onClick={(e) => {
-          e.stopPropagation();
-          e.preventDefault();
-        }}
-        onMouseDown={handleMouseDown}
-        title="Drag to adjust column width"
-      >
-        <span
-          className={`h-full ${
-            isDragging
-              ? "w-[2px] bg-blue-600 shadow-sm"
-              : "w-[2px] bg-blue-500"
+      {isResizable && (
+        <div
+          className={`absolute right-0 top-0 bottom-0 w-3 cursor-col-resize z-20 flex items-center justify-center select-none transition-opacity duration-150 ${
+            isDragging ? "opacity-100" : "opacity-0 group-hover:opacity-100 hover:opacity-100"
           }`}
-        />
-      </div>
+          style={{
+            touchAction: "none",
+          }}
+          onClickCapture={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+          }}
+          onClick={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+          }}
+          onMouseDown={handleMouseDown}
+          title="Drag to adjust column width"
+        >
+          <span
+            className={`h-full ${
+              isDragging
+                ? "w-[2px] bg-blue-600 shadow-sm"
+                : "w-[2px] bg-blue-500"
+            }`}
+          />
+        </div>
+      )}
     </th>
   );
 };
 
 export default ResizableHeader;
-

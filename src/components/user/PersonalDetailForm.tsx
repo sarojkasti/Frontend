@@ -271,7 +271,7 @@ const PersonalDetailForm = ({ initialValues, userData }: PersonalDetailFormProps
               <div style={{ padding: "8px 12px", backgroundColor: "#f8fafc", borderRadius: "6px", border: "1px solid #f1f5f9" }}>
                 <div style={{ color: "#64748b", fontSize: "12px", marginBottom: "4px" }}>Joined Date</div>
                 <div style={{ fontWeight: 500, color: "#1e293b" }}>
-                  {userData.joinedDate ? dayjs(userData.joinedDate).format("YYYY-MM-DD") : (userData.createdAt ? dayjs(userData.createdAt).format("YYYY-MM-DD") : 'N/A')}
+                  {userData.joinedDate ? dayjs(userData.joinedDate).format("YYYY-MM-DD") : 'N/A'}
                 </div>
               </div>
             </Col>

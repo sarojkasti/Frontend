@@ -46,6 +46,7 @@ import {
 import { useExportAttendance } from "@/hooks/attendence/useExportAttendance";
 import { useUser } from "@/hooks/user/useUser";
 import { useSession } from "@/context/SessionContext";
+import { formatTime12Hour } from "@/utils/formatUtils";
 
 const { RangePicker } = DatePicker;
 
@@ -233,16 +234,12 @@ export const AttendanceExportPage: React.FC<AttendanceExportPageProps> = ({
   // Time & Duration Calculation Helper
   const parseTime = (timeStr: string | null | undefined, dateStr: string) => {
     if (!timeStr) return null;
-    let m = moment(`${dateStr} ${timeStr}`, [
-      "YYYY-MM-DD HH:mm:ss a",
-      "YYYY-MM-DD hh:mm:ss a",
-      "YYYY-MM-DD HH:mm:ss",
-      "YYYY-MM-DD HH:mm",
-    ]);
-    if (!m.isValid()) {
-      m = moment(timeStr, ["HH:mm:ss a", "hh:mm:ss a", "HH:mm:ss", "HH:mm"]);
-    }
-    return m.isValid() ? m : null;
+    const formatted = formatTime12Hour(timeStr);
+    if (formatted === "-") return null;
+    const m = moment(`${dateStr} ${formatted}`, "YYYY-MM-DD hh:mm:ss a");
+    if (m.isValid()) return m;
+    let fallback = moment(timeStr, ["HH:mm:ss a", "hh:mm:ss a", "HH:mm:ss", "HH:mm"]);
+    return fallback.isValid() ? fallback : null;
   };
 
   const calculateDuration = (clockIn: string | null | undefined, clockOut: string | null | undefined, dateStr: string) => {
@@ -338,8 +335,8 @@ export const AttendanceExportPage: React.FC<AttendanceExportPageProps> = ({
         role: item.user?.roleName || "No Role",
         department: item.user?.departmentName || "No Department",
         accountStatus: item.user?.status ? String(item.user.status).toUpperCase() : "ACTIVE",
-        clockInTime: item.clockIn || "-",
-        clockOutTime: item.clockOut || "-",
+        clockInTime: formatTime12Hour(item.clockIn),
+        clockOutTime: formatTime12Hour(item.clockOut),
         durationText: durationInfo.text,
         durationMinutes: durationInfo.minutes,
         durationHoursDecimal: durationInfo.decimalHours,

@@ -134,13 +134,14 @@ const ClientUsersAdmin: React.FC = () => {
       title: "User",
       key: "user",
       defaultWidth: 230,
+      minWidth: 180,
       render: (_: any, record: ClientUserType) => (
-        <div className="flex items-center gap-3">
-          <Avatar icon={<UserOutlined />} />
-          <div>
-            <div className="font-medium">{record.name}</div>
-            <Text type="secondary" className="text-xs flex items-center gap-1">
-              <MailOutlined /> {record.email}
+        <div className="flex items-center gap-3 min-w-0">
+          <Avatar icon={<UserOutlined />} className="shrink-0" />
+          <div className="min-w-0 flex-1">
+            <div className="font-medium truncate" title={record.name}>{record.name}</div>
+            <Text type="secondary" className="text-xs flex items-center gap-1 truncate" title={record.email}>
+              <MailOutlined className="shrink-0" /> <span className="truncate">{record.email}</span>
             </Text>
           </div>
         </div>
@@ -150,12 +151,19 @@ const ClientUsersAdmin: React.FC = () => {
       title: "Clients",
       dataIndex: "customers",
       key: "customers",
-      defaultWidth: 200,
+      defaultWidth: 260,
+      minWidth: 160,
+      searchable: false,
+      sortable: false,
       render: (customers: any[]) => 
         customers?.length > 0 ? (
-          <Space wrap>
+          <Space wrap size={[4, 4]} className="max-w-full">
             {customers.map((c: any) => (
-              <Tag key={c.id} color="blue">{c.name}</Tag>
+              <Tooltip key={c.id} title={c.name}>
+                <Tag color="blue" className="max-w-full truncate inline-block cursor-default m-0">
+                  {c.name}
+                </Tag>
+              </Tooltip>
             ))}
           </Space>
         ) : "-"
@@ -164,11 +172,12 @@ const ClientUsersAdmin: React.FC = () => {
       title: "Phone",
       dataIndex: "phoneNumber",
       key: "phoneNumber",
-      defaultWidth: 140,
+      defaultWidth: 150,
+      minWidth: 130,
       render: (phone: string) =>
         phone ? (
-          <span className="flex items-center gap-1">
-            <PhoneOutlined /> {phone}
+          <span className="flex items-center gap-1 whitespace-nowrap">
+            <PhoneOutlined className="shrink-0 text-slate-500" /> {phone}
           </span>
         ) : (
           "-"
@@ -179,13 +188,18 @@ const ClientUsersAdmin: React.FC = () => {
       dataIndex: "status",
       key: "status",
       defaultWidth: 120,
+      minWidth: 100,
+      searchable: false,
       render: (status: ClientUserStatus) => getStatusTag(status)
     },
     {
       title: "Downloads",
       dataIndex: "isDownloadDisabled",
       key: "isDownloadDisabled",
-      defaultWidth: 120,
+      defaultWidth: 130,
+      minWidth: 110,
+      searchable: false,
+      sortable: false,
       render: (disabled: boolean, record: ClientUserType) => (
         <Tooltip title={disabled ? "Downloads disabled for this user" : "Downloads enabled"}>
           <Switch
@@ -215,7 +229,9 @@ const ClientUsersAdmin: React.FC = () => {
       title: "Last Login",
       dataIndex: "lastLoginAt",
       key: "lastLoginAt",
-      defaultWidth: 140,
+      defaultWidth: 150,
+      minWidth: 130,
+      searchable: false,
       render: (date: string) =>
         date ? formatDistanceToNow(new Date(date), { addSuffix: true }) : "Never"
     },
@@ -224,6 +240,8 @@ const ClientUsersAdmin: React.FC = () => {
       dataIndex: "createdAt",
       key: "createdAt",
       defaultWidth: 130,
+      minWidth: 110,
+      searchable: false,
       render: (date: string) => format(new Date(date), "PP")
     },
     {

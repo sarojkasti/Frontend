@@ -193,8 +193,8 @@ const columns = (
 
   baseColumns.push({
     title: "Action",
-    dataIndex: "o",
-    key: "s",
+    dataIndex: "action",
+    key: "action",
     width: 120,
     defaultWidth: 120,
     required: true,

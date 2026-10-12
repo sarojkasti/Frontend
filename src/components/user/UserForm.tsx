@@ -25,7 +25,6 @@ const UserForm = ({ initialValues, handleCancel }: { initialValues?: UserType, h
   const isPending = isCreating || isUpdating;
   useEffect(() => {
     if (isEditing && initialValues) {
-      const initialJoined = initialValues.joinedDate || initialValues.createdAt;
       form.setFieldsValue({
         name: initialValues.name,
         username: initialValues.username,
@@ -33,7 +32,7 @@ const UserForm = ({ initialValues, handleCancel }: { initialValues?: UserType, h
         status: initialValues.status,
         roleId: initialValues.role?.id,
         hourlyRate: initialValues.hourlyRate || 500,
-        joinedDate: initialJoined ? dayjs(initialJoined) : null,
+        joinedDate: initialValues.joinedDate ? dayjs(initialValues.joinedDate) : null,
       });
     } else {
       // Reset form when not editing
@@ -56,7 +55,7 @@ const UserForm = ({ initialValues, handleCancel }: { initialValues?: UserType, h
         status: values.status,
         role: String(values.roleId), // Ensure role is string for update
         hourlyRate: values.hourlyRate,
-        ...(canEditJoinedDate && formattedJoinedDate ? { joinedDate: formattedJoinedDate } : {}),
+        ...(canEditJoinedDate ? { joinedDate: formattedJoinedDate } : {}),
       };
     } else {
       // For creation, send all relevant fields including hourlyRate

@@ -134,13 +134,14 @@ const ClientUsersTab: React.FC<ClientUsersTabProps> = ({ clientId, clientName })
     {
       title: "User Name",
       key: "user",
+      width: 220,
       render: (_: any, record: ClientUserType) => (
-        <div className="flex items-center gap-3">
-          <Avatar icon={<UserOutlined />} style={{ backgroundColor: "#1677ff" }} />
-          <div>
-            <div className="font-semibold text-slate-800">{record.name}</div>
-            <span className="text-xs text-slate-500 flex items-center gap-1">
-              <MailOutlined /> {record.email}
+        <div className="flex items-center gap-3 min-w-0">
+          <Avatar icon={<UserOutlined />} style={{ backgroundColor: "#1677ff" }} className="shrink-0" />
+          <div className="min-w-0 flex-1">
+            <div className="font-semibold text-slate-800 truncate" title={record.name}>{record.name}</div>
+            <span className="text-xs text-slate-500 flex items-center gap-1 truncate" title={record.email}>
+              <MailOutlined className="shrink-0" /> <span className="truncate">{record.email}</span>
             </span>
           </div>
         </div>
@@ -150,10 +151,11 @@ const ClientUsersTab: React.FC<ClientUsersTabProps> = ({ clientId, clientName })
       title: "Phone",
       dataIndex: "phoneNumber",
       key: "phoneNumber",
+      width: 150,
       render: (phone: string) =>
         phone ? (
-          <span className="flex items-center gap-1 text-slate-700">
-            <PhoneOutlined /> {phone}
+          <span className="flex items-center gap-1 text-slate-700 whitespace-nowrap">
+            <PhoneOutlined className="shrink-0" /> {phone}
           </span>
         ) : (
           "-"
@@ -163,6 +165,7 @@ const ClientUsersTab: React.FC<ClientUsersTabProps> = ({ clientId, clientName })
       title: "Status",
       dataIndex: "status",
       key: "status",
+      width: 120,
       render: (status: ClientUserStatus) => getStatusTag(status)
     },
     {

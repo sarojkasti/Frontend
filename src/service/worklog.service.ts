@@ -21,7 +21,7 @@ export const fetchWorklogsByUser = async (status?: string) => {
   return response.data;
 }
 
-export const fetchAllWorklogs = async (filters: { status?: string, date?: string, userId?: string, projectId?: string }) => {
+export const fetchAllWorklogs = async (filters: { status?: string, date?: string, userId?: string, projectId?: string, startDate?: string, endDate?: string }) => {
   let url = `${backendURI}/worklogs/allworklog`;
   const queryParams = [];
   
@@ -29,7 +29,10 @@ export const fetchAllWorklogs = async (filters: { status?: string, date?: string
     queryParams.push(`status=${filters.status}`);
   }
   
-  if (filters.date) {
+  if (filters.startDate && filters.endDate) {
+    queryParams.push(`startDate=${filters.startDate}`);
+    queryParams.push(`endDate=${filters.endDate}`);
+  } else if (filters.date) {
     queryParams.push(`date=${filters.date}`);
   }
   

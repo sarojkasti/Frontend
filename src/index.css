@@ -25,6 +25,86 @@ body {
     font-weight: 500 !important;
 }
 
+/* ======================================================== */
+/* ANT DESIGN TABLE CELL OVERFLOW & TRUNCATION PREVENTION   */
+/* ======================================================== */
+
+/* Prevent table cells from bleeding or overlapping into adjacent columns */
+.ant-table-wrapper .ant-table-tbody > tr > td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-break: break-word;
+}
+
+/* Fixed columns on the right (like Actions) retain visible overflow for popconfirm/dropdowns */
+.ant-table-wrapper .ant-table-tbody > tr > td.ant-table-cell-fix-right {
+  overflow: visible;
+}
+
+/* Ensure Tags inside table cells never overflow their column cell width */
+.ant-table-wrapper .ant-table-tbody .ant-tag {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+/* Ensure Ant Design Space inside table cells respects column bounds */
+.ant-table-wrapper .ant-table-tbody .ant-space {
+  max-width: 100%;
+}
+
+.ant-table-wrapper .ant-table-tbody .ant-space-item {
+  max-width: 100%;
+  min-width: 0;
+}
+
+/* Flex containers inside table cells must respect cell bounds */
+.ant-table-wrapper .ant-table-tbody .ant-table-cell .flex,
+.ant-table-wrapper .ant-table-tbody td .flex {
+  min-width: 0;
+}
+
+/* Table header cells: avoid awkward wrapping and give room for resize handle */
+.ant-table-wrapper .ant-table-thead > tr > th {
+  white-space: nowrap;
+}
+
+.ant-table-wrapper .ant-table-thead > tr > th.group {
+  padding-right: 14px;
+}
+
+/* Table header cursor & interactive search styling */
+.ant-table-wrapper .ant-table-thead > tr > th:has(.ant-table-filter-trigger) {
+  cursor: pointer;
+}
+
+.ant-table-wrapper .ant-table-thead > tr > th:has(.ant-table-filter-trigger) .ant-table-column-title {
+  cursor: pointer;
+  transition: color 0.15s ease-in-out;
+}
+
+.ant-table-wrapper .ant-table-thead > tr > th:has(.ant-table-filter-trigger):hover .ant-table-column-title {
+  color: #1677ff !important;
+}
+
+.ant-table-wrapper .ant-table-thead > tr > th:has(.ant-table-filter-trigger):hover .ant-table-filter-trigger {
+  color: #1677ff !important;
+}
+
+/* Sorter icon distinct hover styling */
+.ant-table-column-sorter {
+  cursor: pointer;
+  padding: 1px 3px;
+  border-radius: 4px;
+  transition: background-color 0.15s ease-in-out;
+}
+
+.ant-table-column-sorter:hover {
+  background-color: rgba(22, 119, 255, 0.12);
+}
+
 .ant-menu-light .ant-menu-item {
     font-weight: 500 !important;
     color: #1f2937 !important;

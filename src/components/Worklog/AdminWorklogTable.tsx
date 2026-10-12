@@ -21,14 +21,16 @@ import { PowerTable, PowerTableColumn, useColumnVisibility } from "@/components/
 import { useIsMobile } from "@/hooks/useIsMobile";
 
 const ADMIN_WORKLOG_COLUMNS = [
-  { key: "date", label: "Date", required: true },
-  { key: "user", label: "User" },
-  { key: "project", label: "Project" },
-  { key: "task", label: "Task" },
-  { key: "duration", label: "Duration" },
-  { key: "status", label: "Status" },
-  { key: "requestTo", label: "Request To" },
-  { key: "action", label: "Action", required: true },
+  { key: "date", title: "Date", defaultVisible: true, required: true, defaultWidth: 90 },
+  { key: "user", title: "User", defaultVisible: true, defaultWidth: 140 },
+  { key: "project", title: "Project", defaultVisible: true, defaultWidth: 160 },
+  { key: "task", title: "Task", defaultVisible: true, defaultWidth: 180 },
+  { key: "duration", title: "Duration", defaultVisible: true, defaultWidth: 120 },
+  { key: "status", title: "Status", defaultVisible: true, defaultWidth: 110 },
+  { key: "requestTo", title: "Request To", defaultVisible: true, defaultWidth: 140 },
+  { key: "approvedBy", title: "Approved By", defaultVisible: true, defaultWidth: 140 },
+  { key: "rejectBy", title: "Rejected By", defaultVisible: true, defaultWidth: 140 },
+  { key: "action", title: "Action", defaultVisible: true, required: true, defaultWidth: 130 },
 ];
 
 const { TextArea } = Input;
@@ -38,7 +40,7 @@ const AdminWorklogTable = ({ headerControls }: { headerControls?: React.ReactNod
   const { isMobile } = useIsMobile();
   const { profile } = useSession();
   const { visibleColumnKeys, columnCustomizer } = useColumnVisibility({
-    persistenceKey: "admin_worklogs_table",
+    persistenceKey: "admin_worklogs_table_v2",
     columns: ADMIN_WORKLOG_COLUMNS,
     size: "small",
   });
@@ -1076,7 +1078,7 @@ const AdminWorklogTable = ({ headerControls }: { headerControls?: React.ReactNod
           enableColumnSearch
           showToolbar={false}
           visibleColumnKeys={visibleColumnKeys}
-          persistenceKey="admin_worklogs_table"
+          persistenceKey="admin_worklogs_table_v2"
           size="small"
           className="text-xs compact-table admin-worklog-table"
           rowClassName={(record: any) => {

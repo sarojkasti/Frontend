@@ -162,14 +162,13 @@ const UserTable = ({
       key: "joinedDate",
       defaultWidth: 140,
       sorter: (a: UserType, b: UserType) => {
-        const aDate = a.joinedDate || a.createdAt || '';
-        const bDate = b.joinedDate || b.createdAt || '';
+        const aDate = a.joinedDate || '';
+        const bDate = b.joinedDate || '';
         return aDate.localeCompare(bDate);
       },
       sortOrder: sortedInfo.columnKey === 'joinedDate' && sortedInfo.order,
       render: (_: any, record: UserType) => {
-        const date = record.joinedDate || record.createdAt;
-        return date ? dayjs(date).format('YYYY-MM-DD') : '-';
+        return record.joinedDate ? dayjs(record.joinedDate).format('YYYY-MM-DD') : '-';
       },
     },
     {
@@ -308,7 +307,7 @@ const UserTable = ({
             <div className="flex items-center justify-between gap-2">
               <span className="text-gray-500 font-medium shrink-0">Joined Date:</span>
               <span className="font-semibold text-gray-800 text-right">
-                {record.joinedDate ? dayjs(record.joinedDate).format("YYYY-MM-DD") : (record.createdAt ? dayjs(record.createdAt).format("YYYY-MM-DD") : "-")}
+                {record.joinedDate ? dayjs(record.joinedDate).format("YYYY-MM-DD") : "-"}
               </span>
             </div>
           </div>

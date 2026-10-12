@@ -76,8 +76,13 @@ const Clock = () => {
     );
   };
 
+  const [currentTime, setCurrentTime] = useState(moment());
+
   useEffect(() => {
-    // Remove timer functionality as it's not used
+    const timer = setInterval(() => {
+      setCurrentTime(moment());
+    }, 1000);
+    return () => clearInterval(timer);
   }, []);
 
 
@@ -96,7 +101,7 @@ const Clock = () => {
 
       const payload = {
         date: moment().format("YYYY-MM-DD"),
-        clockIn: moment().format("HH:mm:ss a"),
+        clockIn: moment().format("hh:mm:ss a"),
         clockInRemark: clockInRemark || undefined,
         latitude: latitude.toString(),
         longitude: longitude.toString(),
@@ -150,7 +155,7 @@ const Clock = () => {
       const { latitude, longitude } = await getLocation();
 
       const payload = {
-        clockOut: moment().format("HH:mm:ss a"),
+        clockOut: moment().format("hh:mm:ss a"),
         latitude: latitude.toString(),
         longitude: longitude.toString(),
         remark: historyRemark || undefined,
@@ -203,7 +208,7 @@ const Clock = () => {
       const { latitude, longitude } = await getLocation();
 
       const payload = {
-        clockOut: moment().format("HH:mm:ss a"),
+        clockOut: moment().format("hh:mm:ss a"),
         clockOutRemark: clockOutRemark || undefined,
         latitude: latitude.toString(),
         longitude: longitude.toString(),
@@ -251,7 +256,7 @@ const Clock = () => {
             disabled={createPending || isProcessingClockIn}
             className="text-xs sm:text-sm font-medium"
           >
-            Clock In {moment().format(isMobile ? "hh:mm A" : "HH:mm:ss a")}
+            Clock In {currentTime.format(isMobile ? "hh:mm a" : "hh:mm:ss a")}
           </Button>
         ) : (
           <div className="flex items-center gap-1 sm:gap-2">
@@ -264,7 +269,7 @@ const Clock = () => {
               disabled={createPending || updatePending || isProcessingClockOut || isProcessingFinalClockOut}
               className="text-xs sm:text-sm font-medium"
             >
-              {isClockedOut ? "Clocked Out" : "Clock Out"} {moment().format(isMobile ? "hh:mm A" : "HH:mm:ss a")}
+              {isClockedOut ? "Clocked Out" : "Clock Out"} {currentTime.format(isMobile ? "hh:mm a" : "hh:mm:ss a")}
             </Button>
             {!isClockedOut && (
               <Button

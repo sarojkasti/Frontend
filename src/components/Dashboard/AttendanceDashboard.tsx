@@ -12,6 +12,7 @@ import {
 import { useDashboardAttendance } from '../../hooks/dashboard/useDashboardAttendance';
 import dayjs from 'dayjs';
 import type { Dayjs } from 'dayjs';
+import { formatTime12Hour } from '@/utils/formatUtils';
 
 const { Title, Text } = Typography;
 
@@ -133,8 +134,8 @@ const AttendanceDashboard: React.FC = () => {
                       <div><strong>Name:</strong> {user.name}</div>
                       <div><strong>Email:</strong> {user.email}</div>
                       {user.roleName && <div><strong>Role:</strong> {user.roleName}</div>}
-                      {user.clockInTime && <div><strong>Clock In:</strong> {user.clockInTime}</div>}
-                      {user.clockOutTime && <div><strong>Clock Out:</strong> {user.clockOutTime}</div>}
+                      {user.clockInTime && <div><strong>Clock In:</strong> {formatTime12Hour(user.clockInTime)}</div>}
+                      {user.clockOutTime && <div><strong>Clock Out:</strong> {formatTime12Hour(user.clockOutTime)}</div>}
                       {timeDiff !== undefined && (
                         <div>
                           <strong>Difference:</strong> {formatTimeDifference(timeDiff)}{' '}
@@ -367,8 +368,8 @@ const AttendanceDashboard: React.FC = () => {
                     <Space split={<Text type="secondary">|</Text>} size="small" style={{ fontSize: 12, flexWrap: 'wrap' }}>
                       <Text type="secondary">{user.email}</Text>
                       {user.roleName && <Text type="secondary">Role: {user.roleName}</Text>}
-                      {user.clockInTime && <Text type="secondary">In: {user.clockInTime}</Text>}
-                      {user.clockOutTime && <Text type="secondary">Out: {user.clockOutTime}</Text>}
+                      {user.clockInTime && <Text type="secondary">In: {formatTime12Hour(user.clockInTime)}</Text>}
+                      {user.clockOutTime && <Text type="secondary">Out: {formatTime12Hour(user.clockOutTime)}</Text>}
                     </Space>
                   </Space>
                 </List.Item>
@@ -407,8 +408,8 @@ const AttendanceDashboard: React.FC = () => {
                     <Space split={<Text type="secondary">|</Text>} size="small" style={{ fontSize: 12, flexWrap: 'wrap' }}>
                       <Text type="secondary">{user.email}</Text>
                       {user.roleName && <Text type="secondary">Role: {user.roleName}</Text>}
-                      <Text type="secondary">In: {user.clockInTime}</Text>
-                      {user.clockOutTime && <Text type="secondary">Out: {user.clockOutTime}</Text>}
+                      {user.clockInTime && <Text type="secondary">In: {formatTime12Hour(user.clockInTime)}</Text>}
+                      {user.clockOutTime && <Text type="secondary">Out: {formatTime12Hour(user.clockOutTime)}</Text>}
                     </Space>
                   </Space>
                 </List.Item>
@@ -446,8 +447,8 @@ const AttendanceDashboard: React.FC = () => {
                     <Space split={<Text type="secondary">|</Text>} size="small" style={{ fontSize: 12, flexWrap: 'wrap' }}>
                       <Text type="secondary">{user.email}</Text>
                       {user.roleName && <Text type="secondary">Role: {user.roleName}</Text>}
-                      <Text type="secondary">In: {user.clockInTime}</Text>
-                      <Text type="secondary">Out: {user.clockOutTime}</Text>
+                      <Text type="secondary">In: {formatTime12Hour(user.clockInTime)}</Text>
+                      <Text type="secondary">Out: {formatTime12Hour(user.clockOutTime)}</Text>
                     </Space>
                   </Space>
                 </List.Item>
@@ -484,7 +485,7 @@ const AttendanceDashboard: React.FC = () => {
                     <Space split={<Text type="secondary">|</Text>} size="small" style={{ fontSize: 12, flexWrap: 'wrap' }}>
                       <Text type="secondary">{user.email}</Text>
                       {user.roleName && <Text type="secondary">Role: {user.roleName}</Text>}
-                      <Text type="secondary">Clock In: {user.clockInTime}</Text>
+                      <Text type="secondary">Clock In: {formatTime12Hour(user.clockInTime)}</Text>
                     </Space>
                   </Space>
                 </List.Item>

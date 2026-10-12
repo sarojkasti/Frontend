@@ -75,7 +75,11 @@ const columns = (
       key: "requestedByUser",
       defaultWidth: 160,
       ...getColumnSearchProps("user.name", "Requested By"),
-      sorter: (a: any, b: any) => (a.user?.name || "").localeCompare(b.user?.name || ""),
+      sorter: (a: any, b: any) => {
+        const nameA = a.user?.name || a.createdByUser?.name || "";
+        const nameB = b.user?.name || b.createdByUser?.name || "";
+        return nameA.localeCompare(nameB);
+      },
       sortOrder: sortedInfo.columnKey === "requestedByUser" && sortedInfo.order,
       render: (_: any, record: any) => {
         const user = record?.user || record?.createdByUser;
@@ -337,7 +341,10 @@ const IncomingWorklogTable = ({ status, searchQuery, visibleColumnKeys }: Incomi
   };
 
   const getValue = (obj: any, path: string) => {
-    return path.split(".").reduce((current, key) => current?.[key], obj);
+    const val = path.split(".").reduce((current, key) => current?.[key], obj);
+    if (val !== undefined && val !== null) return val;
+    if (path === "user.name") return obj?.createdByUser?.name;
+    return undefined;
   };
 
   const getUniqueValues = (dataIndex: string, inputValue: string = "") => {

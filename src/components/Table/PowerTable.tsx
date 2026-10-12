@@ -180,20 +180,22 @@ export function PowerTable<T extends Record<string, any> = any>({
         col.key !== "action" &&
         col.key !== "operations";
 
-      // Base column with width and resizing header
+      // Base column with width and header properties
+      const customHeaderProps =
+        typeof col.onHeaderCell === "function" ? col.onHeaderCell(col) : {};
+
       const enhancedCol: any = {
         ...col,
         width: effectiveWidth,
-        onHeaderCell: isColResizable
-          ? () => ({
-              width: effectiveWidth,
-              minWidth: col.minWidth || 70,
-              maxWidth: col.maxWidth || 800,
-              columnKey: col.key,
-              resizable: true,
-              onResize: handleResize(col.key),
-            })
-          : col.onHeaderCell,
+        onHeaderCell: () => ({
+          ...customHeaderProps,
+          width: effectiveWidth,
+          minWidth: col.minWidth || 80,
+          maxWidth: col.maxWidth || 800,
+          columnKey: col.key,
+          resizable: isColResizable,
+          onResize: isColResizable ? handleResize(col.key) : undefined,
+        }),
       };
 
       // Auto-inject Column Sorter if not already provided and column is sortable
@@ -244,15 +246,32 @@ export function PowerTable<T extends Record<string, any> = any>({
       }
 
       // Auto-inject Column Search if enabled or explicitly requested
-      if (
-        (enableColumnSearch || col.searchable) &&
-        col.dataIndex &&
-        !col.filterDropdown
-      ) {
+      const keyStr = String(col.key || "").toLowerCase();
+      const dataIndexStr =
+        typeof col.dataIndex === "string" ? col.dataIndex.toLowerCase() : "";
+      const isActionOrButtonCol =
+        isActionCol ||
+        keyStr === "action" ||
+        keyStr === "actions" ||
+        keyStr === "operations" ||
+        keyStr.includes("download") ||
+        keyStr === "s" ||
+        dataIndexStr === "o" ||
+        dataIndexStr.includes("download");
+
+      const shouldInjectSearch =
+        col.searchable !== false &&
+        !isActionOrButtonCol &&
+        Boolean(col.dataIndex || col.key) &&
+        !col.filterDropdown &&
+        (col.searchable === true || enableColumnSearch);
+
+      if (shouldInjectSearch) {
+        const searchField = (col.dataIndex || col.key) as string;
         const titleStr =
           typeof col.title === "string" ? col.title : String(col.key);
         const searchProps = getColumnSearchProps(
-          col.dataIndex,
+          searchField,
           col.searchTitle || titleStr,
           {
             placeholder: col.searchPlaceholder,
@@ -447,6 +466,7 @@ export function PowerTable<T extends Record<string, any> = any>({
         renderMobileCard={renderMobileCard}
         mobileBreakpoint={mobileBreakpoint}
         forceTableOnMobile={forceTableOnMobile || !enableMobileCards}
+        showSorterTooltip={restTableProps.showSorterTooltip ?? { target: "sorter-icon" }}
         {...restTableProps}
       />
     </div>

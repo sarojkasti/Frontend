@@ -8,13 +8,25 @@ import { PlusOutlined, SearchOutlined, CloseOutlined } from "@ant-design/icons";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { useColumnVisibility } from "@/components/Table";
 
-const ALL_WORKLOG_TABLE_COLUMNS = [
+const MY_WORKLOG_TABLE_COLUMNS = [
   { key: "date", title: "Date", defaultVisible: true, defaultWidth: 130 },
   { key: "project", title: "Project Name", defaultVisible: true, defaultWidth: 180 },
   { key: "requestTo", title: "Request To", defaultVisible: true, defaultWidth: 160 },
   { key: "task", title: "Task", defaultVisible: true, defaultWidth: 200 },
   { key: "startTime", title: "Duration", defaultVisible: true, defaultWidth: 120 },
-  { key: "reviewer", title: "Reviewer", defaultVisible: true, defaultWidth: 150 },
+  { key: "approvedBy", title: "Reviewed By", defaultVisible: true, defaultWidth: 160 },
+  { key: "rejectedRemark", title: "Rejection Remark", defaultVisible: true, defaultWidth: 180 },
+  { key: "action", title: "Action", defaultVisible: true, required: true, defaultWidth: 110 },
+];
+
+const INCOMING_WORKLOG_TABLE_COLUMNS = [
+  { key: "date", title: "Date", defaultVisible: true, defaultWidth: 130 },
+  { key: "project", title: "Project Name", defaultVisible: true, defaultWidth: 180 },
+  { key: "requestedByUser", title: "Requested By", defaultVisible: true, defaultWidth: 160 },
+  { key: "task", title: "Task", defaultVisible: true, defaultWidth: 200 },
+  { key: "startTime", title: "Duration", defaultVisible: true, defaultWidth: 120 },
+  { key: "requestToUser", title: "Requested To", defaultVisible: true, defaultWidth: 160 },
+  { key: "userId", title: "Reviewed By", defaultVisible: true, defaultWidth: 160 },
   { key: "action", title: "Action", defaultVisible: true, required: true, defaultWidth: 110 },
 ];
 
@@ -24,12 +36,23 @@ const AllWorklogs = () => {
   const { isMobile } = useIsMobile();
   const [showMobileSearch, setShowMobileSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [activeTabKey, setActiveTabKey] = useState("1");
   const profilePermissions = (profile as any)?.role?.permission;
 
-  const { visibleColumnKeys, columnCustomizer } = useColumnVisibility({
-    persistenceKey: "all_worklogs_global",
-    columns: ALL_WORKLOG_TABLE_COLUMNS,
+  const myWorklogsVis = useColumnVisibility({
+    persistenceKey: "all_worklogs_my_v2",
+    columns: MY_WORKLOG_TABLE_COLUMNS,
   });
+
+  const incomingWorklogsVis = useColumnVisibility({
+    persistenceKey: "all_worklogs_incoming_v2",
+    columns: INCOMING_WORKLOG_TABLE_COLUMNS,
+  });
+
+  const isIncomingTab = ["4", "5", "6"].includes(activeTabKey);
+  const activeCustomizer = isIncomingTab
+    ? incomingWorklogsVis.columnCustomizer
+    : myWorklogsVis.columnCustomizer;
 
   // Defensive: support both {name, permission} and {permission} role objects
   const userRole =
@@ -70,7 +93,7 @@ const AllWorklogs = () => {
         <AllWorklogTable
           status="requested"
           searchQuery={searchQuery}
-          visibleColumnKeys={visibleColumnKeys}
+          visibleColumnKeys={myWorklogsVis.visibleColumnKeys}
         />
       ),
     },
@@ -81,7 +104,7 @@ const AllWorklogs = () => {
         <AllWorklogTable
           status="approved"
           searchQuery={searchQuery}
-          visibleColumnKeys={visibleColumnKeys}
+          visibleColumnKeys={myWorklogsVis.visibleColumnKeys}
         />
       ),
     },
@@ -92,7 +115,7 @@ const AllWorklogs = () => {
         <AllWorklogTable
           status="rejected"
           searchQuery={searchQuery}
-          visibleColumnKeys={visibleColumnKeys}
+          visibleColumnKeys={myWorklogsVis.visibleColumnKeys}
         />
       ),
     },
@@ -107,7 +130,7 @@ const AllWorklogs = () => {
           <IncomingWorklogTable
             status="requested"
             searchQuery={searchQuery}
-            visibleColumnKeys={visibleColumnKeys}
+            visibleColumnKeys={incomingWorklogsVis.visibleColumnKeys}
           />
         ),
       },
@@ -118,7 +141,7 @@ const AllWorklogs = () => {
           <IncomingWorklogTable
             status="approved"
             searchQuery={searchQuery}
-            visibleColumnKeys={visibleColumnKeys}
+            visibleColumnKeys={incomingWorklogsVis.visibleColumnKeys}
           />
         ),
       },
@@ -129,7 +152,7 @@ const AllWorklogs = () => {
           <IncomingWorklogTable
             status="rejected"
             searchQuery={searchQuery}
-            visibleColumnKeys={visibleColumnKeys}
+            visibleColumnKeys={incomingWorklogsVis.visibleColumnKeys}
           />
         ),
       },
@@ -153,7 +176,8 @@ const AllWorklogs = () => {
       )}
 
       <Tabs
-        defaultActiveKey="1"
+        activeKey={activeTabKey}
+        onChange={setActiveTabKey}
         items={tabItems}
         renderTabBar={
           isMobile
@@ -178,7 +202,7 @@ const AllWorklogs = () => {
         tabBarExtraContent={
           !isMobile ? (
             <div className="flex flex-wrap items-center gap-2">
-              {columnCustomizer}
+              {activeCustomizer}
               {hasAllWorklogPermission && (
                 <Button
                   type="primary"

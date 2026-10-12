@@ -9,6 +9,7 @@ import { useState, useRef, useMemo } from "react";
 import { PowerTable, PowerTableColumn, ColumnConfig, useTableSearch } from "@/components/Table";
 import { Tag } from "antd";
 import { useIsMobile } from "@/hooks/useIsMobile";
+import { formatTime12Hour, parseTimeMoment } from "@/utils/formatUtils";
 
 export const ALL_ATTENDANCE_TABLE_COLUMNS: ColumnConfig[] = [
   { key: 'userName', label: 'User' },
@@ -96,11 +97,13 @@ const AttendenceTable = ({
   const calculateDuration = (clockIn: string, clockOut: string | null) => {
     if (!clockOut) return "N/A"; // Handle case where clockOut isn't set yet
 
-    const clockInTime = moment(clockIn, "HH:mm:ss a"); // Parse HH:mm:ss a format
-    const clockOutTime = moment(clockOut, "HH:mm:ss a"); // Parse HH:mm:ss a format
+    const clockInTime = parseTimeMoment(clockIn);
+    const clockOutTime = parseTimeMoment(clockOut);
+    if (!clockInTime || !clockOutTime) return "N/A";
 
     // Calculate the difference in minutes
-    const durationInMinutes = moment.duration(clockOutTime.diff(clockInTime)).asMinutes();
+    let durationInMinutes = moment.duration(clockOutTime.diff(clockInTime)).asMinutes();
+    if (durationInMinutes < 0) durationInMinutes += 24 * 60; // Midnight edge case
 
     // Convert minutes to hours and minutes
     const hours = Math.floor(durationInMinutes / 60);
@@ -147,9 +150,14 @@ const AttendenceTable = ({
       title: "Clock In",
       dataIndex: "clockIn",
       key: "clockIn",
-      sorter: (a: any, b: any) => moment(a.clockIn, "HH:mm:ss a").unix() - moment(b.clockIn, "HH:mm:ss a").unix(),
+      sorter: (a: any, b: any) => {
+        const timeA = parseTimeMoment(a.clockIn, a.date);
+        const timeB = parseTimeMoment(b.clockIn, b.date);
+        return (timeA?.unix() || 0) - (timeB?.unix() || 0);
+      },
       sortOrder: sortedInfo.columnKey === 'clockIn' && sortedInfo.order,
       ...getColumnSearchProps('clockIn', 'Clock In'),
+      render: (text: string) => formatTime12Hour(text),
     },
     {
       title: "Clock In Remark",
@@ -165,10 +173,13 @@ const AttendenceTable = ({
       sorter: (a: any, b: any) => {
         if (!a.clockOut) return -1;
         if (!b.clockOut) return 1;
-        return moment(a.clockOut, "HH:mm:ss a").unix() - moment(b.clockOut, "HH:mm:ss a").unix();
+        const timeA = parseTimeMoment(a.clockOut, a.date);
+        const timeB = parseTimeMoment(b.clockOut, b.date);
+        return (timeA?.unix() || 0) - (timeB?.unix() || 0);
       },
       sortOrder: sortedInfo.columnKey === 'clockOut' && sortedInfo.order,
       ...getColumnSearchProps('clockOut', 'Clock Out'),
+      render: (text: string) => formatTime12Hour(text),
     },
     {
       title: "Clock Out Remark",
@@ -276,6 +287,7 @@ const AttendenceTable = ({
         title: "Clock Out",
         dataIndex: "clockOut",
         key: "clockOut",
+        render: (text: string) => formatTime12Hour(text),
       },
       {
         title: "Remark",
@@ -320,13 +332,13 @@ const AttendenceTable = ({
         title: "Start Time",
         dataIndex: "startTime",
         key: "startTime",
-        render: (text: string) => moment(text).format("HH:mm:ss a"),
+        render: (text: string) => formatTime12Hour(text),
       },
       {
         title: "End Time",
         dataIndex: "endTime",
         key: "endTime",
-        render: (text: string) => moment(text).format("HH:mm:ss a"),
+        render: (text: string) => formatTime12Hour(text),
       },
       {
         title: "Duration",
@@ -445,11 +457,11 @@ const AttendenceTable = ({
         <div className="grid grid-cols-2 gap-2 text-xs py-1">
           <div className="bg-gray-50 p-2 rounded">
             <span className="text-gray-500 block">Clock In</span>
-            <span className="font-medium text-gray-800">{record.clockIn || "-"}</span>
+            <span className="font-medium text-gray-800">{formatTime12Hour(record.clockIn)}</span>
           </div>
           <div className="bg-gray-50 p-2 rounded">
             <span className="text-gray-500 block">Clock Out</span>
-            <span className="font-medium text-gray-800">{record.clockOut || (isClockedIn ? "Active now" : "-")}</span>
+            <span className="font-medium text-gray-800">{record.clockOut ? formatTime12Hour(record.clockOut) : (isClockedIn ? "Active now" : "-")}</span>
           </div>
         </div>
 

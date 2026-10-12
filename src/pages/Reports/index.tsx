@@ -19,7 +19,9 @@ import {
   Statistic,
   Breadcrumb,
   Alert,
+  Segmented,
 } from "antd";
+import { ReportGeneratorStudio } from "./components/ReportGeneratorStudio";
 import {
   BarChartOutlined,
   ClockCircleOutlined,
@@ -75,6 +77,7 @@ const CHART_COLORS = [
 
 const ReportsPage: React.FC = () => {
   const { isMobile } = useIsMobile();
+  const [viewMode, setViewMode] = useState<"generator" | "analytics">("generator");
   const [activeTab, setActiveTab] = useState("worklog");
   const [selectedProjectId, setSelectedProjectId] = useState<string>("all");
   const [selectedUserId, setSelectedUserId] = useState<string>("all");
@@ -816,33 +819,73 @@ const ReportsPage: React.FC = () => {
 
   return (
     <div className="pb-16 sm:pb-0 px-2 sm:px-0">
-      {/* Top Breadcrumb Navigation */}
+      {/* Top Breadcrumb Navigation & View Mode Switcher */}
       <div
         style={{
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          marginBottom: 16,
+          flexWrap: "wrap",
+          gap: 12,
+          marginBottom: 18,
         }}
       >
         <Breadcrumb
-          items={[{ title: "Home" }, { title: "Analytics & Reports Hub" }]}
+          items={[
+            { title: "Home" },
+            { title: "Reports & Analytics" },
+            { title: viewMode === "generator" ? "Report Generation Studio" : "Visual Analytics Dashboard" },
+          ]}
         />
-        {!isMobile && (
-          <Button
-            type="primary"
-            icon={<FileExcelOutlined style={{ color: "#ffffff" }} />}
-            onClick={handleExportExcel}
-            style={{
-              borderRadius: "6px",
-              backgroundColor: "#21a366",
-              borderColor: "#21a366",
-            }}
-          >
-            Export Report Excel
-          </Button>
-        )}
+
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <Segmented
+            size="middle"
+            value={viewMode}
+            onChange={(val) => setViewMode(val as "generator" | "analytics")}
+            options={[
+              {
+                label: (
+                  <span style={{ padding: "0 6px", display: "inline-flex", alignItems: "center", gap: 6, fontWeight: 500 }}>
+                    <FileTextOutlined style={{ color: "#1677ff" }} />
+                    Report Generation Studio
+                  </span>
+                ),
+                value: "generator",
+              },
+              {
+                label: (
+                  <span style={{ padding: "0 6px", display: "inline-flex", alignItems: "center", gap: 6, fontWeight: 500 }}>
+                    <BarChartOutlined style={{ color: "#52c41a" }} />
+                    Visual Analytics Dashboard
+                  </span>
+                ),
+                value: "analytics",
+              },
+            ]}
+          />
+
+          {!isMobile && viewMode === "analytics" && (
+            <Button
+              type="primary"
+              icon={<FileExcelOutlined style={{ color: "#ffffff" }} />}
+              onClick={handleExportExcel}
+              style={{
+                borderRadius: "6px",
+                backgroundColor: "#21a366",
+                borderColor: "#21a366",
+              }}
+            >
+              Export Report Excel
+            </Button>
+          )}
+        </div>
       </div>
+
+      {viewMode === "generator" ? (
+        <ReportGeneratorStudio />
+      ) : (
+        <>
 
       {/* Header Card */}
       <Card
@@ -2040,6 +2083,8 @@ const ReportsPage: React.FC = () => {
           ]}
         />
       </Card>
+      </>
+      )}
     </div>
   );
 };
