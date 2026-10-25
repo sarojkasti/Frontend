@@ -642,6 +642,16 @@ const Router = [
   ),
 },
 {
+  path: "/todotask/:id",
+  element: (
+    <ProtectedRoute
+      method="get"
+      resource="todo-task"
+      component={<TodoTaskPage />}
+    />
+  ),
+},
+{
   path: "/todotask/task-types",
   element: (
     <ProtectedRoute
@@ -653,6 +663,10 @@ const Router = [
 },
 {
   path: "/notice-board",
+  element: <NoticeBoardPage />,
+},
+{
+  path: "/notice-board/:id",
   element: <NoticeBoardPage />,
 },
 {

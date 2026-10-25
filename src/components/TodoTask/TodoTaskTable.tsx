@@ -104,6 +104,41 @@ const TodoTaskTable = ({
         );
     };
     const searchInput = useRef<any>(null);
+    const [currentPage, setCurrentPage] = useState<number>(1);
+    const [pageSize, setPageSize] = useState<number>(10);
+    const [highlightedRowId, setHighlightedRowId] = useState<string | null>(highlightId || null);
+
+    // Auto-paginate, scroll, and highlight when highlightId is provided
+    useEffect(() => {
+        if (!highlightId || !filteredTaskData || filteredTaskData.length === 0) return;
+        const targetIndex = filteredTaskData.findIndex((t: any) => String(t.id) === String(highlightId));
+        if (targetIndex !== -1) {
+            const targetPage = Math.floor(targetIndex / pageSize) + 1;
+            setCurrentPage(targetPage);
+            setHighlightedRowId(String(highlightId));
+
+            setExpandedIds((prev) => Array.from(new Set([...prev, String(highlightId)])));
+
+            const scrollTimer = setTimeout(() => {
+                const elem =
+                    document.querySelector(`[data-row-key="${highlightId}"]`) ||
+                    document.getElementById(`todo-task-row-${highlightId}`) ||
+                    document.getElementById(`todo-task-card-${highlightId}`);
+                if (elem) {
+                    elem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }, 350);
+
+            const clearTimer = setTimeout(() => {
+                setHighlightedRowId(null);
+            }, 7000);
+
+            return () => {
+                clearTimeout(scrollTimer);
+                clearTimeout(clearTimer);
+            };
+        }
+    }, [highlightId, filteredTaskData, pageSize]);
 
     // Helper function to get unique values for autocomplete
     const getUniqueValues = (dataIndex: string | string[]) => {
@@ -667,7 +702,7 @@ const TodoTaskTable = ({
         const actions = getAvailableActions(record);
 
         return (
-            <div className="flex flex-col gap-2">
+            <div id={`todo-task-card-${record.id}`} className={`flex flex-col gap-2 transition-all duration-500 ${String(record.id) === String(highlightedRowId) ? 'highlight-target-card ring-2 ring-blue-500 bg-blue-50/80 p-2.5 rounded-lg' : ''}`}>
                 {/* Main Header Row */}
                 <div className="flex items-center justify-between gap-2">
                     <div className="min-w-0 flex-1">
@@ -786,11 +821,32 @@ const TodoTaskTable = ({
                 visibleColumnKeys={visibleColumnKeys}
                 showToolbar={false}
                 persistenceKey="todo_task_table_v2"
+                rowClassName={(record) =>
+                    String(record.id) === String(highlightedRowId)
+                        ? 'highlight-target-row transition-all duration-500'
+                        : ''
+                }
+                onRow={(record) => ({
+                    id: `todo-task-row-${record.id}`,
+                })}
+                onChange={(pag, fil, sor) => {
+                    if (pag.current && pag.current !== currentPage) {
+                        setCurrentPage(pag.current);
+                    }
+                    if (pag.pageSize && pag.pageSize !== pageSize) {
+                        setPageSize(pag.pageSize);
+                    }
+                }}
                 pagination={isMobile ? false : { 
-                    pageSize: 10,
+                    current: currentPage,
+                    pageSize: pageSize,
                     showSizeChanger: true, 
                     pageSizeOptions: ['10', '20', '50', '100'],
-                    showTotal: (total: number, range: [number, number]) => `${range[0]}-${range[1]} of ${total} tasks`
+                    showTotal: (total: number, range: [number, number]) => `${range[0]}-${range[1]} of ${total} tasks`,
+                    onChange: (page, size) => {
+                        setCurrentPage(page);
+                        setPageSize(size);
+                    }
                 }}
                 renderMobileCard={renderTodoTaskCard}
             />

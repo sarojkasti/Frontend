@@ -3,7 +3,8 @@ import { useMarkNoticeBoardAsRead } from "@/hooks/notice-board/useMarkNoticeBoar
 import { List, Card, Typography, Space, Tag, Button, Divider, message, Tooltip } from "antd";
 import { EyeOutlined, FileTextOutlined, PictureOutlined } from "@ant-design/icons";
 import { calculateDays } from "@/utils/calculateDays";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams, useParams } from "react-router-dom";
 import NoticeBoardDetail from "./NoticeBoardDetail";
 
 const { Title, Text, Paragraph } = Typography;
@@ -13,6 +14,18 @@ const NoticeBoardList = () => {
   const { mutateAsync: markAsRead } = useMarkNoticeBoardAsRead();
   const [selectedNotice, setSelectedNotice] = useState<string | null>(null);
   const [detailVisible, setDetailVisible] = useState(false);
+  const [searchParams] = useSearchParams();
+  const { id: routeNoticeId } = useParams<{ id?: string }>();
+  const targetNoticeId = searchParams.get("noticeId") || routeNoticeId;
+
+  useEffect(() => {
+    if (targetNoticeId && notices && notices.length > 0) {
+      const exists = notices.some((n: any) => String(n.id) === String(targetNoticeId));
+      if (exists) {
+        handleViewNotice(targetNoticeId);
+      }
+    }
+  }, [targetNoticeId, notices]);
 
   const handleViewNotice = async (noticeId: string) => {
     try {

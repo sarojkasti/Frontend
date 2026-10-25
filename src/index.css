@@ -322,3 +322,30 @@ body {
     max-width: calc(100vw - 64px) !important;
   }
 }
+
+
+/* Target Notification Highlight Styles */
+@keyframes highlightTargetPulse {
+  0% {
+    background-color: rgba(24, 144, 255, 0.28) !important;
+    box-shadow: 0 0 0 3px rgba(24, 144, 255, 0.6) !important;
+  }
+  50% {
+    background-color: rgba(24, 144, 255, 0.12) !important;
+    box-shadow: 0 0 0 1px rgba(24, 144, 255, 0.35) !important;
+  }
+  100% {
+    background-color: rgba(24, 144, 255, 0.28) !important;
+    box-shadow: 0 0 0 3px rgba(24, 144, 255, 0.6) !important;
+  }
+}
+
+.highlight-target-row > td {
+  animation: highlightTargetPulse 2s ease-in-out infinite !important;
+  font-weight: 600 !important;
+}
+
+.highlight-target-card {
+  animation: highlightTargetPulse 2s ease-in-out infinite !important;
+  border-radius: 8px !important;
+}

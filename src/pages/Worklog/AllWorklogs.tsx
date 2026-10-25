@@ -2,7 +2,8 @@ import AllWorklogTable from "@/components/Worklog/AllWorklogTable";
 import IncomingWorklogTable from "@/components/Worklog/IncomingWorklogTable";
 import { Tabs, Button, Input } from "antd";
 import { useSession } from "@/context/SessionContext";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { useEffect } from "react";
 import { useState } from "react";
 import { PlusOutlined, SearchOutlined, CloseOutlined } from "@ant-design/icons";
 import { useIsMobile } from "@/hooks/useIsMobile";
@@ -33,10 +34,54 @@ const INCOMING_WORKLOG_TABLE_COLUMNS = [
 const AllWorklogs = () => {
   const { profile } = useSession();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const tabParam = searchParams.get("tab");
+  const worklogIdParam = searchParams.get("worklogId");
   const { isMobile } = useIsMobile();
   const [showMobileSearch, setShowMobileSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTabKey, setActiveTabKey] = useState("1");
+
+  // Automatically switch tab if passed via URL or notification
+  useEffect(() => {
+    if (!tabParam) return;
+    const tabMap: Record<string, string> = {
+      requested: "1",
+      approved: "2",
+      rejected: "3",
+      "incoming-requested": "4",
+      "incoming-approved": "5",
+      "incoming-rejected": "6",
+      "1": "1",
+      "2": "2",
+      "3": "3",
+      "4": "4",
+      "5": "5",
+      "6": "6",
+    };
+    if (tabMap[tabParam]) {
+      setActiveTabKey(tabMap[tabParam]);
+    }
+  }, [tabParam]);
+
+  // Handle direct event navigation from notification
+  useEffect(() => {
+    const handleNavigate = (e: any) => {
+      const { type, metadata } = e.detail || {};
+      if (type === "worklog" || metadata?.module === "worklog") {
+        if (metadata?.isIncoming || metadata?.status === "requested") {
+          setActiveTabKey("4");
+        } else if (metadata?.status === "approved") {
+          setActiveTabKey("2");
+        } else if (metadata?.status === "rejected") {
+          setActiveTabKey("3");
+        }
+      }
+    };
+    window.addEventListener("navigateToEntity", handleNavigate);
+    return () => window.removeEventListener("navigateToEntity", handleNavigate);
+  }, []);
+
   const profilePermissions = (profile as any)?.role?.permission;
 
   const myWorklogsVis = useColumnVisibility({
@@ -94,6 +139,7 @@ const AllWorklogs = () => {
           status="requested"
           searchQuery={searchQuery}
           visibleColumnKeys={myWorklogsVis.visibleColumnKeys}
+          highlightId={worklogIdParam || undefined}
         />
       ),
     },
@@ -105,6 +151,7 @@ const AllWorklogs = () => {
           status="approved"
           searchQuery={searchQuery}
           visibleColumnKeys={myWorklogsVis.visibleColumnKeys}
+          highlightId={worklogIdParam || undefined}
         />
       ),
     },
@@ -116,6 +163,7 @@ const AllWorklogs = () => {
           status="rejected"
           searchQuery={searchQuery}
           visibleColumnKeys={myWorklogsVis.visibleColumnKeys}
+          highlightId={worklogIdParam || undefined}
         />
       ),
     },
@@ -131,6 +179,7 @@ const AllWorklogs = () => {
             status="requested"
             searchQuery={searchQuery}
             visibleColumnKeys={incomingWorklogsVis.visibleColumnKeys}
+            highlightId={worklogIdParam || undefined}
           />
         ),
       },
@@ -142,6 +191,7 @@ const AllWorklogs = () => {
             status="approved"
             searchQuery={searchQuery}
             visibleColumnKeys={incomingWorklogsVis.visibleColumnKeys}
+            highlightId={worklogIdParam || undefined}
           />
         ),
       },
@@ -153,6 +203,7 @@ const AllWorklogs = () => {
             status="rejected"
             searchQuery={searchQuery}
             visibleColumnKeys={incomingWorklogsVis.visibleColumnKeys}
+            highlightId={worklogIdParam || undefined}
           />
         ),
       },

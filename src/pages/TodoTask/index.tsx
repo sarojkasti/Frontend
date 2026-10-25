@@ -44,7 +44,7 @@ import {
   completeTodoTask,
   dropTodoTask,
 } from "@/service/todoTask.service";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams, useParams } from "react-router-dom";
 import dayjs from "dayjs";
 import "./TodoTask.css";
 import { useIsMobile } from "@/hooks/useIsMobile";
@@ -56,6 +56,10 @@ const { Option } = Select;
 const TodoTaskPage = () => {
   const { profile } = useSession();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const { id: routeTaskId } = useParams<{ id?: string }>();
+  const taskIdParam = searchParams.get("taskId") || routeTaskId;
+  const tabParam = searchParams.get("tab");
   const { isMobile } = useIsMobile();
   const { visibleColumnKeys, columnCustomizer } = useColumnVisibility({
     persistenceKey: "todo_task_table_v2",
@@ -64,6 +68,13 @@ const TodoTaskPage = () => {
   const [showMobileSearch, setShowMobileSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("my-tasks");
+
+  useEffect(() => {
+    if (tabParam) {
+      setActiveTab(tabParam);
+    }
+  }, [tabParam]);
+
   const [viewMode, setViewMode] = useState<"list" | "create" | "edit" | "view">(
     "list",
   );
@@ -556,6 +567,7 @@ const TodoTaskPage = () => {
                   )}
                 </Space>
                 <TodoTaskTable
+                  highlightId={taskIdParam || undefined}
                   viewType="my"
                   taskData={getFilteredTaskData()}
                   isPending={isLoading}
@@ -631,7 +643,8 @@ const TodoTaskPage = () => {
                     )}
                   </Space>
                   <TodoTaskTable
-                    viewType="created"
+                  highlightId={taskIdParam || undefined}
+                  viewType="created"
                     taskData={getFilteredTaskData()}
                     isPending={isLoading}
                     searchQuery={searchQuery}
@@ -704,6 +717,7 @@ const TodoTaskPage = () => {
                   )}
                 </Space>
                 <TodoTaskTable
+                  highlightId={taskIdParam || undefined}
                   viewType="my"
                   taskData={getFilteredTaskData()}
                   isPending={isLoading}
@@ -806,7 +820,8 @@ const TodoTaskPage = () => {
                     )}
                   </Space>
                   <TodoTaskTable
-                    viewType="all"
+                  highlightId={taskIdParam || undefined}
+                  viewType="all"
                     taskData={getFilteredTaskData()}
                     isPending={isLoading}
                     searchQuery={searchQuery}

@@ -5,7 +5,7 @@ import { Link, useNavigate } from "react-router-dom";
 import TableToolbar from "../Table/TableToolbar";
 import { useDeleteWorklog } from "@/hooks/worklog/useDeleteWorklog";
 import { useSession } from "@/context/SessionContext";
-import { useState, useRef, useMemo, type Key } from "react";
+import { useState, useRef, useMemo, useEffect, type Key } from "react";
 import { useWorklogbyUser } from "@/hooks/worklog/useWorklogbyUser";
 import { SearchOutlined, EditOutlined, DeleteOutlined, CheckCircleOutlined, CloseCircleOutlined, DownOutlined, UpOutlined } from "@ant-design/icons";
 import Highlighter from "react-highlight-words";
@@ -597,7 +597,7 @@ const IncomingWorklogTable = ({ status, searchQuery, visibleColumnKeys }: Incomi
     const reason = record?.reason || record?.description || "";
 
     return (
-      <div className="flex flex-col gap-2">
+      <div id={`incoming-worklog-card-${record.id}`} className={`flex flex-col gap-2 transition-all duration-500 ${String(record.id) === String(highlightedRowId) ? 'highlight-target-card ring-2 ring-blue-500 bg-blue-50/80 p-2.5 rounded-lg' : ''}`}>
         {/* Main Header Row */}
         <div className="flex items-center justify-between gap-2">
           <div className="min-w-0 flex-1">
@@ -769,12 +769,34 @@ const IncomingWorklogTable = ({ status, searchQuery, visibleColumnKeys }: Incomi
           expandedRowKeys: expandedRows,
           expandIcon: customExpandIcon,
         }}
-        onChange={handleTableChange}
+        rowClassName={(record) =>
+          String(record.id) === String(highlightedRowId)
+            ? 'highlight-target-row transition-all duration-500'
+            : ''
+        }
+        onRow={(record) => ({
+          id: `incoming-worklog-row-${record.id}`,
+        })}
+        onChange={(pag, fil, sor) => {
+          handleTableChange(pag, fil, sor);
+          if (pag.current && pag.current !== currentPage) {
+            setCurrentPage(pag.current);
+          }
+          if (pag.pageSize && pag.pageSize !== pageSize) {
+            setPageSize(pag.pageSize);
+          }
+        }}
         pagination={isMobile ? false : {
+          current: currentPage,
+          pageSize: pageSize,
           showSizeChanger: true,
           showQuickJumper: true,
           pageSizeOptions: [5, 10, 20, 50],
           showTotal: (total: number, range: [number, number]) => `${range[0]}-${range[1]} of ${total} items`,
+          onChange: (page, size) => {
+            setCurrentPage(page);
+            setPageSize(size);
+          },
         }}
         renderMobileCard={renderIncomingWorklogCard}
       />

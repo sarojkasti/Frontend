@@ -138,7 +138,7 @@ const Navbar = ({
             </div>
           }
         >
-          <Notification />
+          <Notification onItemClick={onClose} />
         </Drawer>
         <Dropdown
           placement="bottomLeft"

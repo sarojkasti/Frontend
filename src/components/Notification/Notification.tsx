@@ -6,7 +6,8 @@ import { NotificationType } from "@/types/notification";
 import { List, Badge, Tabs, Space, Tag, Card, Divider, Button } from "antd";
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { initializeSocket } from "@/service/socket";
+import { useNavigate } from "react-router-dom";
+import { useSocket } from "@/context/SocketContext";
 import { notification as antdNotification } from "antd";
 import { 
     ClockCircleOutlined, 
@@ -28,6 +29,12 @@ const typeIcons: Record<NotificationType, React.ReactNode> = {
     [NotificationType.NOTICEBOARD]: <NotificationOutlined style={{ fontSize: '24px', color: '#fa8c16' }} />,
     [NotificationType.PROJECT]: <ProjectOutlined style={{ fontSize: '24px', color: '#722ed1' }} />,
     [NotificationType.GENERAL]: <NotificationOutlined style={{ fontSize: '24px', color: '#8c8c8c' }} />,
+    [NotificationType.SYSTEM]: <NotificationOutlined style={{ fontSize: '24px', color: '#13c2c2' }} />,
+    [NotificationType.CLIENT]: <NotificationOutlined style={{ fontSize: '24px', color: '#eb2f96' }} />,
+    [NotificationType.DSA]: <NotificationOutlined style={{ fontSize: '24px', color: '#faad14' }} />,
+    [NotificationType.LEAVE]: <NotificationOutlined style={{ fontSize: '24px', color: '#2f54eb' }} />,
+    [NotificationType.TRAINING]: <NotificationOutlined style={{ fontSize: '24px', color: '#13c2c2' }} />,
+    [NotificationType.MEETING]: <NotificationOutlined style={{ fontSize: '24px', color: '#722ed1' }} />,
 };
 
 // Color mapping for notification types
@@ -37,6 +44,12 @@ const typeColors: Record<NotificationType, string> = {
     [NotificationType.NOTICEBOARD]: '#fa8c16',
     [NotificationType.PROJECT]: '#722ed1',
     [NotificationType.GENERAL]: '#8c8c8c',
+    [NotificationType.SYSTEM]: '#13c2c2',
+    [NotificationType.CLIENT]: '#eb2f96',
+    [NotificationType.DSA]: '#faad14',
+    [NotificationType.LEAVE]: '#2f54eb',
+    [NotificationType.TRAINING]: '#13c2c2',
+    [NotificationType.MEETING]: '#722ed1',
 };
 
 // Background colors for group cards
@@ -46,6 +59,12 @@ const typeBgColors: Record<NotificationType, string> = {
     [NotificationType.NOTICEBOARD]: '#fff7e6',
     [NotificationType.PROJECT]: '#f9f0ff',
     [NotificationType.GENERAL]: '#fafafa',
+    [NotificationType.SYSTEM]: '#e6fffb',
+    [NotificationType.CLIENT]: '#fff0f6',
+    [NotificationType.DSA]: '#fffbe6',
+    [NotificationType.LEAVE]: '#f0f5ff',
+    [NotificationType.TRAINING]: '#e6fffb',
+    [NotificationType.MEETING]: '#f9f0ff',
 };
 
 // Type labels
@@ -55,15 +74,27 @@ const typeLabels: Record<NotificationType, string> = {
     [NotificationType.NOTICEBOARD]: 'Notice Board',
     [NotificationType.PROJECT]: 'Projects',
     [NotificationType.GENERAL]: 'General',
+    [NotificationType.SYSTEM]: 'System',
+    [NotificationType.CLIENT]: 'Client',
+    [NotificationType.DSA]: 'DSA',
+    [NotificationType.LEAVE]: 'Leave',
+    [NotificationType.TRAINING]: 'Training',
+    [NotificationType.MEETING]: 'Meeting',
 };
 
-const Notification = () => {
+interface NotificationProps {
+    onItemClick?: () => void;
+}
+
+const Notification: React.FC<NotificationProps> = ({ onItemClick }) => {
+    const navigate = useNavigate();
     const userId = getCurrentUserId();
     const [selectedType, setSelectedType] = useState<NotificationType | undefined>(undefined);
     const { data: allNotifications, refetch } = useMyNotifications(userId, undefined);
     const { data: filteredNotifications } = useMyNotifications(userId, selectedType);
     const { mutateAsync: updateNotifications } = useNotificationRead();
     const { mutateAsync: markAllAsRead } = useMarkAllAsReadByType();
+    const { socket } = useSocket();
     const [activeTab, setActiveTab] = useState("unread");
 
     // Deduplicate notification toasts by notification ID
@@ -71,8 +102,7 @@ const Notification = () => {
     const queryClient = useQueryClient();
     // Add worklog table refresh logic
     useEffect(() => {
-        const sock = initializeSocket();
-        if (!sock) return;
+        if (!socket) return;
         const handleNotification = (data: any) => {
             const toastId = data?.id || data?._id;
             if (toastId && shownToastIds.has(toastId)) return;
@@ -138,13 +168,13 @@ const Notification = () => {
             });
             refetch();
         };
-        sock.on("notification", handleNotification);
-        sock.on("notification_read", handleNotificationRead);
-        sock.on("notification_deleted", handleNotificationDeleted);
+        socket.on("notification", handleNotification);
+        socket.on("notification_read", handleNotificationRead);
+        socket.on("notification_deleted", handleNotificationDeleted);
         return () => {
-            sock.off("notification", handleNotification);
-            sock.off("notification_read", handleNotificationRead);
-            sock.off("notification_deleted", handleNotificationDeleted);
+            socket.off("notification", handleNotification);
+            socket.off("notification_read", handleNotificationRead);
+            socket.off("notification_deleted", handleNotificationDeleted);
         };
     }, [refetch]);
 
@@ -175,6 +205,121 @@ const Notification = () => {
 
     const unreadCounts = getGroupedCounts(unread);
     const readCounts = getGroupedCounts(read);
+
+
+    const resolveNotificationTarget = (item: any): string => {
+        let rawLink = (item?.notification?.link || '').trim();
+        const type = item?.notification?.type;
+        const metadata = item?.notification?.metadata || {};
+        const message = (item?.notification?.message || '').toLowerCase();
+
+        // 1. If explicit link exists, extract relative route if same host and sanitize
+        if (rawLink) {
+            // Strip any accidental leading "undefined", "/undefined", or "http(s)://undefined"
+            rawLink = rawLink.replace(/^(https?:\/\/)?undefined\/?/i, '/');
+            rawLink = rawLink.replace(/^\/undefined\/?/i, '/');
+
+            if (rawLink.includes('://')) {
+                try {
+                    const url = new URL(rawLink);
+                    return (url.pathname || '/') + url.search + url.hash;
+                } catch (e) {
+                    return rawLink.startsWith('/') ? rawLink : `/${rawLink}`;
+                }
+            }
+            return rawLink.startsWith('/') ? rawLink : `/${rawLink}`;
+        }
+
+        // 2. Intelligent inference based on type and metadata
+        if (type === NotificationType.WORKLOG || metadata.module === 'worklog') {
+            const worklogId = metadata.worklogId || '';
+            let tab = 'requested';
+            if (metadata.isIncoming || message.includes('requested by')) {
+                tab = 'incoming-requested';
+            } else if (metadata.status === 'approved' || message.includes('approved')) {
+                tab = 'approved';
+            } else if (metadata.status === 'rejected' || message.includes('rejected')) {
+                tab = 'rejected';
+            }
+            return `/worklogs-all?tab=${tab}${worklogId ? `&worklogId=${worklogId}` : ''}`;
+        }
+
+        if (type === NotificationType.PROJECT || metadata.module === 'project') {
+            const projectId = metadata.projectId || '';
+            return projectId ? `/projects/${projectId}` : '/projects';
+        }
+
+        if (type === NotificationType.TASK || metadata.module === 'todotask' || metadata.module === 'task') {
+            const taskId = metadata.taskId || '';
+            const tab = metadata.tab || (message.includes('informed') ? 'informed' : 'my-tasks');
+            return `/todotask?tab=${tab}${taskId ? `&taskId=${taskId}` : ''}`;
+        }
+
+        if (type === NotificationType.NOTICEBOARD || metadata.module === 'noticeboard') {
+            const noticeId = metadata.noticeId || '';
+            return noticeId ? `/notice-board?noticeId=${noticeId}` : '/notice-board';
+        }
+
+        if (type === NotificationType.LEAVE || metadata.module === 'leave') {
+            const leaveId = metadata.leaveId || '';
+            return `/time-off${leaveId ? `?leaveId=${leaveId}` : ''}`;
+        }
+
+        if (type === NotificationType.DSA || metadata.module === 'dsa') {
+            const projectId = metadata.projectId;
+            const dsaId = metadata.dsaId || '';
+            return projectId ? `/projects/${projectId}/dsa${dsaId ? `?dsaId=${dsaId}` : ''}` : '/projects';
+        }
+
+        return '';
+    };
+
+    const handleNotificationClick = async (item: any) => {
+        // 1. Mark as read immediately if not yet read
+        if (!item.isRead) {
+            try {
+                await updateNotifications({ id: item.id, userId });
+                queryClient.invalidateQueries({ queryKey: ["notifications"] });
+                refetch();
+            } catch (e) {
+                console.error('Failed to mark notification as read:', e);
+            }
+        }
+
+        // 2. Close drawer
+        onItemClick?.();
+
+        // 3. Resolve destination path
+        const targetUrl = resolveNotificationTarget(item);
+        if (!targetUrl) return;
+
+        // 4. Dispatch event for open pages to react immediately
+        window.dispatchEvent(
+            new CustomEvent('navigateToEntity', {
+                detail: {
+                    targetUrl,
+                    type: item.notification?.type,
+                    metadata: item.notification?.metadata,
+                },
+            })
+        );
+
+        // 5. Navigate cleanly without hard page refresh
+        if (targetUrl.startsWith('http://') || targetUrl.startsWith('https://')) {
+            try {
+                const urlObj = new URL(targetUrl);
+                if (urlObj.origin === window.location.origin) {
+                    navigate(urlObj.pathname + urlObj.search + urlObj.hash);
+                    return;
+                }
+            } catch (e) {
+                // fallback
+            }
+            window.location.href = targetUrl;
+        } else {
+            navigate(targetUrl);
+        }
+    };
 
     // Render grouped view with cards
     const renderGroupedView = (notificationList: any[], counts: Record<NotificationType, number>, showMarkAsRead: boolean) => {
@@ -308,9 +453,7 @@ const Notification = () => {
                     transition: 'background 0.3s'
                 }}
                 onMouseEnter={(e) => {
-                    if (item.notification.link) {
-                        e.currentTarget.style.background = showMarkAsRead ? '#e6f4ff' : '#f5f5f5';
-                    }
+                    e.currentTarget.style.background = showMarkAsRead ? '#e6f4ff' : '#f5f5f5';
                 }}
                 onMouseLeave={(e) => {
                     e.currentTarget.style.background = showMarkAsRead ? '#f0f7ff' : 'transparent';
