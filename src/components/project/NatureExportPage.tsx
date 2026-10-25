@@ -546,7 +546,7 @@ export const NatureExportPage: React.FC<NatureExportPageProps> = ({
         width: 100,
         align: "center" as const,
         render: (st: string) => (
-          <Tag color={st === "Active" ? "green" : "default"}>{st.toUpperCase()}</Tag>
+          <Tag color={st === "Active" ? "blue" : "default"}>{st.toUpperCase()}</Tag>
         ),
       },
       {

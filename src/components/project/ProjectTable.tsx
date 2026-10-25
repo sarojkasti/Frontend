@@ -27,6 +27,7 @@ import {
   Table,
   TableProps,
   Tooltip,
+  Popover,
   Input,
   Modal,
   message,
@@ -142,6 +143,149 @@ const ProjectTable: React.FC<ProjectTableProps> = ({
     } finally {
       setLoadingMemberDetail(false);
     }
+  };
+
+  // Render hover popover preview for Team and Active Members
+  const renderMemberListPopover = (
+    members: any[] | undefined,
+    type: "all" | "active",
+    record: ProjectType
+  ) => {
+    const list = Array.isArray(members) ? members : [];
+    const isAll = type === "all";
+    const title = isAll ? "Team Members" : "Active Members";
+    const icon = isAll ? (
+      <TeamOutlined style={{ color: "#1677ff" }} />
+    ) : (
+      <UserOutlined style={{ color: "#0891b2" }} />
+    );
+
+    return (
+      <div style={{ width: 280, maxWidth: 320, padding: "2px 0" }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            paddingBottom: 8,
+            marginBottom: 8,
+            borderBottom: "1px solid #f0f0f0",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 600, fontSize: 13, color: "#1f2937" }}>
+            {icon}
+            <span>{title}</span>
+            <Tag
+              color={isAll ? (list.length > 0 ? "blue" : "default") : (list.length > 0 ? "cyan" : "default")}
+              style={{ fontSize: 10, margin: 0, padding: "0 6px", lineHeight: "18px" }}
+            >
+              {list.length}
+            </Tag>
+          </div>
+          <span
+            style={{
+              fontSize: 11,
+              color: "#9ca3af",
+              maxWidth: 120,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+            title={record.name}
+          >
+            {record.name}
+          </span>
+        </div>
+
+        {list.length === 0 ? (
+          <div style={{ padding: "16px 8px", textAlign: "center", fontSize: 12, color: "#9ca3af" }}>
+            {isAll ? "No team members assigned" : "No members currently active"}
+          </div>
+        ) : (
+          <div style={{ maxHeight: 240, overflowY: "auto", display: "flex", flexDirection: "column", gap: 6, paddingRight: 4 }}>
+            {list.map((u: any, idx: number) => {
+              const name = typeof u === "string" ? u : u.name || "Unknown User";
+              const roleName = typeof u === "object" ? u.role?.name || "Member" : "Member";
+              const avatar = typeof u === "object" ? u.avatar : undefined;
+              const userId = typeof u === "object" ? u.id : idx;
+
+              return (
+                <div
+                  key={userId || idx}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    padding: "4px 6px",
+                    borderRadius: 6,
+                    backgroundColor: "#f9fafb",
+                  }}
+                >
+                  <Avatar
+                    size={26}
+                    src={avatar ? `${import.meta.env.VITE_BACKEND_URI}/document/${avatar}` : undefined}
+                    style={{ backgroundColor: "#1677ff", fontSize: 11, flexShrink: 0 }}
+                  >
+                    {name?.[0]?.toUpperCase() || "U"}
+                  </Avatar>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div
+                      style={{
+                        fontSize: 12,
+                        fontWeight: 500,
+                        color: "#1f2937",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                      title={name}
+                    >
+                      {name}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 10,
+                        color: "#6b7280",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {roleName}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        <div
+          style={{
+            paddingTop: 8,
+            marginTop: 8,
+            borderTop: "1px solid #f0f0f0",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            fontSize: 11,
+          }}
+        >
+          <span style={{ color: "#9ca3af" }}>Task budget & stats:</span>
+          <Button
+            type="link"
+            size="small"
+            style={{ padding: 0, fontSize: 11, height: "auto", display: "inline-flex", alignItems: "center", gap: 4 }}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleOpenMemberModal(record, type);
+            }}
+          >
+            <EyeOutlined /> View Breakdown
+          </Button>
+        </div>
+      </div>
+    );
   };
 
   const handleSearch = (selectedKeys: string[], confirm: () => void, dataIndex: string) => {
@@ -625,7 +769,7 @@ const ProjectTable: React.FC<ProjectTableProps> = ({
                 percent={percent}
                 size="small"
                 status={percent === 100 ? "success" : "active"}
-                strokeColor={percent === 100 ? "#52c41a" : "#1890ff"}
+                strokeColor="#1677ff"
               />
               <div style={{ fontSize: "11px", color: "#888", textAlign: "right" }}>
                 {completed}/{total} tasks
@@ -666,7 +810,7 @@ const ProjectTable: React.FC<ProjectTableProps> = ({
         columnKey: "isPaymentDone",
       }),
       render: (isPaid: boolean) =>
-        isPaid ? <Tag color="success">Paid</Tag> : <Tag color="warning">Unpaid</Tag>,
+        isPaid ? <Tag color="blue">Paid</Tag> : <Tag color="warning">Unpaid</Tag>,
     },
     countsForAvailability: {
       title: "Counts Availability",
@@ -697,9 +841,9 @@ const ProjectTable: React.FC<ProjectTableProps> = ({
     users: {
       title: "Team Members",
       key: "users",
-      width: columnWidths["users"] || 150,
+      width: columnWidths["users"] || 160,
       onHeaderCell: () => ({
-        width: columnWidths["users"] || 150,
+        width: columnWidths["users"] || 160,
         onResize: handleResize("users"),
         columnKey: "users",
       }),
@@ -707,14 +851,26 @@ const ProjectTable: React.FC<ProjectTableProps> = ({
         const memberCount = record.users?.length || 0;
         return (
           <Space size={6} align="center">
-            <Tag icon={<TeamOutlined />} color="blue">
-              {memberCount} Member{memberCount === 1 ? "" : "s"}
-            </Tag>
+            <Popover
+              content={() => renderMemberListPopover(record.users, "all", record)}
+              trigger="hover"
+              placement="topLeft"
+              mouseEnterDelay={0.15}
+            >
+              <Tag
+                icon={<TeamOutlined />}
+                color={memberCount > 0 ? "blue" : "default"}
+                style={{ cursor: "pointer", margin: 0 }}
+                onClick={() => handleOpenMemberModal(record, "all")}
+              >
+                {memberCount} Member{memberCount === 1 ? "" : "s"}
+              </Tag>
+            </Popover>
             <Tooltip title="View Team Member Progress & Budget">
               <Button
                 type="text"
                 size="small"
-                icon={<EyeOutlined style={{ color: "#1890ff", fontSize: "16px" }} />}
+                icon={<EyeOutlined style={{ color: memberCount > 0 ? "#1677ff" : "#8c8c8c", fontSize: "16px" }} />}
                 onClick={() => handleOpenMemberModal(record, "all")}
               />
             </Tooltip>
@@ -725,9 +881,9 @@ const ProjectTable: React.FC<ProjectTableProps> = ({
     activeUsers: {
       title: "Active Members",
       key: "activeUsers",
-      width: columnWidths["activeUsers"] || 150,
+      width: columnWidths["activeUsers"] || 160,
       onHeaderCell: () => ({
-        width: columnWidths["activeUsers"] || 150,
+        width: columnWidths["activeUsers"] || 160,
         onResize: handleResize("activeUsers"),
         columnKey: "activeUsers",
       }),
@@ -736,14 +892,26 @@ const ProjectTable: React.FC<ProjectTableProps> = ({
         const count = activeList.length;
         return (
           <Space size={6} align="center">
-            <Tag icon={<UserOutlined />} color="green">
-              {count} Active
-            </Tag>
+            <Popover
+              content={() => renderMemberListPopover(record.activeUsers, "active", record)}
+              trigger="hover"
+              placement="topLeft"
+              mouseEnterDelay={0.15}
+            >
+              <Tag
+                icon={<UserOutlined />}
+                color={count > 0 ? "cyan" : "default"}
+                style={{ cursor: "pointer", margin: 0 }}
+                onClick={() => handleOpenMemberModal(record, "active")}
+              >
+                {count} Active
+              </Tag>
+            </Popover>
             <Tooltip title="View Active Member Details & Budget">
               <Button
                 type="text"
                 size="small"
-                icon={<EyeOutlined style={{ color: "#52c41a", fontSize: "16px" }} />}
+                icon={<EyeOutlined style={{ color: count > 0 ? "#0891b2" : "#8c8c8c", fontSize: "16px" }} />}
                 onClick={() => handleOpenMemberModal(record, "active")}
               />
             </Tooltip>
@@ -1088,7 +1256,7 @@ const ProjectTable: React.FC<ProjectTableProps> = ({
         title={
           <Space>
             {memberModalType === "active" ? (
-              <UserOutlined style={{ color: "#52c41a" }} />
+              <UserOutlined style={{ color: "#0891b2" }} />
             ) : (
               <TeamOutlined style={{ color: "#1890ff" }} />
             )}
@@ -1109,7 +1277,7 @@ const ProjectTable: React.FC<ProjectTableProps> = ({
           </Button>,
         ]}
         width={750}
-        bodyStyle={{ paddingTop: 16 }}
+        styles={{ body: { paddingTop: 16 } }}
       >
         {loadingMemberDetail ? (
           <div style={{ textAlign: "center", padding: "40px 0" }}>
@@ -1124,7 +1292,7 @@ const ProjectTable: React.FC<ProjectTableProps> = ({
               <Col span={8}>
                 <Card
                   size="small"
-                  className={memberModalType === "active" ? "bg-emerald-50/50" : "bg-blue-50/50"}
+                  className={memberModalType === "active" ? "bg-cyan-50/50" : "bg-blue-50/50"}
                 >
                   <Statistic
                     title={
@@ -1139,20 +1307,20 @@ const ProjectTable: React.FC<ProjectTableProps> = ({
                     }
                     prefix={
                       memberModalType === "active" ? (
-                        <UserOutlined style={{ color: "#52c41a" }} />
+                        <UserOutlined style={{ color: "#0891b2" }} />
                       ) : (
-                        <TeamOutlined />
+                        <TeamOutlined style={{ color: "#1890ff" }} />
                       )
                     }
                   />
                 </Card>
               </Col>
               <Col span={8}>
-                <Card size="small" className="bg-emerald-50/50">
+                <Card size="small" className="bg-slate-50/70">
                   <Statistic
                     title="Total Project Tasks"
                     value={activeProjectForMemberModal?.tasks?.length || 0}
-                    prefix={<CheckCircleOutlined />}
+                    prefix={<CheckCircleOutlined style={{ color: "#1677ff" }} />}
                   />
                 </Card>
               </Col>
@@ -1167,7 +1335,7 @@ const ProjectTable: React.FC<ProjectTableProps> = ({
                       ) || 0
                     }
                     precision={1}
-                    prefix={<ClockCircleOutlined />}
+                    prefix={<ClockCircleOutlined style={{ color: "#4f46e5" }} />}
                     suffix="hrs"
                   />
                 </Card>
@@ -1234,7 +1402,7 @@ const ProjectTable: React.FC<ProjectTableProps> = ({
                       percent={record.completionPercent}
                       size="small"
                       status={record.completionPercent === 100 ? "success" : "active"}
-                      strokeColor={record.completionPercent === 100 ? "#52c41a" : "#1890ff"}
+                      strokeColor="#1677ff"
                     />
                   ),
                 },

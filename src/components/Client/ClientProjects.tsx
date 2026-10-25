@@ -36,7 +36,7 @@ const ClientProjects: React.FC<ClientProjectsProps> = ({ clientId }) => {
       dataIndex: 'status',
       key: 'status',
       render: (status: string) => (
-        <Tag color={status === 'active' ? 'green' : status === 'completed' ? 'blue' : 'default'}>
+        <Tag color={status === 'active' ? 'processing' : status === 'completed' ? 'blue' : 'default'}>
           {status?.toUpperCase() || 'ACTIVE'}
         </Tag>
       ),
@@ -45,7 +45,7 @@ const ClientProjects: React.FC<ClientProjectsProps> = ({ clientId }) => {
       title: 'Payment Status',
       key: 'payment',
       render: (_: any, record: any) => {
-        if (record.isPaymentDone) return <Tag color="green">Done</Tag>;
+        if (record.isPaymentDone) return <Tag color="blue">Done</Tag>;
         if (record.isPaymentTemporarilyEnabled) return <Tag color="orange">Temporarily Enabled</Tag>;
         return <Tag color="red">Pending</Tag>;
       }

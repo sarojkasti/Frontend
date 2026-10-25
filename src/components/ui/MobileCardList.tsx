@@ -3,11 +3,13 @@ import { Table, Spin, Empty, Pagination, Checkbox, Divider } from 'antd';
 import type { TableProps } from 'antd';
 import type { ColumnsType, ColumnType } from 'antd/es/table';
 import { useIsMobile } from '@/hooks/useIsMobile';
+import { TableEmptyState } from '@/components/Table/components/TableEmptyState';
+import { TableLoadingState } from '@/components/Table/components/TableLoadingState';
 
 export interface MobileCardListProps<T = any> {
   dataSource: T[];
   renderCard: (item: T, index: number) => React.ReactNode;
-  loading?: boolean;
+  loading?: boolean | string;
   emptyText?: string;
   className?: string;
   pagination?: any;
@@ -23,17 +25,18 @@ export function MobileCardList<T = any>({
 }: MobileCardListProps<T>) {
   if (loading) {
     return (
-      <div className="flex justify-center items-center py-12 w-full bg-white rounded-lg border border-gray-100">
-        <Spin size="large" />
-      </div>
+      <TableLoadingState
+        tip={typeof loading === 'string' ? loading : 'Loading cards, please wait...'}
+        rows={4}
+      />
     );
   }
 
   if (!dataSource || dataSource.length === 0) {
     return (
-      <div className="w-full bg-white rounded-lg border border-gray-200 py-8 px-4 text-center">
-        <Empty description={emptyText} />
-      </div>
+      <TableEmptyState
+        description={emptyText}
+      />
     );
   }
 

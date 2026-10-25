@@ -70,6 +70,7 @@ interface TodoTaskTableProps {
     onStatusChange?: (taskId: string, status: TodoTaskStatus, remark: string) => void;
     onDeleteTask?: (taskId: string) => void;
     visibleColumnKeys?: string[];
+    highlightId?: string | null;
 }
 
 const TodoTaskTable = ({
@@ -84,6 +85,7 @@ const TodoTaskTable = ({
     onStatusChange,
     onDeleteTask,
     visibleColumnKeys,
+    highlightId,
 }: TodoTaskTableProps) => {
     const { isMobile } = useIsMobile();
     const { profile } = useSession();
@@ -107,6 +109,26 @@ const TodoTaskTable = ({
     const [currentPage, setCurrentPage] = useState<number>(1);
     const [pageSize, setPageSize] = useState<number>(10);
     const [highlightedRowId, setHighlightedRowId] = useState<string | null>(highlightId || null);
+
+    const filteredTaskData = useMemo(() => {
+        if (!taskData) return [];
+        if (!searchQuery?.trim()) return taskData;
+        const q = searchQuery.toLowerCase();
+        return taskData.filter((t: TodoTask) => {
+            const title = t.title?.name || t.customTitle || "";
+            const desc = t.description || "";
+            const assigned = t.assignedUser?.name || "";
+            const creator = t.createdUser?.name || "";
+            const type = t.taskType?.name || "";
+            return (
+                title.toLowerCase().includes(q) ||
+                desc.toLowerCase().includes(q) ||
+                assigned.toLowerCase().includes(q) ||
+                creator.toLowerCase().includes(q) ||
+                type.toLowerCase().includes(q)
+            );
+        });
+    }, [taskData, searchQuery]);
 
     // Auto-paginate, scroll, and highlight when highlightId is provided
     useEffect(() => {
@@ -673,26 +695,6 @@ const TodoTaskTable = ({
         },
     ];
 
-    const filteredTaskData = useMemo(() => {
-        if (!taskData) return [];
-        if (!searchQuery?.trim()) return taskData;
-        const q = searchQuery.toLowerCase();
-        return taskData.filter((t: TodoTask) => {
-            const title = t.title?.name || t.customTitle || "";
-            const desc = t.description || "";
-            const assigned = t.assignedUser?.name || "";
-            const creator = t.createdUser?.name || "";
-            const type = t.taskType?.name || "";
-            return (
-                title.toLowerCase().includes(q) ||
-                desc.toLowerCase().includes(q) ||
-                assigned.toLowerCase().includes(q) ||
-                creator.toLowerCase().includes(q) ||
-                type.toLowerCase().includes(q)
-            );
-        });
-    }, [taskData, searchQuery]);
-
     const renderTodoTaskCard = (record: TodoTask) => {
         const isExpanded = expandedIds.includes(String(record.id));
         const priorityColor = record.priority === 'urgent' ? 'red' : record.priority === 'high' ? 'orange' : record.priority === 'medium' ? 'blue' : 'green';
@@ -821,6 +823,12 @@ const TodoTaskTable = ({
                 visibleColumnKeys={visibleColumnKeys}
                 showToolbar={false}
                 persistenceKey="todo_task_table_v2"
+                emptyTitle="No Tasks Found"
+                emptyDescription={
+                    searchQuery
+                        ? `No tasks matching "${searchQuery}" in this view.`
+                        : "There are currently no tasks in this list."
+                }
                 rowClassName={(record) =>
                     String(record.id) === String(highlightedRowId)
                         ? 'highlight-target-row transition-all duration-500'

@@ -82,7 +82,10 @@ export function useTableSearch<T = any>(options?: UseTableSearchOptions<T>) {
     const getUniqueValues = () => {
       const values = new Set<string>();
       effectiveData.forEach((record: any) => {
-        const val = getNestedValue(record, dataIndex);
+        let val = getNestedValue(record, dataIndex);
+        if (typeof val === "object" && val !== null) {
+          val = val.name ?? val.title ?? val.label ?? val.shortName ?? "";
+        }
         if (val !== undefined && val !== null && val !== "") {
           values.add(String(val));
         }
@@ -191,7 +194,10 @@ export function useTableSearch<T = any>(options?: UseTableSearchOptions<T>) {
         />
       ),
       onFilter: (value: any, record: any) => {
-        const val = getNestedValue(record, dataIndex);
+        let val = getNestedValue(record, dataIndex);
+        if (typeof val === "object" && val !== null) {
+          val = val.name ?? val.title ?? val.label ?? val.shortName ?? "";
+        }
         if (val === undefined || val === null) return false;
         return String(val)
           .toLowerCase()
@@ -210,7 +216,11 @@ export function useTableSearch<T = any>(options?: UseTableSearchOptions<T>) {
       render: (text: any) => {
         if (extraOptions?.highlightMatch === false) return text;
         const textStr =
-          text === undefined || text === null ? "" : String(text);
+          text === undefined || text === null
+            ? ""
+            : typeof text === "object"
+            ? text.name ?? text.title ?? text.label ?? ""
+            : String(text);
         if (searchedColumn === stringDataIndex && searchText) {
           return (
             <Highlighter
@@ -230,7 +240,11 @@ export function useTableSearch<T = any>(options?: UseTableSearchOptions<T>) {
       renderHighlight: (text: any) => {
         if (extraOptions?.highlightMatch === false) return text;
         const textStr =
-          text === undefined || text === null ? "" : String(text);
+          text === undefined || text === null
+            ? ""
+            : typeof text === "object"
+            ? text.name ?? text.title ?? text.label ?? ""
+            : String(text);
         if (searchedColumn === stringDataIndex && searchText) {
           return (
             <Highlighter

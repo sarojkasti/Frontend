@@ -1,6 +1,7 @@
 import * as XLSX from "xlsx";
 import dayjs from "dayjs";
 import { ReportColumnConfig } from "../types/reportTypes";
+import { stripHtml } from "@/utils/formatUtils";
 
 export interface ExportMetadata {
   reportTitle: string;
@@ -46,7 +47,7 @@ export const exportReportToExcel = (
       if (val === null || val === undefined) return "-";
       if (typeof val === "boolean") return val ? "Yes" : "No";
       if (typeof val === "number") return val;
-      return String(val);
+      return stripHtml(String(val));
     });
     rows.push(rowValues);
   });
@@ -109,7 +110,8 @@ export const exportReportToCsv = (
           val = col.dataIndex ? row[col.dataIndex] : row[col.key];
         }
         if (val === null || val === undefined) val = "";
-        const str = String(val).replace(/"/g, '""');
+        const cleanStr = typeof val === "string" ? stripHtml(val) : String(val);
+        const str = cleanStr.replace(/"/g, '""');
         return `"${str}"`;
       })
       .join(",");

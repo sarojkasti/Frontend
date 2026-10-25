@@ -5,6 +5,8 @@ import { useIsMobile } from "@/hooks/useIsMobile";
 import { ResizableHeader } from "./components/ResizableHeader";
 import { EditableCell } from "./components/EditableCell";
 import { PowerTableToolbar } from "./components/PowerTableToolbar";
+import { TableEmptyState } from "./components/TableEmptyState";
+import { TableLoadingState } from "./components/TableLoadingState";
 import { useTableSearch, getNestedValue } from "./hooks/useTableSearch";
 import { useTablePersistence } from "./hooks/useTablePersistence";
 import type {
@@ -51,6 +53,20 @@ export function PowerTable<T extends Record<string, any> = any>({
   onSearchQueryChange: externalOnSearchQueryChange,
   searchPlaceholder = "Search table...",
 
+  // Custom empty state configuration
+  emptyText,
+  emptyTitle,
+  emptyDescription,
+  emptyIcon,
+  emptyAction,
+  emptyComponent,
+  showTableWhenEmpty = false,
+
+  // Custom loading state configuration
+  loadingTip,
+  loadingComponent,
+  loadingType = "skeleton",
+
   // Inline Cell Editing
   onCellSave,
 
@@ -96,7 +112,7 @@ export function PowerTable<T extends Record<string, any> = any>({
       key: col.key,
       title: typeof col.title === "string" ? col.title : col.key,
       defaultVisible: col.defaultVisible !== false,
-      required: col.required || col.key === "action",
+      required: col.required || col.key === "action" || col.key === "actions",
       defaultWidth: col.width || col.defaultWidth,
       category: col.category,
     }));
@@ -178,6 +194,7 @@ export function PowerTable<T extends Record<string, any> = any>({
         enableResize &&
         col.resizable !== false &&
         col.key !== "action" &&
+        col.key !== "actions" &&
         col.key !== "operations";
 
       // Base column with width and header properties
@@ -419,10 +436,41 @@ export function PowerTable<T extends Record<string, any> = any>({
         x: customScroll.x !== undefined ? customScroll.x : totalColumnsWidth,
       };
     }
-    return { x: totalColumnsWidth };
-  }, [isMobile, customScroll, totalColumnsWidth]);
+    return { x: enableResize ? "max-content" : totalColumnsWidth };
+  }, [isMobile, customScroll, totalColumnsWidth, enableResize]);
 
   const isCustomizerActive = enableColumnCustomizer === true;
+
+  const isTableLoading =
+    typeof loading === "object" ? loading.spinning : Boolean(loading);
+  const hasData = Array.isArray(dataSource) && dataSource.length > 0;
+
+  const renderEmptyState = () => {
+    if (emptyComponent) return emptyComponent;
+    return (
+      <TableEmptyState
+        title={emptyTitle}
+        description={emptyDescription || emptyText}
+        icon={emptyIcon}
+        action={emptyAction}
+        isFiltered={Boolean(searchQuery)}
+        onClearFilters={() => {
+          onSearchQueryChange("");
+        }}
+      />
+    );
+  };
+
+  const renderLoadingState = () => {
+    if (loadingComponent) return loadingComponent;
+    return (
+      <TableLoadingState
+        type={loadingType}
+        tip={loadingTip || (typeof loading === "string" ? loading : "Loading records, please wait...")}
+        rows={5}
+      />
+    );
+  };
 
   const shouldShowToolbar =
     showToolbar !== undefined
@@ -449,26 +497,34 @@ export function PowerTable<T extends Record<string, any> = any>({
         />
       )}
 
-      {/* Main Table / Responsive View */}
-      <ResponsiveTable<T>
-        components={combinedComponents}
-        tableLayout="fixed"
-        loading={loading}
-        dataSource={dataSource}
-        columns={processedColumns}
-        rowSelection={isMobile ? undefined : effectiveRowSelection}
-        onChange={handleTableChange}
-        rowKey={rowKey}
-        size={size}
-        bordered={bordered}
-        scroll={effectiveScroll}
-        pagination={effectivePagination}
-        renderMobileCard={renderMobileCard}
-        mobileBreakpoint={mobileBreakpoint}
-        forceTableOnMobile={forceTableOnMobile || !enableMobileCards}
-        showSorterTooltip={restTableProps.showSorterTooltip ?? { target: "sorter-icon" }}
-        {...restTableProps}
-      />
+      {/* Main Table / Responsive View / Empty State */}
+      {/* Loading State when empty */}
+      {isTableLoading && !hasData ? (
+        renderLoadingState()
+      ) : !hasData && !showTableWhenEmpty ? (
+        renderEmptyState()
+      ) : (
+        <ResponsiveTable<T>
+          components={combinedComponents}
+          tableLayout="fixed"
+          loading={loading}
+          dataSource={dataSource}
+          columns={processedColumns}
+          rowSelection={isMobile ? undefined : effectiveRowSelection}
+          onChange={handleTableChange}
+          rowKey={rowKey}
+          size={size}
+          bordered={bordered}
+          scroll={hasData ? effectiveScroll : undefined}
+          pagination={hasData ? effectivePagination : false}
+          renderMobileCard={renderMobileCard}
+          mobileBreakpoint={mobileBreakpoint}
+          forceTableOnMobile={forceTableOnMobile || !enableMobileCards}
+          showSorterTooltip={restTableProps.showSorterTooltip ?? { target: "sorter-icon" }}
+          locale={{ emptyText: renderEmptyState(), ...restTableProps.locale }}
+          {...restTableProps}
+        />
+      )}
     </div>
   );
 }

@@ -1292,7 +1292,7 @@ const TaskTable = ({
     const typeBadge = isStory ? (
       <Tag color="blue" style={{ margin: 0, fontSize: "11px", borderRadius: 4 }}>Task</Tag>
     ) : (
-      <Tag color="green" style={{ margin: 0, fontSize: "11px", borderRadius: 4 }}>Subtask</Tag>
+      <Tag color="cyan" style={{ margin: 0, fontSize: "11px", borderRadius: 4 }}>Subtask</Tag>
     );
 
     return (
@@ -1442,7 +1442,7 @@ const TaskTable = ({
             {task.status === "done" && (
               <div className="flex items-center gap-2 pt-1 flex-wrap">
                 {task.secondVerifiedBy ? (
-                  <Tag color="green" style={{ fontSize: "11px", borderRadius: 4 }}>✓✓ 2nd Verified</Tag>
+                  <Tag color="purple" style={{ fontSize: "11px", borderRadius: 4 }}>✓✓ 2nd Verified</Tag>
                 ) : task.firstVerifiedBy ? (
                   <Tag color="blue" style={{ fontSize: "11px", borderRadius: 4 }}>✓ 1st Verified</Tag>
                 ) : null}
@@ -1481,7 +1481,7 @@ const TaskTable = ({
                     <div key={sub.id} className="bg-white rounded-lg p-2 border border-gray-200 shadow-2xs">
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex items-start gap-1 min-w-0">
-                          <Tag color="green" style={{ margin: 0, fontSize: "10px", borderRadius: 3 }}>Sub</Tag>
+                          <Tag color="cyan" style={{ margin: 0, fontSize: "10px", borderRadius: 3 }}>Sub</Tag>
                           <Link
                             to={`/projects/${sub.projectId}/tasks/${sub.id}`}
                             className="text-xs font-medium text-gray-800 hover:text-blue-600 line-clamp-1"
@@ -1779,7 +1779,7 @@ const TaskTable = ({
                         record.secondVerifiedAt ? new Date(record.secondVerifiedAt).toLocaleString() : "Unknown time"
                       }`}
                     >
-                      <Tag color="green" style={{ fontSize: "11px" }}>
+                      <Tag color="purple" style={{ fontSize: "11px" }}>
                         ✓ 2nd Done
                       </Tag>
                     </Tooltip>

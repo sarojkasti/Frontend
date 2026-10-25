@@ -5,6 +5,8 @@ export { default as TableToolbar } from "./TableToolbar";
 export { ResizableHeader } from "./components/ResizableHeader";
 export { EditableCell } from "./components/EditableCell";
 export { PowerTableToolbar } from "./components/PowerTableToolbar";
+export { TableEmptyState } from "./components/TableEmptyState";
+export { TableLoadingState } from "./components/TableLoadingState";
 
 // Hooks
 export { useTableSearch, getNestedValue } from "./hooks/useTableSearch";

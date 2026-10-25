@@ -142,8 +142,8 @@ const TodoTaskTitleList = ({
             key: 'isActive',
             render: (isActive: boolean) => (
                 isActive ? 
-                <Tag color="green">Active</Tag> : 
-                <Tag color="red">Inactive</Tag>
+                <Tag color="blue">Active</Tag> : 
+                <Tag color="default">Inactive</Tag>
             ),
         },
         {

@@ -377,7 +377,7 @@ const ClientUsersAdmin: React.FC = () => {
           <div className="mt-2 pt-2.5 border-t border-dashed border-gray-200 flex flex-col gap-2 bg-gray-50/80 rounded-lg p-3 text-xs text-gray-600">
             <div className="flex items-center justify-between gap-2">
               <span className="text-gray-500 font-medium shrink-0">Status:</span>
-              <Tag color={record.status === ClientUserStatus.ACTIVE ? "green" : "red"} className="m-0">
+              <Tag color={record.status === ClientUserStatus.ACTIVE ? "blue" : "default"} className="m-0">
                 {record.status?.toUpperCase()}
               </Tag>
             </div>

@@ -21,7 +21,14 @@ import {
   Typography,
   message,
 } from "antd";
-import { DownloadOutlined } from "@ant-design/icons";
+import {
+  DownloadOutlined,
+  PlusOutlined,
+  EditOutlined,
+  DeleteOutlined,
+  FolderOutlined,
+  ArrowLeftOutlined,
+} from "@ant-design/icons";
 import NatureExportPage from "./NatureExportPage";
 
 const { Text } = Typography;
@@ -45,8 +52,11 @@ import {
 
 type EditAction = "in_place" | "fallback" | "duplicate" | "transfer";
 
-const NatureOfWorkManager: React.FC = () => {
-  const [includeInactive, setIncludeInactive] = useState(false);
+interface NatureOfWorkManagerProps {
+  onBackSettings?: () => void;
+}
+
+const NatureOfWorkManager: React.FC<NatureOfWorkManagerProps> = ({ onBackSettings }) => {
   const [natureModalOpen, setNatureModalOpen] = useState(false);
   const [groupModalOpen, setGroupModalOpen] = useState(false);
   const [editingNature, setEditingNature] = useState<NatureOfWork | null>(null);
@@ -58,9 +68,8 @@ const NatureOfWorkManager: React.FC = () => {
   const [isExportViewOpen, setIsExportViewOpen] = useState(false);
   const [activeTabKey, setActiveTabKey] = useState<string>("nature");
 
-  const { data: natures = [], isLoading: isNaturesLoading } = useNatureOfWorkList(includeInactive);
+  const { data: natures = [], isLoading: isNaturesLoading } = useNatureOfWorkList(true);
   const { data: groups = [], isLoading: isGroupsLoading } = useNatureOfWorkGroupList();
-  const { data: allNaturesForExport = [], isLoading: isAllNaturesLoading } = useNatureOfWorkList(true);
 
   const { data: activeAffectedProjects = [], isLoading: isActiveAffectedLoading } = useActiveAffectedProjects(
     editingNature?.id,
@@ -80,6 +89,33 @@ const NatureOfWorkManager: React.FC = () => {
     if (!editingNature) return natures;
     return natures.filter((nature) => nature.id !== editingNature.id);
   }, [natures, editingNature]);
+
+  // Sort natures by group name alphabetically by default, then by name
+  const sortedNatures = useMemo(() => {
+    return [...natures].sort((a, b) => {
+      const groupA = (typeof a.group === "object" ? a.group?.name : a.group) || "";
+      const groupB = (typeof b.group === "object" ? b.group?.name : b.group) || "";
+      if (groupA && groupB) {
+        const cmp = groupA.localeCompare(groupB);
+        if (cmp !== 0) return cmp;
+      } else if (groupA && !groupB) {
+        return -1; // Grouped items first
+      } else if (!groupA && groupB) {
+        return 1;
+      }
+      return (a.name || "").localeCompare(b.name || "");
+    });
+  }, [natures]);
+
+  // Sort groups by rank ascending by default, then by name
+  const sortedGroups = useMemo(() => {
+    return [...groups].sort((a, b) => {
+      if (a.rank !== undefined && b.rank !== undefined && a.rank !== b.rank) {
+        return a.rank - b.rank;
+      }
+      return (a.name || "").localeCompare(b.name || "");
+    });
+  }, [groups]);
 
   const openCreateNatureModal = () => {
     setEditingNature(null);
@@ -249,41 +285,105 @@ const NatureOfWorkManager: React.FC = () => {
   const selectedAction: EditAction = Form.useWatch("editAction", natureForm) || "in_place";
 
   const natureColumns: PowerTableColumn<NatureOfWork>[] = [
-    { title: "Name", dataIndex: "name", key: "name", defaultWidth: 200 },
-    { title: "Short Name", dataIndex: "shortName", key: "shortName", defaultWidth: 140 },
+    {
+      title: "Name",
+      dataIndex: "name",
+      key: "name",
+      width: 220,
+      defaultWidth: 220,
+      sorter: (a, b) => a.name.localeCompare(b.name),
+      render: (text: string) => (
+        <span className="font-semibold text-slate-800">{text}</span>
+      ),
+    },
+    {
+      title: "Short Name",
+      dataIndex: "shortName",
+      key: "shortName",
+      width: 130,
+      defaultWidth: 130,
+      sorter: (a, b) => (a.shortName || "").localeCompare(b.shortName || ""),
+      render: (text: string) =>
+        text ? (
+          <Tag color="blue" className="font-mono text-xs">
+            {text}
+          </Tag>
+        ) : (
+          <span className="text-slate-400">-</span>
+        ),
+    },
     {
       title: "Group",
+      dataIndex: ["group", "name"],
       key: "group",
-      defaultWidth: 160,
-      render: (_: unknown, record: NatureOfWork) => record.group?.name || "-",
+      width: 170,
+      defaultWidth: 170,
+      sorter: (a, b) => {
+        const gA = a.group?.name || "";
+        const gB = b.group?.name || "";
+        if (!gA && !gB) return 0;
+        if (!gA) return 1;
+        if (!gB) return -1;
+        return gA.localeCompare(gB);
+      },
+      render: (_: unknown, record: NatureOfWork) =>
+        record.group?.name ? (
+          <Tag
+            icon={<FolderOutlined />}
+            color="cyan"
+            className="rounded-md font-medium text-xs inline-flex items-center gap-1"
+          >
+            {record.group.name}
+          </Tag>
+        ) : (
+          <span className="text-slate-400 italic text-xs">Unassigned</span>
+        ),
     },
     {
       title: "Status",
+      dataIndex: "isActive",
       key: "status",
+      width: 110,
+      sorter: (a: any, b: any) => Number(b.isActive !== false) - Number(a.isActive !== false),
       defaultWidth: 120,
       render: (_: unknown, record: NatureOfWork) =>
-        record.isActive === false ? <Tag color="default">Inactive</Tag> : <Tag color="green">Active</Tag>,
+        record.isActive === false ? <Tag color="default">Inactive</Tag> : <Tag color="blue">Active</Tag>,
     },
     {
       title: "Actions",
       key: "actions",
-      width: 140,
-      defaultWidth: 140,
+      width: 110,
+      defaultWidth: 110,
+
       required: true,
       fixed: "right",
       render: (_: unknown, record: NatureOfWork) => (
         <Space>
-          <Button type="link" onClick={() => openEditNatureModal(record)}>
-            Edit
-          </Button>
+          <Tooltip title="Edit project type">
+            <Button
+              type="text"
+              size="small"
+              icon={<EditOutlined style={{ color: "#1677ff", fontSize: "15px" }} />}
+              onClick={() => openEditNatureModal(record)}
+              className="hover:bg-blue-50 text-blue-600 rounded-md"
+            />
+          </Tooltip>
+
+
           <Popconfirm
             title="Delete this project type?"
             description="It can only be deleted when no project depends on it."
             onConfirm={() => handleDeleteNature(record.id)}
           >
-            <Button type="link" danger>
-              Delete
-            </Button>
+            <Tooltip title="Delete project type">
+              <Button
+                type="text"
+                size="small"
+                danger
+                icon={<DeleteOutlined style={{ fontSize: "15px" }} />}
+                className="hover:bg-red-50 text-red-600 rounded-md"
+              />
+            </Tooltip>
           </Popconfirm>
         </Space>
       ),
@@ -291,29 +391,76 @@ const NatureOfWorkManager: React.FC = () => {
   ];
 
   const groupColumns: PowerTableColumn<NatureOfWorkGroup>[] = [
-    { title: "Name", dataIndex: "name", key: "name", defaultWidth: 200 },
-    { title: "Description", dataIndex: "description", key: "description", defaultWidth: 250, render: (v: string) => v || "-" },
-    { title: "Rank", dataIndex: "rank", key: "rank", defaultWidth: 100, render: (v: number) => v ?? 0 },
+    {
+      title: "Group Name",
+      dataIndex: "name",
+      key: "name",
+      width: 220,
+      defaultWidth: 220,
+      sorter: (a, b) => a.name.localeCompare(b.name),
+      render: (text: string) => (
+        <span className="font-semibold text-slate-800">{text}</span>
+      ),
+    },
+    {
+      title: "Description",
+      dataIndex: "description",
+      key: "description",
+      width: 280,
+      defaultWidth: 280,
+      render: (v: string) =>
+        v ? <span className="text-slate-600 text-xs">{v}</span> : <span className="text-slate-400">-</span>,
+    },
+    {
+      title: "Display Rank",
+      dataIndex: "rank",
+      key: "rank",
+      width: 120,
+      defaultWidth: 120,
+      sorter: (a, b) => (a.rank ?? 0) - (b.rank ?? 0),
+      render: (v: number) => (
+        <Tag color="default" className="font-mono text-xs">
+          Rank #{v ?? 0}
+        </Tag>
+      ),
+    },
     {
       title: "Actions",
       key: "actions",
-      width: 140,
-      defaultWidth: 140,
+      width: 110,
+      defaultWidth: 110,
+
       required: true,
       fixed: "right",
       render: (_: unknown, record: NatureOfWorkGroup) => (
         <Space>
-          <Button type="link" onClick={() => openEditGroupModal(record)}>
-            Edit
-          </Button>
+          <Tooltip title="Edit group">
+            <Button
+              type="text"
+              size="small"
+              icon={<EditOutlined style={{ color: "#1677ff", fontSize: "15px" }} />}
+              onClick={() => openEditGroupModal(record)}
+              className="hover:bg-blue-50 text-blue-600 rounded-md"
+            />
+          </Tooltip>
+
+
           <Popconfirm
             title="Delete this group?"
             description="Group deletion is blocked if project types are still attached."
             onConfirm={() => handleDeleteGroup(record.id)}
           >
-            <Button type="link" danger>
-              Delete
-            </Button>
+            <Tooltip title="Delete group">
+              <Button
+                type="text"
+                size="small"
+                danger
+                icon={<DeleteOutlined style={{ fontSize: "15px" }} />}
+                className="hover:bg-red-50 text-red-600 rounded-md"
+              />
+            </Tooltip>
+
+  
           </Popconfirm>
         </Space>
       ),
@@ -336,115 +483,119 @@ const NatureOfWorkManager: React.FC = () => {
     return (
       <NatureExportPage
         onBack={() => setIsExportViewOpen(false)}
-        natures={allNaturesForExport.length > 0 ? allNaturesForExport : natures}
+        natures={natures}
         groups={groups}
         initialTab={activeTabKey as "nature" | "groups"}
-        isLoading={isNaturesLoading || isGroupsLoading || isAllNaturesLoading}
+        isLoading={isNaturesLoading || isGroupsLoading}
       />
     );
   }
 
   return (
     <>
-      <Card
-        title={
-          <Typography.Title level={3} style={{ margin: 0 }}>
-            Nature of Work Management
-          </Typography.Title>
-        }
-        extra={
-          <Tooltip title="Download Nature of Work & Groups in Excel">
+      {/* Top Header Bar */}
+      <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+        <div className="flex items-center gap-3">
+          {onBackSettings && (
             <Button
-              icon={<DownloadOutlined />}
-              onClick={() => setIsExportViewOpen(true)}
+              icon={<ArrowLeftOutlined />}
+              onClick={onBackSettings}
+              className="flex items-center justify-center font-medium"
             >
-              Export to Excel
+              Back to Settings
             </Button>
-          </Tooltip>
-        }
-      >
+          )}
+          <div>
+            <h1 className="text-xl font-bold text-slate-800 m-0 leading-tight">
+              Nature of Work Management
+            </h1>
+            <p className="text-xs text-slate-500 m-0 mt-0.5">
+              Manage project work nature types, categories, and hierarchical groups
+            </p>
+          </div>
+        </div>
+        <Tooltip title="Download Nature of Work & Groups in Excel">
+          <Button
+            type="default"
+            icon={<DownloadOutlined />}
+            onClick={() => setIsExportViewOpen(true)}
+            className="font-medium"
+          >
+            Export to Excel
+          </Button>
+        </Tooltip>
+      </div>
+
+      <Card styles={{ body: { padding: 16 } }} className="shadow-xs border-slate-200">
         <Tabs
           activeKey={activeTabKey}
           onChange={(k) => setActiveTabKey(k as "nature" | "groups")}
+          tabBarExtraContent={
+            activeTabKey === "nature" ? (
+              <Space size={8}>
+                {natureCustomizer}
+                <Button type="primary" icon={<PlusOutlined />} onClick={openCreateNatureModal}>
+                  Add Nature of Work
+                </Button>
+              </Space>
+            ) : (
+              <Space size={8}>
+                {groupCustomizer}
+                <Button type="primary" icon={<PlusOutlined />} onClick={openCreateGroupModal}>
+                  Add Group
+                </Button>
+              </Space>
+            )
+          }
           items={[
             {
               key: "nature",
               label: "Nature of Work",
               children: (
-                <>
-                  <div className="flex justify-between items-center mb-4 flex-wrap gap-2">
-                    <Space wrap>
-                      <Button type="primary" onClick={openCreateNatureModal}>
-                        Add Nature of Work
-                      </Button>
-                      <Space>
-                        <span>Show inactive</span>
-                        <Switch checked={includeInactive} onChange={setIncludeInactive} />
-                      </Space>
-                    </Space>
-                    <Space>
-                      {natureCustomizer}
-                      <Button
-                        icon={<DownloadOutlined />}
-                        onClick={() => {
-                          setActiveTabKey("nature");
-                          setIsExportViewOpen(true);
-                        }}
-                      >
-                        Export Natures
-                      </Button>
-                    </Space>
-                  </div>
-                  <PowerTable<NatureOfWork>
-                    rowKey="id"
-                    loading={isNaturesLoading}
-                    columns={natureColumns}
-                    dataSource={natures}
-                    enableResize
-                    enableColumnSearch
-                    visibleColumnKeys={natureVisibleKeys}
-                    showToolbar={false}
-                    persistenceKey="nature_of_work_table"
-                    pagination={false}
-                  />
-                </>
+                <PowerTable<NatureOfWork>
+                  rowKey="id"
+                  loading={isNaturesLoading}
+                  columns={natureColumns}
+                  dataSource={sortedNatures}
+                  enableResize
+                  enableColumnSearch
+                  visibleColumnKeys={natureVisibleKeys}
+                  showToolbar={false}
+                  persistenceKey="nature_of_work_table"
+                  size="small"
+                  tableScrollX="max-content"
+                  pagination={{
+                    pageSize: 10,
+                    showSizeChanger: true,
+                    pageSizeOptions: [10, 20, 50, 100],
+                    showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} items`,
+                  }}
+                />
               ),
             },
             {
               key: "groups",
               label: "Nature Groups",
               children: (
-                <>
-                  <div className="flex justify-between items-center mb-4 flex-wrap gap-2">
-                    <Button type="primary" onClick={openCreateGroupModal}>
-                      Add Group
-                    </Button>
-                    <Space>
-                      {groupCustomizer}
-                      <Button
-                        icon={<DownloadOutlined />}
-                        onClick={() => {
-                          setActiveTabKey("groups");
-                          setIsExportViewOpen(true);
-                        }}
-                      >
-                        Export Groups
-                      </Button>
-                    </Space>
-                  </div>
-                  <PowerTable<NatureOfWorkGroup>
-                    rowKey="id"
-                    loading={isGroupsLoading}
-                    columns={groupColumns}
-                    dataSource={groups}
-                    enableResize
-                    enableColumnSearch
-                    visibleColumnKeys={groupVisibleKeys}
-                    showToolbar={false}
-                    persistenceKey="nature_group_table"
-                    pagination={false}
-                  />
-                </>
+                <PowerTable<NatureOfWorkGroup>
+                  rowKey="id"
+                  loading={isGroupsLoading}
+                  columns={groupColumns}
+                  dataSource={sortedGroups}
+                  enableResize
+                  enableColumnSearch
+                  visibleColumnKeys={groupVisibleKeys}
+                  showToolbar={false}
+                  persistenceKey="nature_group_table"
+                  size="small"
+                  tableScrollX="max-content"
+                  pagination={{
+                    pageSize: 10,
+                    showSizeChanger: true,
+                    pageSizeOptions: [10, 20, 50, 100],
+                    showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} items`,
+                  }}
+                />
               ),
             },
           ]}
@@ -464,6 +615,8 @@ const NatureOfWorkManager: React.FC = () => {
         }
         width={900}
         destroyOnClose
+        centered
+        styles={{ body: { maxHeight: "calc(85vh - 130px)", overflowY: "auto" } }}
       >
         {editingNature ? (
           <Alert
@@ -488,7 +641,7 @@ const NatureOfWorkManager: React.FC = () => {
               <List.Item>
                 <Space>
                   <strong>{project.name}</strong>
-                  <Tag color={project.status === "active" ? "green" : "gold"}>{project.status}</Tag>
+                  <Tag color={project.status === "active" ? "blue" : "gold"}>{project.status}</Tag>
                 </Space>
               </List.Item>
             )}
@@ -691,6 +844,8 @@ const NatureOfWorkManager: React.FC = () => {
         okText={editingGroup ? "Save" : "Create"}
         confirmLoading={createGroupMutation.isPending || updateGroupMutation.isPending}
         destroyOnClose
+        centered
+        styles={{ body: { maxHeight: "calc(85vh - 130px)", overflowY: "auto" } }}
       >
         <Form form={groupForm} layout="vertical" initialValues={{ rank: 0 }}>
           <Form.Item

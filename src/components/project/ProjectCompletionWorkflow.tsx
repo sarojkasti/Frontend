@@ -242,7 +242,7 @@ const ProjectCompletionWorkflow: React.FC<ProjectCompletionWorkflowProps> = ({
                                 <Tag color="blue">{user.role.name}</Tag>
                               )}
                               {project?.projectLead?.id === user.id && (
-                                <Tag color="green">Team Lead</Tag>
+                                <Tag color="blue">Team Lead</Tag>
                               )}
                             </Space>
                           }

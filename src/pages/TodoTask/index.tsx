@@ -425,7 +425,7 @@ const TodoTaskPage = () => {
     return data;
   };
   return (
-    <div className="todo-task-container pb-16 sm:pb-0 px-2 sm:px-0">
+    <div className="todo-task-container pt-0 pb-16 sm:pb-0 px-2 sm:px-0">
       <Card
         title={
           <Space>

@@ -337,11 +337,11 @@ const UserDetails = () => {
                     <Descriptions.Item label="Phone Number">{user.phoneNumber || "N/A"}</Descriptions.Item>
                     <Descriptions.Item label="Role">{user.role?.name || "N/A"}</Descriptions.Item>
                     <Descriptions.Item label="Status">
-                      <Tag color={user.status === "active" ? "green" : "red"}>{user.status}</Tag>
+                      <Tag color={user.status === "active" ? "blue" : "default"}>{user.status}</Tag>
                     </Descriptions.Item>
                     <Descriptions.Item label="2FA Enabled">
                       {user.isTwoFAEnabled ? (
-                        <Space><CheckCircleOutlined style={{ color: "#52c41a" }} /> <Text type="success">Enabled</Text></Space>
+                        <Space><CheckCircleOutlined style={{ color: "#1677ff" }} /> <Text style={{ color: "#1677ff" }}>Enabled</Text></Space>
                       ) : (
                         <Space><CloseCircleOutlined style={{ color: "#ff4d4f" }} /> <Text type="danger">Disabled</Text></Space>
                       )}

@@ -139,6 +139,17 @@ export interface PowerTableProps<T extends Record<string, any> = any>
   mobileBreakpoint?: number;
   forceTableOnMobile?: boolean;
 
-  // Custom empty text
+  // Custom empty state configuration
   emptyText?: string;
+  emptyTitle?: string;
+  emptyDescription?: string;
+  emptyIcon?: React.ReactNode;
+  emptyAction?: React.ReactNode;
+  emptyComponent?: React.ReactNode;
+  showTableWhenEmpty?: boolean;
+
+  // Custom loading state configuration
+  loadingTip?: string;
+  loadingComponent?: React.ReactNode;
+  loadingType?: "skeleton" | "spinner";
 }

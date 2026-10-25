@@ -35,6 +35,7 @@ import {
 import dayjs from "dayjs";
 import moment from "moment";
 import * as XLSX from "xlsx";
+import { stripHtml } from "@/utils/formatUtils";
 import {
   ALL_ATTENDANCE_EXPORT_COLUMNS,
   AttendanceColumnDefinition,
@@ -223,13 +224,22 @@ export const AttendanceExportPage: React.FC<AttendanceExportPageProps> = ({
 
   // Employee Dropdown Options
   const employeeOptions = useMemo(() => {
+    const selectedIds = new Set(selectedEmployeeIds || []);
     return [...allActiveUsers]
-      .sort((a: any, b: any) => (a.name || "").localeCompare(b.name || ""))
+      .sort((a: any, b: any) => {
+        const aSelected = selectedIds.has(String(a.id));
+        const bSelected = selectedIds.has(String(b.id));
+        if (aSelected && !bSelected) return -1;
+        if (!aSelected && bSelected) return 1;
+        return (a.name || "").localeCompare(b.name || "");
+      })
       .map((u: any) => ({
         value: String(u.id),
+        tagLabel: u.name,
+        searchValue: `${u.name} ${u.email || u.username || ""}`,
         label: `${u.name} (${u.email || u.username})`,
       }));
-  }, [allActiveUsers]);
+  }, [allActiveUsers, selectedEmployeeIds]);
 
   // Time & Duration Calculation Helper
   const parseTime = (timeStr: string | null | undefined, dateStr: string) => {
@@ -665,7 +675,7 @@ export const AttendanceExportPage: React.FC<AttendanceExportPageProps> = ({
             "Logged Duration": `${wHours}h ${wMins}m`,
             "Status": w.status ? String(w.status).toUpperCase() : "-",
             "Approval Remark": w.approvedRemark || w.rejectedRemark || "-",
-            "Work Description": w.remark || w.description || "-",
+            "Work Description": stripHtml(w.remark || w.description || "-"),
           });
         });
       } else {
@@ -991,6 +1001,77 @@ export const AttendanceExportPage: React.FC<AttendanceExportPageProps> = ({
                         allowClear
                         style={{ width: "100%" }}
                         maxTagCount="responsive"
+                        optionLabelProp="tagLabel"
+                        optionFilterProp="searchValue"
+                        filterOption={(input, option) => {
+                          const search = input.trim().toLowerCase();
+                          if (!search) return true;
+                          const text = String((option as any)?.searchValue || (option as any)?.tagLabel || "").toLowerCase();
+                          return text.includes(search);
+                        }}
+                        tagRender={(tagProps) => {
+                          const { label, closable, onClose } = tagProps;
+                          const onPreventMouseDown = (event: React.MouseEvent<HTMLSpanElement>) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                          };
+                          return (
+                            <Tag
+                              closable={closable}
+                              onClose={onClose}
+                              onMouseDown={onPreventMouseDown}
+                              style={{
+                                marginRight: 3,
+                                display: "inline-flex",
+                                alignItems: "center",
+                                maxWidth: 130,
+                                fontSize: 12,
+                                borderRadius: 4,
+                                padding: "0 6px",
+                                lineHeight: "20px",
+                              }}
+                            >
+                              <span
+                                style={{
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
+                                  whiteSpace: "nowrap",
+                                }}
+                              >
+                                {label}
+                              </span>
+                            </Tag>
+                          );
+                        }}
+                        maxTagPlaceholder={(omittedValues) => (
+                          <Tooltip
+                            title={
+                              <div style={{ maxHeight: 200, overflowY: "auto", fontSize: 12, padding: "2px 4px" }}>
+                                {omittedValues.map((item, idx) => (
+                                  <div key={idx} style={{ padding: "2px 0" }}>
+                                    {(item as any)?.tagLabel || item.label || item.value}
+                                  </div>
+                                ))}
+                              </div>
+                            }
+                          >
+                            <Tag
+                              style={{
+                                marginRight: 0,
+                                backgroundColor: "#f1f5f9",
+                                borderColor: "#cbd5e1",
+                                color: "#475569",
+                                fontWeight: 600,
+                                cursor: "pointer",
+                                borderRadius: 4,
+                                padding: "0 6px",
+                                lineHeight: "20px",
+                              }}
+                            >
+                              +{omittedValues.length}
+                            </Tag>
+                          </Tooltip>
+                        )}
                       />
                     </Col>
                   )}

@@ -441,7 +441,7 @@ const UserHistoryDetails: React.FC = () => {
           <Card size="small" style={{ borderRadius: "10px", border: "1px solid #e2e8f0" }}>
             <Text type="secondary" style={{ fontSize: 12 }}>Account Status</Text>
             <div style={{ marginTop: 6 }}>
-              <Tag color={userData?.status === 'active' ? 'green' : 'red'} style={{ textTransform: 'capitalize' }}>
+              <Tag color={userData?.status === 'active' ? 'blue' : 'default'} style={{ textTransform: 'capitalize' }}>
                 {userData?.status || 'Unknown'}
               </Tag>
             </div>

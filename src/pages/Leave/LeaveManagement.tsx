@@ -546,7 +546,7 @@ const LeaveManagement: React.FC<LeaveManagementProps> = ({ userId: profileUserId
                   </div>
                 }
               >
-                <Tag color="green">Manager Approved</Tag>
+                <Tag color="blue">Manager Approved</Tag>
               </Tooltip>
             </div>
           )}
@@ -844,7 +844,7 @@ const LeaveManagement: React.FC<LeaveManagementProps> = ({ userId: profileUserId
               <Tooltip
                 title={`Final approved on: ${moment(record.adminApprovalTime).format('MMM DD, YYYY [at] HH:mm')}`}
               >
-                <Tag color="green">Final: {record.adminApprover.name}</Tag>
+                <Tag color="blue">Final: {record.adminApprover.name}</Tag>
               </Tooltip>
             </div>
           )}
@@ -1044,7 +1044,7 @@ const LeaveManagement: React.FC<LeaveManagementProps> = ({ userId: profileUserId
             {record.managerApprover && (
               <div className="flex items-center justify-between gap-2">
                 <span className="text-gray-500 font-medium shrink-0">Manager Approval:</span>
-                <Tag color="green" className="m-0 text-[10px]">Approved</Tag>
+                <Tag color="blue" className="m-0 text-[10px]">Approved</Tag>
               </div>
             )}
             {record.adminApprover && (

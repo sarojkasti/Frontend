@@ -282,7 +282,7 @@ export const TaskQuickViewModal: React.FC<TaskQuickViewModalProps> = ({
                     <List.Item.Meta
                       title={
                         <div className="flex items-center gap-2">
-                          <Tag color="green" style={{ fontSize: 10, margin: 0 }}>Sub</Tag>
+                          <Tag color="cyan" style={{ fontSize: 10, margin: 0 }}>Sub</Tag>
                           <span className="text-xs font-medium text-slate-800">{st.name}</span>
                           {st.tcode && <Tag color="blue" style={{ fontSize: 10, margin: 0 }}>{st.tcode}</Tag>}
                         </div>

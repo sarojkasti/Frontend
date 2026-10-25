@@ -211,7 +211,7 @@ const LeaveTypeManager: React.FC = () => {
         if (!value) return <Tag>No</Tag>;
         return (
           <Space direction="vertical" size={0}>
-            <Tag color="green">Yes</Tag>
+            <Tag color="blue">Yes</Tag>
             {record.maxCarryOverDays && (
               <span style={{ fontSize: '11px' }}>Max: {record.maxCarryOverDays}</span>
             )}

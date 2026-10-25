@@ -238,7 +238,7 @@ const ProjectUserAssignment = ({ projectId, users, onAssignmentChange }: Project
       dataIndex: 'isActive',
       key: 'isActive',
       render: (isActive: boolean) => (
-        <Tag color={isActive ? 'success' : 'default'}>
+        <Tag color={isActive ? 'blue' : 'default'}>
           {isActive ? 'Active' : 'Inactive'}
         </Tag>
       ),
@@ -339,7 +339,7 @@ const ProjectUserAssignment = ({ projectId, users, onAssignmentChange }: Project
                 </div>
               </div>
               <div className="flex flex-col items-end gap-1 shrink-0">
-                <Tag color={record.isActive ? 'success' : 'default'} style={{ margin: 0 }}>
+                <Tag color={record.isActive ? 'blue' : 'default'} style={{ margin: 0 }}>
                   {record.isActive ? 'Active' : 'Inactive'}
                 </Tag>
                 {record.user?.role?.name && (

@@ -174,7 +174,7 @@ const ClientReportDocumentTypeSetting: React.FC = () => {
           <Tag icon={<GlobalOutlined />} color="blue">Global</Tag>
         ) : (
           <Tooltip title={record.customer?.name || "Customer"}>
-            <Tag icon={<UserOutlined />} color="green">
+            <Tag icon={<UserOutlined />} color="cyan">
               {record.customer?.shortName || record.customer?.name || "Customer Specific"}
             </Tag>
           </Tooltip>

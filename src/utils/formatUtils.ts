@@ -73,3 +73,35 @@ export const parseTimeMoment = (timeStr?: string | null, dateStr?: string): mome
   return parsed.isValid() ? parsed : null;
 };
 
+/**
+ * Strips HTML tags and entities, converting rich text to clean plain text.
+ */
+export const stripHtml = (html?: string | null): string => {
+  if (!html) return "";
+  const str = String(html);
+  if (!str.includes("<") && !str.includes("&")) return str.trim();
+
+  return str
+    .replace(/<br\s*[\/]?>/gi, " ")
+    .replace(/<\/p>/gi, " ")
+    .replace(/<\/div>/gi, " ")
+    .replace(/<\/li>/gi, " ")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/\s+/g, " ")
+    .trim();
+};
+
+/**
+ * Checks if a string contains HTML tags.
+ */
+export const hasHtmlTags = (str?: string | null): boolean => {
+  if (!str) return false;
+  return /<[a-z][\s\S]*>/i.test(String(str));
+};
+

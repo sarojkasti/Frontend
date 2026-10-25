@@ -168,7 +168,7 @@ const WorkhourSettings: React.FC<WorkhourSettingsProps> = ({ roles = [] }) => {
       key: 'status',
       defaultWidth: 120,
       render: (_: any, record: WorkhourType) => (
-        <Tag color={record.isActive ? 'green' : 'default'}>
+        <Tag color={record.isActive ? 'blue' : 'default'}>
           {record.isActive ? 'Active' : 'Inactive'}
         </Tag>
       )

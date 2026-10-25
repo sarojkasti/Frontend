@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Tag, Avatar, Space, message, Badge } from "antd";
+import { Tag, Avatar, Space, message, Badge, Button } from "antd";
 import {
   UserOutlined,
   ClockCircleOutlined,
@@ -10,6 +10,7 @@ import {
   SyncOutlined,
   DollarOutlined,
   ExclamationCircleOutlined,
+  ArrowLeftOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
 import moment from "moment";
@@ -22,6 +23,7 @@ import {
 import { ReportFilterControls } from "./ReportFilterControls";
 import { ReportTableView } from "./ReportTableView";
 import { ReportPrintView } from "./ReportPrintView";
+import { FormattedWorklogDescription } from "./FormattedWorklogDescription";
 import { fetchAllWorklogs } from "@/service/worklog.service";
 import { fetchExportAttendance } from "@/service/attendence.service";
 import { fetchProjects } from "@/service/project.service";
@@ -46,11 +48,41 @@ const DEFAULT_FILTER_STATE: ReportFilterState = {
   searchKeyword: "",
 };
 
-export const ReportGeneratorStudio: React.FC = () => {
+const REPORT_DESCRIPTIONS: Record<ReportType, string> = {
+  worklog: "Timesheets, tasks, logged hours & work descriptions",
+  attendance: "Office register, clock in/out, duration & remarks",
+  reconciliation: "Side-by-side attendance vs worklog hours comparison",
+  project: "Budget variance, estimated vs actual hours & progress",
+  leave: "Leaves taken, leave types, approvals & absence log",
+};
+
+interface ReportGeneratorStudioProps {
+  initialReportType?: ReportType;
+  onBack?: () => void;
+  hideReportTypePicker?: boolean;
+}
+
+export const ReportGeneratorStudio: React.FC<ReportGeneratorStudioProps> = ({
+  initialReportType,
+  onBack,
+  hideReportTypePicker = false,
+}) => {
   const { profile } = useSession();
-  const [filters, setFilters] = useState<ReportFilterState>(DEFAULT_FILTER_STATE);
+  const [filters, setFilters] = useState<ReportFilterState>(() => ({
+    ...DEFAULT_FILTER_STATE,
+    reportType: initialReportType || DEFAULT_FILTER_STATE.reportType,
+  }));
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [generationTrigger, setGenerationTrigger] = useState(0);
+
+  useEffect(() => {
+    if (initialReportType && initialReportType !== filters.reportType) {
+      setFilters((prev) => ({
+        ...prev,
+        reportType: initialReportType,
+      }));
+    }
+  }, [initialReportType]);
 
   // 1. Master Data Queries (Active Users, Departments, Projects)
   const { data: usersData } = useQuery({
@@ -196,7 +228,15 @@ export const ReportGeneratorStudio: React.FC = () => {
         category: "Task",
         render: (st: string) => (st ? <Tag>{st.toUpperCase()}</Tag> : "-"),
       },
-      { key: "description", title: "Work Description", dataIndex: "description", width: 240, defaultVisible: true, category: "Details" },
+      {
+        key: "description",
+        title: "Work Description",
+        dataIndex: "description",
+        width: 250,
+        defaultVisible: true,
+        category: "Details",
+        render: (desc: string) => <FormattedWorklogDescription content={desc} />,
+      },
       { key: "startTime", title: "Start Time", dataIndex: "startTime", width: 100, defaultVisible: true, category: "Timing" },
       { key: "endTime", title: "End Time", dataIndex: "endTime", width: 100, defaultVisible: true, category: "Timing" },
       {
@@ -1166,6 +1206,28 @@ export const ReportGeneratorStudio: React.FC = () => {
 
   return (
     <div>
+      {onBack && (
+        <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+          <div className="flex items-center gap-3">
+            <Button
+              icon={<ArrowLeftOutlined />}
+              onClick={onBack}
+              className="flex items-center justify-center font-medium"
+            >
+              Back to Reports
+            </Button>
+            <div>
+              <h1 className="text-xl font-bold text-slate-800 m-0 leading-tight">
+                {reportTitle}
+              </h1>
+              <p className="text-xs text-slate-500 m-0 mt-0.5">
+                {REPORT_DESCRIPTIONS[filters.reportType] || "Detailed itemized report register and data export"}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Filter & Generation Control Panel */}
       <ReportFilterControls
         filters={filters}
@@ -1178,6 +1240,7 @@ export const ReportGeneratorStudio: React.FC = () => {
         projects={projectsList}
         allColumns={currentAvailableColumns}
         recordCount={reportRows.length}
+        hideReportTypePicker={hideReportTypePicker}
       />
 
       {/* Generated Report Data Table */}

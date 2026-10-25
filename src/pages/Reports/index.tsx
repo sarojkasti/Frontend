@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
   Card,
@@ -17,11 +18,13 @@ import {
   Badge,
   Divider,
   Statistic,
-  Breadcrumb,
   Alert,
-  Segmented,
+  Input,
 } from "antd";
 import { ReportGeneratorStudio } from "./components/ReportGeneratorStudio";
+import { FormattedWorklogDescription } from "./components/FormattedWorklogDescription";
+import { ActiveReportKey } from "./types/reportTypes";
+import { stripHtml } from "@/utils/formatUtils";
 import {
   BarChartOutlined,
   ClockCircleOutlined,
@@ -34,6 +37,13 @@ import {
   FileTextOutlined,
   RiseOutlined,
   PieChartOutlined,
+  ArrowLeftOutlined,
+  ArrowRightOutlined,
+  SearchOutlined,
+  CalendarOutlined,
+  AuditOutlined,
+  SafetyCertificateOutlined,
+  AppstoreOutlined,
 } from "@ant-design/icons";
 import {
   BarChart,
@@ -75,9 +85,139 @@ const CHART_COLORS = [
   "#2f54eb",
 ];
 
+interface ReportCatalogItem {
+  key: ActiveReportKey;
+  title: string;
+  description: string;
+  category: "Timesheet & Worklogs" | "Attendance & Leave" | "Projects & Financials" | "Analytics & Dashboards";
+  icon: React.ReactNode;
+  iconBg: string;
+  iconColor: string;
+  tag: string;
+  tagColor: string;
+  badge?: string;
+}
+
+const REPORT_CATALOG: ReportCatalogItem[] = [
+  {
+    key: "worklog",
+    title: "Worklog Sheet",
+    description: "Detailed employee timesheets, completed tasks, logged hours, billable time, and work descriptions.",
+    category: "Timesheet & Worklogs",
+    icon: <ClockCircleOutlined style={{ fontSize: 20, color: "#1677ff" }} />,
+    iconBg: "bg-blue-50 border border-blue-100",
+    iconColor: "#1677ff",
+    tag: "Timesheets",
+    tagColor: "blue",
+  },
+  {
+    key: "reconciliation",
+    title: "Discrepancy Audit",
+    description: "Side-by-side reconciliation audit comparing office attendance hours against logged worklog hours.",
+    category: "Timesheet & Worklogs",
+    icon: <AuditOutlined style={{ fontSize: 20, color: "#fa8c16" }} />,
+    iconBg: "bg-amber-50 border border-amber-100",
+    iconColor: "#fa8c16",
+    tag: "Audit & Variance",
+    tagColor: "warning",
+  },
+  {
+    key: "attendance",
+    title: "Attendance Sheet",
+    description: "Office entry and exit registers, check-in and check-out timestamps, working durations, and attendance remarks.",
+    category: "Attendance & Leave",
+    icon: <CalendarOutlined style={{ fontSize: 20, color: "#52c41a" }} />,
+    iconBg: "bg-emerald-50 border border-emerald-100",
+    iconColor: "#52c41a",
+    tag: "Attendance",
+    tagColor: "success",
+  },
+  {
+    key: "leave",
+    title: "Leave & Absence Sheet",
+    description: "Comprehensive employee leave register, leave types (sick, casual, annual), approval states, and absence history.",
+    category: "Attendance & Leave",
+    icon: <SafetyCertificateOutlined style={{ fontSize: 20, color: "#eb2f96" }} />,
+    iconBg: "bg-pink-50 border border-pink-100",
+    iconColor: "#eb2f96",
+    tag: "Absence Log",
+    tagColor: "magenta",
+  },
+  {
+    key: "project",
+    title: "Project Progress & Cost",
+    description: "Project budget tracking, estimated vs actual hours, team allocation, progress metrics, and cost variance.",
+    category: "Projects & Financials",
+    icon: <ProjectOutlined style={{ fontSize: 20, color: "#722ed1" }} />,
+    iconBg: "bg-purple-50 border border-purple-100",
+    iconColor: "#722ed1",
+    tag: "Delivery & Budget",
+    tagColor: "purple",
+  },
+  {
+    key: "analytics",
+    title: "Visual Analytics Dashboard",
+    description: "Interactive visual charts, team workload distribution, productivity trends, delivery rates, and high-level KPI metrics.",
+    category: "Analytics & Dashboards",
+    icon: <BarChartOutlined style={{ fontSize: 20, color: "#13c2c2" }} />,
+    iconBg: "bg-cyan-50 border border-cyan-100",
+    iconColor: "#13c2c2",
+    tag: "Interactive Charts",
+    tagColor: "cyan",
+    badge: "Live Metrics",
+  },
+];
+
 const ReportsPage: React.FC = () => {
   const { isMobile } = useIsMobile();
-  const [viewMode, setViewMode] = useState<"generator" | "analytics">("generator");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const reportParam = searchParams.get("report") as ActiveReportKey | null;
+  const [selectedReport, setSelectedReport] = useState<ActiveReportKey | null>(reportParam);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  useEffect(() => {
+    setSelectedReport(reportParam);
+  }, [reportParam]);
+
+  const handleSelectReport = (key: ActiveReportKey | null) => {
+    setSelectedReport(key);
+    if (key) {
+      setSearchParams({ report: key });
+    } else {
+      setSearchParams({});
+    }
+  };
+
+  const groupedReports = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    const filtered = REPORT_CATALOG.filter((item) => {
+      if (!query) return true;
+      return (
+        item.title.toLowerCase().includes(query) ||
+        item.description.toLowerCase().includes(query) ||
+        item.category.toLowerCase().includes(query) ||
+        item.tag.toLowerCase().includes(query)
+      );
+    });
+
+    const groups: { category: ReportCatalogItem["category"]; items: ReportCatalogItem[] }[] = [];
+    const categoryOrder: ReportCatalogItem["category"][] = [
+      "Timesheet & Worklogs",
+      "Attendance & Leave",
+      "Projects & Financials",
+      "Analytics & Dashboards",
+    ];
+
+    categoryOrder.forEach((cat) => {
+      const items = filtered.filter((i) => i.category === cat);
+      if (items.length > 0) {
+        groups.push({ category: cat, items });
+      }
+    });
+
+    return groups;
+  }, [searchQuery]);
+
   const [activeTab, setActiveTab] = useState("worklog");
   const [selectedProjectId, setSelectedProjectId] = useState<string>("all");
   const [selectedUserId, setSelectedUserId] = useState<string>("all");
@@ -540,7 +680,7 @@ const ReportsPage: React.FC = () => {
           "Task Name": item.taskName,
           "Task Code": item.taskCode,
           "Task Status": item.taskStatus,
-          "Work Description": item.description,
+          "Work Description": stripHtml(item.description),
           "Start Time": item.startTime,
           "End Time": item.endTime,
           "Logged Hours (hrs)": item.loggedHours,
@@ -722,7 +862,9 @@ const ReportsPage: React.FC = () => {
         )}
 
         {record.description && record.description !== "-" && (
-          <p className="text-xs text-gray-600 mb-2 line-clamp-2">{record.description}</p>
+          <div className="mb-2">
+            <FormattedWorklogDescription content={record.description} />
+          </div>
         )}
 
         <div className="flex justify-between items-center pt-2 border-t border-gray-50 text-xs">
@@ -817,75 +959,141 @@ const ReportsPage: React.FC = () => {
     </div>
   );
 
-  return (
-    <div className="pb-16 sm:pb-0 px-2 sm:px-0">
-      {/* Top Breadcrumb Navigation & View Mode Switcher */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          flexWrap: "wrap",
-          gap: 12,
-          marginBottom: 18,
-        }}
-      >
-        <Breadcrumb
-          items={[
-            { title: "Home" },
-            { title: "Reports & Analytics" },
-            { title: viewMode === "generator" ? "Report Generation Studio" : "Visual Analytics Dashboard" },
-          ]}
-        />
+  // 1. If no report is selected, show the Card-style Grouped Catalog View!
+  if (!selectedReport) {
+    return (
+      <div className="pb-16 sm:pb-0 px-2 sm:px-0">
+        {/* Top Header */}
+        <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-slate-800 m-0 tracking-tight">
+              Reports & Analytics Hub
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-500 m-0 mt-1">
+              Select a report type or visual dashboard to review records, inspect performance metrics, and export data.
+            </p>
+          </div>
+          <div className="w-full sm:w-72">
+            <Input
+              prefix={<SearchOutlined className="text-slate-400" />}
+              placeholder="Search reports or dashboards..."
+              allowClear
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="rounded-lg shadow-2xs"
+            />
+          </div>
+        </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <Segmented
-            size="middle"
-            value={viewMode}
-            onChange={(val) => setViewMode(val as "generator" | "analytics")}
-            options={[
-              {
-                label: (
-                  <span style={{ padding: "0 6px", display: "inline-flex", alignItems: "center", gap: 6, fontWeight: 500 }}>
-                    <FileTextOutlined style={{ color: "#1677ff" }} />
-                    Report Generation Studio
-                  </span>
-                ),
-                value: "generator",
-              },
-              {
-                label: (
-                  <span style={{ padding: "0 6px", display: "inline-flex", alignItems: "center", gap: 6, fontWeight: 500 }}>
-                    <BarChartOutlined style={{ color: "#52c41a" }} />
-                    Visual Analytics Dashboard
-                  </span>
-                ),
-                value: "analytics",
-              },
-            ]}
-          />
-
-          {!isMobile && viewMode === "analytics" && (
-            <Button
-              type="primary"
-              icon={<FileExcelOutlined style={{ color: "#ffffff" }} />}
-              onClick={handleExportExcel}
-              style={{
-                borderRadius: "6px",
-                backgroundColor: "#21a366",
-                borderColor: "#21a366",
-              }}
-            >
-              Export Report Excel
-            </Button>
+        {/* Grouped Report Cards */}
+        <div className="space-y-7">
+          {groupedReports.map((group) => (
+            <div key={group.category}>
+              <div className="flex items-center gap-2 mb-3.5 pb-1.5 border-b border-slate-200">
+                <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">
+                  {group.category}
+                </span>
+                <span className="text-[11px] font-semibold text-slate-400 bg-slate-100 rounded-full px-2 py-0.5">
+                  {group.items.length} {group.items.length === 1 ? "Report" : "Reports"}
+                </span>
+              </div>
+              <Row gutter={[16, 16]}>
+                {group.items.map((item) => (
+                  <Col xs={24} sm={12} lg={8} key={item.key}>
+                    <div
+                      onClick={() => handleSelectReport(item.key)}
+                      className="h-full bg-white border border-slate-200/90 rounded-xl p-5 hover:border-blue-400 hover:shadow-md transition-all duration-200 cursor-pointer flex flex-col justify-between group shadow-2xs"
+                    >
+                      <div>
+                        <div className="flex items-start justify-between gap-2 mb-3">
+                          <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${item.iconBg}`}>
+                            {item.icon}
+                          </div>
+                          <Tag color={item.tagColor} className="m-0 rounded-full px-2.5 py-0.5 text-[11px] font-medium border-0">
+                            {item.tag}
+                          </Tag>
+                        </div>
+                        <h3 className="text-base font-semibold text-slate-800 group-hover:text-blue-600 transition-colors mb-1.5 flex items-center justify-between">
+                          <span>{item.title}</span>
+                          <ArrowRightOutlined className="text-slate-300 group-hover:text-blue-600 group-hover:translate-x-1 transition-all text-xs" />
+                        </h3>
+                        <p className="text-xs text-slate-500 leading-relaxed mb-4">
+                          {item.description}
+                        </p>
+                      </div>
+                      <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-blue-600">
+                        <span>{item.key === "analytics" ? "Open Visual Dashboard" : "Generate Report Sheet"}</span>
+                        <span className="text-slate-400 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-transform font-bold">→</span>
+                      </div>
+                    </div>
+                  </Col>
+                ))}
+              </Row>
+            </div>
+          ))}
+          {groupedReports.length === 0 && (
+            <div className="text-center py-12 bg-white rounded-xl border border-slate-200">
+              <p className="text-sm text-slate-500 m-0">No reports matched your search keyword.</p>
+              <Button type="link" onClick={() => setSearchQuery("")} className="mt-2 text-xs">
+                Clear Search
+              </Button>
+            </div>
           )}
         </div>
       </div>
+    );
+  }
 
-      {viewMode === "generator" ? (
-        <ReportGeneratorStudio />
-      ) : (
-        <>
+  // 2. If a generator report is selected, show ReportGeneratorStudio in detailed view with Back button!
+  if (selectedReport !== "analytics") {
+    return (
+      <div className="pb-16 sm:pb-0 px-2 sm:px-0">
+        <ReportGeneratorStudio
+          initialReportType={selectedReport}
+          onBack={() => handleSelectReport(null)}
+          hideReportTypePicker={true}
+        />
+      </div>
+    );
+  }
+
+  // 3. Otherwise (selectedReport === "analytics"), show Visual Analytics Dashboard with Back button!
+  return (
+    <div className="pb-16 sm:pb-0 px-2 sm:px-0">
+      {/* Top Header Bar with Back Button */}
+      <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+        <div className="flex items-center gap-3">
+          <Button
+            icon={<ArrowLeftOutlined />}
+            onClick={() => handleSelectReport(null)}
+            className="flex items-center justify-center font-medium"
+          >
+            Back to Reports
+          </Button>
+          <div>
+            <h1 className="text-xl font-bold text-slate-800 m-0 leading-tight">
+              Visual Analytics Dashboard
+            </h1>
+            <p className="text-xs text-slate-500 m-0 mt-0.5">
+              Workload distribution, productivity metrics, and project delivery analytics
+            </p>
+          </div>
+        </div>
+        {!isMobile && (
+          <Button
+            type="primary"
+            icon={<FileExcelOutlined style={{ color: "#ffffff" }} />}
+            onClick={handleExportExcel}
+            style={{
+              borderRadius: "6px",
+              backgroundColor: "#21a366",
+              borderColor: "#21a366",
+            }}
+          >
+            Export Report Excel
+          </Button>
+        )}
+      </div>
 
       {/* Header Card */}
       <Card
@@ -1038,9 +1246,9 @@ const ReportsPage: React.FC = () => {
                 showSearch
                 optionFilterProp="children"
                 filterOption={(input, option) =>
-                  String(option?.children ?? "")
+                  String(option?.children ?? option?.value ?? "")
                     .toLowerCase()
-                    .includes(input.toLowerCase())
+                    .includes(input.trim().toLowerCase())
                 }
               >
                 <Select.Option value="all">All Projects</Select.Option>
@@ -1065,9 +1273,9 @@ const ReportsPage: React.FC = () => {
                 showSearch
                 optionFilterProp="children"
                 filterOption={(input, option) =>
-                  String(option?.children ?? "")
+                  String(option?.children ?? option?.value ?? "")
                     .toLowerCase()
-                    .includes(input.toLowerCase())
+                    .includes(input.trim().toLowerCase())
                 }
               >
                 <Select.Option value="all">
@@ -1532,9 +1740,9 @@ const ReportsPage: React.FC = () => {
                           title: "Work Description",
                           dataIndex: "description",
                           key: "description",
-                          ellipsis: { tooltip: true },
+                          width: 260,
                           render: (text: string) => (
-                            <Text style={{ fontSize: 12 }}>{text}</Text>
+                            <FormattedWorklogDescription content={text} />
                           ),
                         },
                         {
@@ -2083,8 +2291,6 @@ const ReportsPage: React.FC = () => {
           ]}
         />
       </Card>
-      </>
-      )}
     </div>
   );
 };

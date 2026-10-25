@@ -251,7 +251,7 @@ const PersonalDetailForm = ({ initialValues, userData }: PersonalDetailFormProps
               <div style={{ padding: "8px 12px", backgroundColor: "#f8fafc", borderRadius: "6px", border: "1px solid #f1f5f9" }}>
                 <div style={{ color: "#64748b", fontSize: "12px", marginBottom: "4px" }}>Status</div>
                 <div style={{ fontWeight: 500 }}>
-                  <Tag color={userData.status === 'active' ? 'green' : 'red'}>{userData.status}</Tag>
+                  <Tag color={userData.status === 'active' ? 'blue' : 'default'}>{userData.status}</Tag>
                 </div>
               </div>
             </Col>

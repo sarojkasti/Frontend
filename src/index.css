@@ -323,6 +323,38 @@ body {
   }
 }
 
+/* ======================================================== */
+/* MODAL VIEWPORT CONTAINMENT & INTERNAL SCROLLING           */
+/* Keeps header and footer pinned; scrolls inside modal body */
+/* ======================================================== */
+.ant-modal:not(.mobile-fullscreen) {
+  max-height: calc(100vh - 48px);
+  padding-bottom: 0;
+}
+
+.ant-modal:not(.mobile-fullscreen) .ant-modal-content {
+  max-height: calc(100vh - 48px);
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+}
+
+.ant-modal:not(.mobile-fullscreen) .ant-modal-header {
+  flex-shrink: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+.ant-modal:not(.mobile-fullscreen) .ant-modal-body {
+  overflow-y: auto !important;
+  flex: 1 1 auto !important;
+  max-height: calc(100vh - 170px) !important;
+}
+
+.ant-modal:not(.mobile-fullscreen) .ant-modal-footer {
+  flex-shrink: 0 !important;
+  margin-top: 0 !important;
+}
+
 
 /* Target Notification Highlight Styles */
 @keyframes highlightTargetPulse {

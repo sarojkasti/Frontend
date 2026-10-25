@@ -1,5 +1,5 @@
 .todo-task-container {
-    padding: 1rem;
+    padding: 0;
 }
 
 .todo-task-badge {
@@ -46,12 +46,4 @@
 
 .status-tabs .ant-tabs-nav {
     margin-bottom: 16px;
-}
-
-.status-tabs .ant-tabs-tab {
-    padding: 8px 16px;
-}
-
-.status-tabs {
-    margin-bottom: 24px;
 }

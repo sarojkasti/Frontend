@@ -9,6 +9,7 @@ import {
   Space,
   Radio,
   Tag,
+  Tooltip,
   Typography,
   Badge,
   Popover,
@@ -50,6 +51,7 @@ interface ReportFilterControlsProps {
   projects: Array<{ id: string; name: string; code?: string }>;
   allColumns: ReportColumnConfig[];
   recordCount: number;
+  hideReportTypePicker?: boolean;
 }
 
 export const ReportFilterControls: React.FC<ReportFilterControlsProps> = ({
@@ -63,6 +65,7 @@ export const ReportFilterControls: React.FC<ReportFilterControlsProps> = ({
   projects,
   allColumns,
   recordCount,
+  hideReportTypePicker = false,
 }) => {
   // Preset handlers
   const handleDatePreset = (preset: DatePreset) => {
@@ -133,6 +136,58 @@ export const ReportFilterControls: React.FC<ReportFilterControlsProps> = ({
     return cats;
   }, [allColumns]);
 
+  // Memoized employee options sorted with selected on top
+  const employeeOptions = useMemo(() => {
+    const selectedIds = new Set(filters.userIds || []);
+
+    const sortedUsers = [...users].sort((a, b) => {
+      const aSelected = selectedIds.has(a.id);
+      const bSelected = selectedIds.has(b.id);
+      if (aSelected && !bSelected) return -1;
+      if (!aSelected && bSelected) return 1;
+      return (a.name || "").localeCompare(b.name || "");
+    });
+
+    return sortedUsers.map((u) => {
+      const isSelected = selectedIds.has(u.id);
+      return {
+        value: u.id,
+        tagLabel: u.name,
+        searchValue: `${u.name} ${u.email || ""}`,
+        label: (
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              width: "100%",
+            }}
+          >
+            <span
+              style={{
+                fontWeight: isSelected ? 600 : 400,
+                color: isSelected ? "#1677ff" : "inherit",
+              }}
+            >
+              {u.name}
+            </span>
+            {u.email && (
+              <span
+                style={{
+                  fontSize: 11,
+                  color: isSelected ? "#60a5fa" : "#94a3b8",
+                  marginLeft: 8,
+                }}
+              >
+                {u.email}
+              </span>
+            )}
+          </div>
+        ),
+      };
+    });
+  }, [users, filters.userIds]);
+
   const columnSelectorPopover = (
     <div style={{ width: 340, maxHeight: 420, overflowY: "auto", padding: "8px 4px" }}>
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
@@ -201,84 +256,88 @@ export const ReportFilterControls: React.FC<ReportFilterControlsProps> = ({
       bodyStyle={{ padding: "20px 24px" }}
     >
       {/* 1. Report Type Picker */}
-      <div style={{ marginBottom: 18 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-          <Text strong style={{ fontSize: 14, color: "#1e293b" }}>
-            <FileTextOutlined style={{ marginRight: 8, color: "#1677ff" }} />
-            Select Report Type
-          </Text>
-          <Tag color="blue" style={{ borderRadius: 12, padding: "2px 10px", fontSize: 11 }}>
-            {recordCount} Records Available
-          </Tag>
-        </div>
+      {!hideReportTypePicker && (
+        <>
+          <div style={{ marginBottom: 18 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+              <Text strong style={{ fontSize: 14, color: "#1e293b" }}>
+                <FileTextOutlined style={{ marginRight: 8, color: "#1677ff" }} />
+                Select Report Type
+              </Text>
+              <Tag color="blue" style={{ borderRadius: 12, padding: "2px 10px", fontSize: 11 }}>
+                {recordCount} Records Available
+              </Tag>
+            </div>
 
-        <Row gutter={[12, 12]}>
-          {[
-            {
-              key: "worklog",
-              title: "Worklog Sheet",
-              desc: "Timesheets, tasks, logged hours & work descriptions",
-              icon: <ClockCircleOutlined style={{ fontSize: 18, color: "#1677ff" }} />,
-            },
-            {
-              key: "attendance",
-              title: "Attendance Sheet",
-              desc: "Office register, clock in/out, duration & remarks",
-              icon: <CalendarOutlined style={{ fontSize: 18, color: "#52c41a" }} />,
-            },
-            {
-              key: "reconciliation",
-              title: "Discrepancy Audit",
-              desc: "Side-by-side attendance vs worklog hours comparison",
-              icon: <AuditOutlined style={{ fontSize: 18, color: "#fa8c16" }} />,
-            },
-            {
-              key: "project",
-              title: "Project Progress & Cost",
-              desc: "Budget variance, estimated vs actual hours & progress",
-              icon: <ProjectOutlined style={{ fontSize: 18, color: "#722ed1" }} />,
-            },
-            {
-              key: "leave",
-              title: "Leave & Absence Sheet",
-              desc: "Leaves taken, leave types, approvals & absence log",
-              icon: <SafetyCertificateOutlined style={{ fontSize: 18, color: "#eb2f96" }} />,
-            },
-          ].map((item) => {
-            const isSelected = filters.reportType === item.key;
-            return (
-              <Col xs={24} sm={12} md={8} lg={item.key === "leave" ? 4 : 5} key={item.key}>
-                <div
-                  onClick={() => onFilterChange("reportType", item.key as ReportType)}
-                  style={{
-                    padding: "12px 14px",
-                    borderRadius: "8px",
-                    cursor: "pointer",
-                    border: isSelected ? "2px solid #1677ff" : "1px solid #e2e8f0",
-                    backgroundColor: isSelected ? "#f0f7ff" : "#ffffff",
-                    transition: "all 0.2s ease",
-                    display: "flex",
-                    flexDirection: "column",
-                    height: "100%",
-                  }}
-                >
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-                    {item.icon}
-                    <Text strong style={{ fontSize: 13, color: isSelected ? "#1677ff" : "#1e293b" }}>
-                      {item.title}
-                    </Text>
-                  </div>
-                  <Text type="secondary" style={{ fontSize: 11, lineHeight: "1.3" }}>
-                    {item.desc}
-                  </Text>
-                </div>
-              </Col>
-            );
-          })}
-        </Row>
-      </div>
+            <Row gutter={[12, 12]}>
+              {[
+                {
+                  key: "worklog",
+                  title: "Worklog Sheet",
+                  desc: "Timesheets, tasks, logged hours & work descriptions",
+                  icon: <ClockCircleOutlined style={{ fontSize: 18, color: "#1677ff" }} />,
+                },
+                {
+                  key: "attendance",
+                  title: "Attendance Sheet",
+                  desc: "Office register, clock in/out, duration & remarks",
+                  icon: <CalendarOutlined style={{ fontSize: 18, color: "#52c41a" }} />,
+                },
+                {
+                  key: "reconciliation",
+                  title: "Discrepancy Audit",
+                  desc: "Side-by-side attendance vs worklog hours comparison",
+                  icon: <AuditOutlined style={{ fontSize: 18, color: "#fa8c16" }} />,
+                },
+                {
+                  key: "project",
+                  title: "Project Progress & Cost",
+                  desc: "Budget variance, estimated vs actual hours & progress",
+                  icon: <ProjectOutlined style={{ fontSize: 18, color: "#722ed1" }} />,
+                },
+                {
+                  key: "leave",
+                  title: "Leave & Absence Sheet",
+                  desc: "Leaves taken, leave types, approvals & absence log",
+                  icon: <SafetyCertificateOutlined style={{ fontSize: 18, color: "#eb2f96" }} />,
+                },
+              ].map((item) => {
+                const isSelected = filters.reportType === item.key;
+                return (
+                  <Col xs={24} sm={12} md={8} lg={item.key === "leave" ? 4 : 5} key={item.key}>
+                    <div
+                      onClick={() => onFilterChange("reportType", item.key as ReportType)}
+                      style={{
+                        padding: "12px 14px",
+                        borderRadius: "8px",
+                        cursor: "pointer",
+                        border: isSelected ? "2px solid #1677ff" : "1px solid #e2e8f0",
+                        backgroundColor: isSelected ? "#f0f7ff" : "#ffffff",
+                        transition: "all 0.2s ease",
+                        display: "flex",
+                        flexDirection: "column",
+                        height: "100%",
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
+                        {item.icon}
+                        <Text strong style={{ fontSize: 13, color: isSelected ? "#1677ff" : "#1e293b" }}>
+                          {item.title}
+                        </Text>
+                      </div>
+                      <Text type="secondary" style={{ fontSize: 11, lineHeight: "1.3" }}>
+                        {item.desc}
+                      </Text>
+                    </div>
+                  </Col>
+                );
+              })}
+            </Row>
+          </div>
 
-      <Divider style={{ margin: "16px 0" }} />
+          <Divider style={{ margin: "16px 0" }} />
+        </>
+      )}
 
       {/* 2. Date Filter Row */}
       <div style={{ marginBottom: 18 }}>
@@ -362,6 +421,13 @@ export const ReportFilterControls: React.FC<ReportFilterControlsProps> = ({
             value={filters.departmentId}
             onChange={(val) => onFilterChange("departmentId", val)}
             allowClear
+            showSearch
+            optionFilterProp="label"
+            filterOption={(input, option) =>
+              String(option?.label ?? "")
+                .toLowerCase()
+                .includes(input.trim().toLowerCase())
+            }
             options={[
               { value: "all", label: "All Departments" },
               ...departments.map((d) => ({ value: d.id, label: d.name })),
@@ -379,15 +445,84 @@ export const ReportFilterControls: React.FC<ReportFilterControlsProps> = ({
           <Select
             mode="multiple"
             maxTagCount="responsive"
+            optionLabelProp="tagLabel"
             style={{ width: "100%" }}
             placeholder="All Employees"
             value={filters.userIds}
             onChange={(val) => onFilterChange("userIds", val)}
             allowClear
-            options={users.map((u) => ({
-              value: u.id,
-              label: `${u.name}${u.email ? ` (${u.email})` : ""}`,
-            }))}
+            showSearch
+            optionFilterProp="searchValue"
+            filterOption={(input, option) => {
+              const search = input.trim().toLowerCase();
+              if (!search) return true;
+              const text = String((option as any)?.searchValue || (option as any)?.tagLabel || "").toLowerCase();
+              return text.includes(search);
+            }}
+            tagRender={(tagProps) => {
+              const { label, closable, onClose } = tagProps;
+              const onPreventMouseDown = (event: React.MouseEvent<HTMLSpanElement>) => {
+                event.preventDefault();
+                event.stopPropagation();
+              };
+              return (
+                <Tag
+                  closable={closable}
+                  onClose={onClose}
+                  onMouseDown={onPreventMouseDown}
+                  style={{
+                    marginRight: 3,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    maxWidth: 130,
+                    fontSize: 12,
+                    borderRadius: 4,
+                    padding: "0 6px",
+                    lineHeight: "20px",
+                  }}
+                >
+                  <span
+                    style={{
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {label}
+                  </span>
+                </Tag>
+              );
+            }}
+            maxTagPlaceholder={(omittedValues) => (
+              <Tooltip
+                title={
+                  <div style={{ maxHeight: 200, overflowY: "auto", fontSize: 12, padding: "2px 4px" }}>
+                    {omittedValues.map((item, idx) => (
+                      <div key={idx} style={{ padding: "2px 0" }}>
+                        {(item as any)?.tagLabel || item.label || item.value}
+                      </div>
+                    ))}
+                  </div>
+                }
+              >
+                <Tag
+                  style={{
+                    marginRight: 0,
+                    backgroundColor: "#f1f5f9",
+                    borderColor: "#cbd5e1",
+                    color: "#475569",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    borderRadius: 4,
+                    padding: "0 6px",
+                    lineHeight: "20px",
+                  }}
+                >
+                  +{omittedValues.length}
+                </Tag>
+              </Tooltip>
+            )}
+            options={employeeOptions}
           />
         </Col>
 
@@ -405,6 +540,13 @@ export const ReportFilterControls: React.FC<ReportFilterControlsProps> = ({
               value={filters.projectId}
               onChange={(val) => onFilterChange("projectId", val)}
               allowClear
+              showSearch
+              optionFilterProp="label"
+              filterOption={(input, option) =>
+                String(option?.label ?? "")
+                  .toLowerCase()
+                  .includes(input.trim().toLowerCase())
+              }
               options={[
                 { value: "all", label: "All Projects" },
                 ...projects.map((p) => ({
@@ -427,6 +569,13 @@ export const ReportFilterControls: React.FC<ReportFilterControlsProps> = ({
             style={{ width: "100%" }}
             value={filters.status}
             onChange={(val) => onFilterChange("status", val)}
+            showSearch
+            optionFilterProp="label"
+            filterOption={(input, option) =>
+              String(option?.label ?? "")
+                .toLowerCase()
+                .includes(input.trim().toLowerCase())
+            }
             options={[
               { value: "all", label: "All Statuses" },
               { value: "approved", label: "Approved Only" },
@@ -447,6 +596,13 @@ export const ReportFilterControls: React.FC<ReportFilterControlsProps> = ({
             style={{ width: "100%" }}
             value={filters.detailMode}
             onChange={(val) => onFilterChange("detailMode", val as DetailMode)}
+            showSearch
+            optionFilterProp="label"
+            filterOption={(input, option) =>
+              String(option?.label ?? "")
+                .toLowerCase()
+                .includes(input.trim().toLowerCase())
+            }
             options={[
               { value: "detailed", label: "Detailed Itemized Sheet" },
               { value: "summary_employee", label: "Summary by Employee" },
