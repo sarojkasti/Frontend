@@ -25,6 +25,7 @@ const Perimssion = () => {
     <>
       <PageTitle
         title="Permissions"
+        backUrl="/settings"
         element={
           <Button
             type="primary"

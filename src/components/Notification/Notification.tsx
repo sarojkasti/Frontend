@@ -3,11 +3,12 @@ import useNotificationRead from "@/hooks/notification/useNotificationRead";
 import useMarkAllAsReadByType from "@/hooks/notification/useMarkAllAsReadByType";
 import { calculateDays } from "@/utils/calculateDays";
 import { NotificationType } from "@/types/notification";
-import { List, Badge, Tabs, Space, Tag, Card, Divider, Button } from "antd";
+import { List, Badge, Tabs, Space, Tag, Card, Divider, Button, Modal, Input, message } from "antd";
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { useSocket } from "@/context/SocketContext";
+import { useWebPushNotifications } from "@/hooks/useWebPushNotifications";
 import { notification as antdNotification } from "antd";
 import { 
     ClockCircleOutlined, 
@@ -16,7 +17,10 @@ import {
     ProjectOutlined,
     ArrowLeftOutlined,
     AppstoreOutlined,
-    CheckOutlined
+    CheckOutlined,
+    BellOutlined,
+    SettingOutlined,
+    CopyOutlined
 } from "@ant-design/icons";
 
 // Replace with your actual user ID retrieval logic
@@ -96,6 +100,7 @@ const Notification: React.FC<NotificationProps> = ({ onItemClick }) => {
     const { mutateAsync: markAllAsRead } = useMarkAllAsReadByType();
     const { socket } = useSocket();
     const [activeTab, setActiveTab] = useState("unread");
+    const { pushSupported, isPushSubscribed, pushLoading, handleTogglePush, isBrave, showBraveModal, setShowBraveModal } = useWebPushNotifications();
 
     // Deduplicate notification toasts by notification ID
     const shownToastIds = new Set<string>();
@@ -140,6 +145,28 @@ const Notification: React.FC<NotificationProps> = ({ onItemClick }) => {
                     placement: "top",
                 });
             }
+            // Trigger native OS desktop notification if window is minimized or user is on another tab
+            if (
+                typeof window !== 'undefined' &&
+                'Notification' in window &&
+                window.Notification.permission === 'granted' &&
+                document.visibilityState !== 'visible'
+            ) {
+                try {
+                    const osNotif = new window.Notification('Artha', {
+                        body: data?.message || 'You have a new update in Artha.',
+                        icon: '/logo.svg',
+                        tag: toastId,
+                    });
+                    osNotif.onclick = () => {
+                        window.focus();
+                        handleNotificationClick(data);
+                    };
+                } catch (e) {
+                    // Ignore desktop notification error
+                }
+            }
+
             refetch();
             // If notification is for worklog request, approval, or rejection, trigger worklog table refresh
             if (
@@ -586,14 +613,191 @@ const Notification: React.FC<NotificationProps> = ({ onItemClick }) => {
     ];
 
     return (
-        <Tabs
-            activeKey={activeTab}
-            onChange={(key) => {
-                setActiveTab(key);
-                setSelectedType(undefined);
-            }}
-            items={items}
-        />
+        <div>
+            {!isPushSubscribed && pushSupported && (
+                <div style={{
+                    padding: '10px 14px',
+                    background: '#f0f5ff',
+                    border: '1px solid #adc6ff',
+                    borderRadius: '8px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '8px',
+                    marginBottom: '14px',
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <BellOutlined style={{ color: '#2f54eb', fontSize: '16px' }} />
+                        <div>
+                            <div style={{ fontSize: '12px', fontWeight: 600, color: '#1d39c4' }}>
+                                Background Notifications
+                            </div>
+                            <div style={{ fontSize: '11px', color: '#595959' }}>
+                                Receive alerts even when Artha is closed.
+                            </div>
+                        </div>
+                    </div>
+                    <Button
+                        type="primary"
+                        size="small"
+                        loading={pushLoading}
+                        onClick={handleTogglePush}
+                        style={{ fontSize: '11px', borderRadius: '4px' }}
+                    >
+                        Enable
+                    </Button>
+                </div>
+            )}
+            <Tabs
+                activeKey={activeTab}
+                onChange={(key) => {
+                    setActiveTab(key);
+                    setSelectedType(undefined);
+                }}
+                items={items}
+            />
+
+            {/* Brave Setup Guide Modal - ONLY for Brave browser */}
+            {isBrave && (
+                <Modal
+                    title={
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <SettingOutlined style={{ color: '#fa8c16', fontSize: '18px' }} />
+                            <span style={{ fontSize: '16px', fontWeight: 600 }}>Enable Background Notifications in Brave</span>
+                        </div>
+                    }
+                    open={showBraveModal}
+                    onCancel={() => setShowBraveModal(false)}
+                    footer={[
+                        <Button key="close" onClick={() => setShowBraveModal(false)}>
+                            Close
+                        </Button>,
+                        <Button
+                            key="retry"
+                            type="primary"
+                            loading={pushLoading}
+                            onClick={async () => {
+                                setShowBraveModal(false);
+                                await handleTogglePush();
+                            }}
+                        >
+                            Check & Enable Again
+                        </Button>,
+                    ]}
+                    width={560}
+                >
+                    <div style={{ padding: '8px 0' }}>
+                        <div style={{
+                            background: '#e6f7ff',
+                            border: '1px solid #91d5ff',
+                            padding: '12px 16px',
+                            borderRadius: '6px',
+                            fontSize: '13px',
+                            color: '#0050b3',
+                            marginBottom: '16px',
+                            lineHeight: 1.5,
+                        }}>
+                            ℹ️ <b>Browser Security Notice:</b> For security, browsers prevent websites from directly opening internal <code>brave://</code> links automatically. We&apos;ve copied the settings address to your clipboard!
+                        </div>
+
+                        <div style={{ marginBottom: '16px' }}>
+                            <div style={{ fontSize: '13px', fontWeight: 600, marginBottom: '6px', color: '#262626' }}>
+                                Settings Address:
+                            </div>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                                <Input
+                                    value="brave://settings/privacy"
+                                    readOnly
+                                    style={{ background: '#f5f5f5', fontFamily: 'monospace' }}
+                                />
+                                <Button
+                                    type="primary"
+                                    icon={<CopyOutlined />}
+                                    onClick={() => {
+                                        navigator.clipboard.writeText('brave://settings/privacy');
+                                        message.success('Settings link copied to clipboard!');
+                                    }}
+                                >
+                                    Copy Link
+                                </Button>
+                                <Button
+                                    onClick={() => {
+                                        try {
+                                            window.open('brave://settings/privacy', '_blank');
+                                        } catch (e) {}
+                                    }}
+                                >
+                                    Try Open
+                                </Button>
+                            </div>
+                        </div>
+
+                        <div style={{ fontSize: '13px', fontWeight: 600, marginBottom: '10px', color: '#262626' }}>
+                            Quick 3-Step Setup:
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                                <span style={{
+                                    width: '24px',
+                                    height: '24px',
+                                    borderRadius: '50%',
+                                    background: '#1677ff',
+                                    color: '#fff',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    fontSize: '12px',
+                                    fontWeight: 'bold',
+                                    flexShrink: 0,
+                                }}>1</span>
+                                <div style={{ fontSize: '13px', color: '#595959', lineHeight: 1.5 }}>
+                                    Open a new tab with <kbd style={{ background: '#f0f0f0', padding: '2px 6px', borderRadius: '4px', border: '1px solid #d9d9d9' }}>Ctrl</kbd> + <kbd style={{ background: '#f0f0f0', padding: '2px 6px', borderRadius: '4px', border: '1px solid #d9d9d9' }}>T</kbd> (or <kbd style={{ background: '#f0f0f0', padding: '2px 6px', borderRadius: '4px', border: '1px solid #d9d9d9' }}>Cmd</kbd> + <kbd style={{ background: '#f0f0f0', padding: '2px 6px', borderRadius: '4px', border: '1px solid #d9d9d9' }}>T</kbd> on Mac).
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                                <span style={{
+                                    width: '24px',
+                                    height: '24px',
+                                    borderRadius: '50%',
+                                    background: '#1677ff',
+                                    color: '#fff',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    fontSize: '12px',
+                                    fontWeight: 'bold',
+                                    flexShrink: 0,
+                                }}>2</span>
+                                <div style={{ fontSize: '13px', color: '#595959', lineHeight: 1.5 }}>
+                                    Paste <b><code>brave://settings/privacy</code></b> into the address bar and press <kbd style={{ background: '#f0f0f0', padding: '2px 6px', borderRadius: '4px', border: '1px solid #d9d9d9' }}>Enter</kbd>.
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                                <span style={{
+                                    width: '24px',
+                                    height: '24px',
+                                    borderRadius: '50%',
+                                    background: '#1677ff',
+                                    color: '#fff',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    fontSize: '12px',
+                                    fontWeight: 'bold',
+                                    flexShrink: 0,
+                                }}>3</span>
+                                <div style={{ fontSize: '13px', color: '#595959', lineHeight: 1.5 }}>
+                                    Scroll down to <b>&quot;Use Google services for push messaging&quot;</b> and toggle it <b>ON</b>. Then click the blue <b>&quot;Relaunch&quot;</b> button that appears.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </Modal>
+            )}
+        </div>
     );
 };
 

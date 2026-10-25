@@ -152,8 +152,10 @@ const TaskTypeSettings = () => {
                 <Space>
                     <Button 
                         icon={<ArrowLeftOutlined />} 
-                        onClick={() => navigate('/todotask')}
-                    />
+                        onClick={() => navigate('/settings')}
+                    >
+                        Back to Settings
+                    </Button>
                     <Title level={4} style={{ margin: 0 }}>Task Settings</Title>
                 </Space>
             }

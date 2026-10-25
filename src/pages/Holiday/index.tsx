@@ -7,7 +7,7 @@ import HolidayForm from "../../components/Holiday/HolidayForm";
 const HolidayPage: React.FC = () => {
   return (
     <div>
-      <PageTitle title="Holiday Management" />
+      <PageTitle title="Holiday Management" backUrl="/settings" />
 
       <Row gutter={[16, 16]}>
         <Col xs={24}>

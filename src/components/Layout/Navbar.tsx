@@ -1,4 +1,5 @@
 import { useSession } from "@/context/SessionContext";
+import { BackgroundAlertsStatus } from "@/components/Notification/BackgroundAlertsStatus";
 import { useLogout } from "@/hooks/auth/useLogout";
 import { useMyNotifications } from "@/hooks/notification/useMyNotifications";
 import useIsMobile from "@/hooks/useIsMobile";
@@ -126,15 +127,18 @@ const Navbar = ({
           width={isMobile ? "100%" : 360}
           className="notification-drawer"
           title={
-            <div className="flex items-center justify-between w-full">
-              <span className="text-base font-semibold text-gray-800">Notifications</span>
-              <Button
+            <div className="flex items-center justify-between w-full pr-1">
+              <span className="text-base font-semibold text-gray-800 flex-shrink-0" style={{ minWidth: 95 }}>Notifications</span>
+              <div className="flex items-center gap-2">
+                <BackgroundAlertsStatus compact />
+                <Button
                 type="text"
                 icon={<CloseOutlined className="text-base text-gray-600 hover:text-gray-900" />}
                 onClick={onClose}
                 className="flex items-center justify-center h-8 w-8 rounded-full hover:bg-gray-100"
                 aria-label="Close notifications"
-              />
+                />
+              </div>
             </div>
           }
         >

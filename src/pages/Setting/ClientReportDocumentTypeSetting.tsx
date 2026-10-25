@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { PowerTable, PowerTableColumn, useColumnVisibility } from "@/components/Table";
 import {
   Card,
@@ -23,6 +24,7 @@ import {
   DeleteOutlined,
   GlobalOutlined,
   UserOutlined,
+  ArrowLeftOutlined,
 } from "@ant-design/icons";
 import {
   useDocumentTypes,
@@ -51,6 +53,7 @@ const { Option } = Select;
 const { TextArea } = Input;
 
 const ClientReportDocumentTypeSetting: React.FC = () => {
+  const navigate = useNavigate();
   const { visibleColumnKeys, columnCustomizer } = useColumnVisibility({
     persistenceKey: "client_report_doc_types",
     columns: CLIENT_REPORT_DOC_TYPE_COLUMNS,
@@ -234,6 +237,14 @@ const ClientReportDocumentTypeSetting: React.FC = () => {
 
   return (
     <div className="p-4">
+      <div className="mb-4">
+        <Button 
+          icon={<ArrowLeftOutlined />} 
+          onClick={() => navigate('/settings')}
+        >
+          Back to Settings
+        </Button>
+      </div>
       <div className="flex justify-between items-center mb-6">
         <div>
           <Title level={3} className="!mb-1">

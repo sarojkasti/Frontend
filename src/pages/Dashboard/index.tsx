@@ -1,4 +1,5 @@
 import Notification from "@/components/Notification/Notification";
+import { BackgroundAlertsStatus } from "@/components/Notification/BackgroundAlertsStatus";
 import { AttendanceDashboard, WorkingTimeDashboard, UserAvailabilityDashboard } from "@/components/Dashboard";
 import { canViewDashboardAttendance, canViewDashboardWorkingTime, canViewUserAvailability } from "@/utils/permissionHelpers";
 import { useSession } from "@/context/SessionContext";
@@ -24,7 +25,8 @@ const Dashboard: React.FC = () => {
         <Col xs={0} lg={7} className="hidden lg:block">
           <Suspense fallback={<Spin size="large" />}>
             <Card 
-              title="Notifications" 
+              title="Notifications"
+              extra={<BackgroundAlertsStatus />}
               style={{ 
                 height: "100%",
                 display: "flex",

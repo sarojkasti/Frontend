@@ -30,6 +30,17 @@ const queryClient = new QueryClient({
   },
 });
 
+// Register Service Worker for Background Web Push notifications
+if ('serviceWorker' in navigator && 'PushManager' in window) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker
+      .register('/sw.js')
+      .catch((err) => {
+        console.warn('Service Worker registration skipped or failed:', err);
+      });
+  });
+}
+
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>

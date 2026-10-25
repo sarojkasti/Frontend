@@ -15,6 +15,7 @@ const RolesPage = () => {
     <>
       <PageTitle
         title="Roles"
+        backUrl="/settings"
         element={
           <Space>
             {columnCustomizer}

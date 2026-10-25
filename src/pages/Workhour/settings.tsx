@@ -14,7 +14,7 @@ const WorkhourSettingsPage: React.FC = () => {
   if (rolesLoading) {
     return (
       <div>
-        <PageTitle title="Work Hour Settings" />
+        <PageTitle title="Work Hour Settings" backUrl="/settings" />
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '200px' }}>
           <Spin size="large" />
         </div>
@@ -25,7 +25,7 @@ const WorkhourSettingsPage: React.FC = () => {
   if (rolesError) {
     return (
       <div>
-        <PageTitle title="Work Hour Settings" />
+        <PageTitle title="Work Hour Settings" backUrl="/settings" />
         <Alert
           message="Error Loading Data"
           description="Failed to load roles data. Please try again."
@@ -41,7 +41,7 @@ const WorkhourSettingsPage: React.FC = () => {
 
   return (
     <div>
-      <PageTitle title="Work Hour Settings" />
+      <PageTitle title="Work Hour Settings" backUrl="/settings" />
       <WorkhourSettings roles={roles} />
     </div>
   );

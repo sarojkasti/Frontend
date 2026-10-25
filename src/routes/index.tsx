@@ -18,6 +18,7 @@ import ProjectSetting from "@/pages/Setting/ProjectSetting";
 import CustomerSetting from "@/pages/Setting/CustomerSetting";
 import DepartmentSetting from "@/pages/Setting/DepartmentSetting";
 import MailSettings from "@/pages/Setting/MailSettings";
+import NotificationSetting from "@/pages/Setting/NotificationSetting";
 import ClientReportDocumentTypeSetting from "@/pages/Setting/ClientReportDocumentTypeSetting";
 import AllTask from "@/pages/Task/all";
 import NewTask from "@/pages/Task/new";
@@ -499,6 +500,10 @@ const Router = [
       {
         path: "/department-setting",
         element: <DepartmentSetting />,
+      },
+      {
+        path: "/notification-settings",
+        element: <NotificationSetting />,
       },
       {
         path: "/mail-settings",
