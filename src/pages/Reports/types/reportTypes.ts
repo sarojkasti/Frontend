@@ -7,7 +7,7 @@ export type ReportType =
   | "project"
   | "leave";
 
-export type ActiveReportKey = ReportType | "analytics";
+export type ActiveReportKey = ReportType | "analytics" | "availability";
 
 export type DatePreset =
   | "today"

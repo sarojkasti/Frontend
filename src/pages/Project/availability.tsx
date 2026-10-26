@@ -1,1 +1,1055 @@
-import { useState, useEffect, useMemo } from 'react';import { Card, Tag, Space, Button, Typography, Row, Col, Spin, Select, DatePicker, Tooltip, Modal, message, Dropdown, Menu } from 'antd';import { UserOutlined, ReloadOutlined, ZoomInOutlined, ZoomOutOutlined, CalendarOutlined, ClockCircleOutlined, DownOutlined } from '@ant-design/icons';import axios from 'axios';import dayjs, { Dayjs } from 'dayjs';import isBetween from 'dayjs/plugin/isBetween';import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';import isSameOrAfter from 'dayjs/plugin/isSameOrAfter';import PageTitle from '@/components/PageTitle';import { DualDateConverter } from '@/utils/dateConverter';dayjs.extend(isBetween);dayjs.extend(isSameOrBefore);dayjs.extend(isSameOrAfter);const { RangePicker } = DatePicker;const { Title, Text } = Typography;const backendURI = import.meta.env.VITE_BACKEND_URI;interface ProjectInfo {  projectId: string;  projectName: string;  assignedDate: string;  plannedReleaseDate: string | null;  isActive: boolean;}interface UserAvailability {  userId: string;  userName: string;  userEmail: string;  role: string;  isAvailable: boolean;  busyUntil: string | null;  currentProjects: ProjectInfo[];}const UserAvailabilityDashboard = () => {  const [loading, setLoading] = useState(false);  const [userAvailability, setUserAvailability] = useState<UserAvailability[]>([]);  const [statusFilter, setStatusFilter] = useState<string>('all');  const [dateRange, setDateRange] = useState<[Dayjs, Dayjs]>([    dayjs().startOf('month'),    dayjs().add(6, 'month').endOf('month')  ]);  const [zoomLevel, setZoomLevel] = useState<number>(7); // Days per column  // Extension modal state  const [extendModalVisible, setExtendModalVisible] = useState(false);  const [selectedExtension, setSelectedExtension] = useState<{    userId: string;    userName: string;    projectId: string;    projectName: string;    currentDate: string | null;  } | null>(null);  const [newPlannedDate, setNewPlannedDate] = useState<Dayjs | null>(null);  const [extending, setExtending] = useState(false);  // Helper function to format date with Nepali  const formatDateWithNepali = (date: Dayjs, format: string = 'MMM DD, YYYY'): string => {    const nepaliDate = DualDateConverter.gregorianToNepali(date);    return `${date.format(format)} (${nepaliDate.format('YYYY-MM-DD', 'np')})`;  };  // Helper function to get short Nepali date  const getShortNepaliDate = (date: Dayjs): string => {    try {      const nepaliDate = DualDateConverter.gregorianToNepali(date);      return nepaliDate.format('YYYY-MM-DD', 'np');    } catch {      return '';    }  };  const fetchUserAvailability = async () => {    setLoading(true);    try {      const response = await axios.get(`${backendURI}/projects/availability/users`, {        headers: {          Authorization: `Bearer ${localStorage.getItem('token')}`        }      });      setUserAvailability(response.data);    } catch (error) {    } finally {      setLoading(false);    }  };  useEffect(() => {    fetchUserAvailability();  }, []);  // Filter users based on status and role  const filteredUsers = useMemo(() => {    return userAvailability.filter(user => {      // Exclude superuser      if (user.role.toLowerCase() === 'superuser') return false;      if (statusFilter === 'all') return true;      if (statusFilter === 'available') return user.isAvailable;      if (statusFilter === 'busy') return !user.isAvailable;      return true;    });  }, [userAvailability, statusFilter]);  // Generate date columns based on zoom level  const dateColumns = useMemo(() => {    const columns: Dayjs[] = [];    const startDate = dateRange[0];    const endDate = dateRange[1];    const daysCount = endDate.diff(startDate, 'day');    for (let i = 0; i <= daysCount; i += zoomLevel) {      columns.push(startDate.add(i, 'day'));    }    return columns;  }, [dateRange, zoomLevel]);  // Generate colors for projects  const projectColors = useMemo(() => {    const colors = [      '#1890ff', '#52c41a', '#faad14', '#f5222d', '#722ed1',      '#13c2c2', '#eb2f96', '#fa8c16', '#a0d911', '#2f54eb',      '#fa541c', '#597ef7', '#73d13d', '#ff85c0', '#ffc53d'    ];    const colorMap: { [key: string]: string } = {};    let colorIndex = 0;    filteredUsers.forEach(user => {      user.currentProjects.forEach(project => {        if (!colorMap[project.projectId]) {          colorMap[project.projectId] = colors[colorIndex % colors.length];          colorIndex++;        }      });    });    return colorMap;  }, [filteredUsers]);  // Get all projects that span across a date range cell  const getProjectsInRange = (user: UserAvailability, startDate: Dayjs, endDate: Dayjs): { active: ProjectInfo[], inactive: ProjectInfo[] } => {    const active: ProjectInfo[] = [];    const inactive: ProjectInfo[] = [];    user.currentProjects.forEach(project => {      const assignedDate = dayjs(project.assignedDate);      const releaseDate = project.plannedReleaseDate         ? dayjs(project.plannedReleaseDate)         : dayjs().add(2, 'year');      // Check if project overlaps with this date range      if (assignedDate.isSameOrBefore(endDate, 'day') && releaseDate.isSameOrAfter(startDate, 'day')) {        if (project.isActive) {          active.push(project);        } else {          inactive.push(project);        }      }    });    return { active, inactive };  };  const availableCount = userAvailability.filter(u => u.isAvailable).length;  const busyCount = userAvailability.filter(u => !u.isAvailable).length;  const handleZoomIn = () => {    setZoomLevel(prev => Math.max(1, prev - 1));  };  const handleZoomOut = () => {    setZoomLevel(prev => Math.min(30, prev + 2));  };  const handleExtendClick = (user: UserAvailability, project: ProjectInfo) => {    setSelectedExtension({      userId: user.userId,      userName: user.userName,      projectId: project.projectId,      projectName: project.projectName,      currentDate: project.plannedReleaseDate    });    setNewPlannedDate(project.plannedReleaseDate ? dayjs(project.plannedReleaseDate) : dayjs().add(1, 'month'));    setExtendModalVisible(true);  };  const handleExtendSubmit = async () => {    if (!selectedExtension || !newPlannedDate) {      message.error('Please select a new date');      return;    }    setExtending(true);    try {      await axios.patch(        `${backendURI}/projects/${selectedExtension.projectId}/users/${selectedExtension.userId}`,        {          plannedReleaseDate: newPlannedDate.format('YYYY-MM-DD')        },        {          headers: {            Authorization: `Bearer ${localStorage.getItem('token')}`          }        }      );      message.success(`Extended ${selectedExtension.userName}'s assignment to ${newPlannedDate.format('MMM DD, YYYY')}`);      setExtendModalVisible(false);      setSelectedExtension(null);      setNewPlannedDate(null);      // Refresh data      fetchUserAvailability();    } catch (error: any) {      message.error(error.response?.data?.message || 'Failed to extend assignment');    } finally {      setExtending(false);    }  };  const handleExtendCancel = () => {    setExtendModalVisible(false);    setSelectedExtension(null);    setNewPlannedDate(null);  };  const cellWidth = 120; // Width of each date cell  const userRowHeight = 60; // Height of each user row  return (    <>      <PageTitle        title="User Availability Timeline"        element={          <Button            icon={<ReloadOutlined />}            onClick={fetchUserAvailability}            loading={loading}          >            Refresh          </Button>        }      />      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>        <Col xs={24} sm={12} md={8}>          <Card>            <Space direction="vertical" size={0}>              <Text type="secondary">Total Users</Text>              <Title level={2} style={{ margin: 0 }}>                <UserOutlined style={{ marginRight: 8 }} />{userAvailability.length}              </Title>            </Space>          </Card>        </Col>        <Col xs={24} sm={12} md={8}>          <Card>            <Space direction="vertical" size={0}>              <Text type="secondary">Available Users</Text>              <Title level={2} style={{ margin: 0, color: '#52c41a' }}>                <UserOutlined style={{ marginRight: 8 }} />{availableCount}              </Title>            </Space>          </Card>        </Col>        <Col xs={24} sm={12} md={8}>          <Card>            <Space direction="vertical" size={0}>              <Text type="secondary">Busy Users</Text>              <Title level={2} style={{ margin: 0, color: '#ff4d4f' }}>                <UserOutlined style={{ marginRight: 8 }} />{busyCount}              </Title>            </Space>          </Card>        </Col>      </Row>      <Card style={{ marginBottom: 16 }}>        <Spin spinning={loading}>          <Space direction="vertical" size="large" style={{ width: '100%' }}>            {/* Controls */}            <Row gutter={[16, 16]} align="middle">              <Col xs={24} sm={12} md={6}>                <Space>                  <Text strong>Filter:</Text>                  <Select                    style={{ width: 150 }}                    value={statusFilter}                    onChange={setStatusFilter}                    options={[                      { label: 'All Users', value: 'all' },                      { label: 'Available Only', value: 'available' },                      { label: 'Busy Only', value: 'busy' },                    ]}                  />                </Space>              </Col>              <Col xs={24} sm={12} md={12}>                <Space>                  <Text strong>Date Range:</Text>                  <RangePicker                    value={dateRange}                    onChange={(dates) => {                      if (dates && dates[0] && dates[1]) {                        setDateRange([dates[0], dates[1]]);                      }                    }}                    format="YYYY-MM-DD"                  />                </Space>              </Col>              <Col xs={24} sm={12} md={6}>                <Space>                  <Tooltip title="Zoom In (More columns)">                    <Button                       icon={<ZoomInOutlined />}                       onClick={handleZoomIn}                      disabled={zoomLevel <= 1}                    />                  </Tooltip>                  <Tooltip title="Zoom Out (Fewer columns)">                    <Button                       icon={<ZoomOutOutlined />}                       onClick={handleZoomOut}                      disabled={zoomLevel >= 30}                    />                  </Tooltip>                  <Text type="secondary" style={{ fontSize: '12px' }}>                    {zoomLevel} day{zoomLevel > 1 ? 's' : ''}/col                  </Text>                </Space>              </Col>            </Row>            {/* Gantt Chart Timeline */}            <div style={{ marginTop: 24 }}>              <Title level={4}>                <CalendarOutlined /> Project Assignment Gantt Chart (Scroll horizontally)              </Title>              <div                 style={{                   overflowX: 'auto',                   overflowY: 'auto',                  border: '1px solid #f0f0f0',                  borderRadius: '8px',                  background: '#fafafa'                }}              >                <div style={{ display: 'inline-block', minWidth: '100%' }}>                  {/* Header Row - Dates */}                  <div style={{                     display: 'flex',                     position: 'sticky',                    top: 0,                    zIndex: 10,                    background: '#fff',                    borderBottom: '2px solid #d9d9d9'                  }}>                    {/* User column header */}                    <div style={{                       width: '200px',                       padding: '12px',                      fontWeight: 'bold',                      borderRight: '2px solid #d9d9d9',                      background: '#fafafa',                      position: 'sticky',                      left: 0,                      zIndex: 11                    }}>                      User / Date                    </div>                    {/* Date columns */}                    {dateColumns.map((date, index) => {                      const endDate = index < dateColumns.length - 1                         ? dateColumns[index + 1]                         : dateRange[1];                      const isToday = dayjs().isBetween(date, endDate, 'day', '[]');                      const nepaliDateStr = getShortNepaliDate(date);                      return (                        <div                           key={index}                          style={{                             minWidth: `${cellWidth}px`,                            padding: '8px',                            borderRight: '1px solid #f0f0f0',                            textAlign: 'center',                            background: isToday ? '#e6f7ff' : '#fff',                            fontWeight: isToday ? 'bold' : 'normal'                          }}                        >                          <div style={{ fontSize: '13px', fontWeight: '600' }}>                            {date.format('MMM DD')}                          </div>                          <div style={{ fontSize: '10px', color: '#1890ff', fontWeight: 500 }}>                            {nepaliDateStr}                          </div>                          <div style={{ fontSize: '11px', color: '#8c8c8c' }}>                            {date.format('YYYY')}                          </div>                          {isToday && (                            <Tag color="blue" style={{ fontSize: '10px', marginTop: '2px' }}>                              Today                            </Tag>                          )}                        </div>                      );                    })}                  </div>                  {/* User Rows */}                  {filteredUsers.map((user) => (                    <div                       key={user.userId}                      style={{                         display: 'flex',                        borderBottom: '1px solid #f0f0f0',                        minHeight: `${userRowHeight}px`,                        background: user.isAvailable ? '#f6ffed' : '#fff2e8'                      }}                    >                      {/* User Info Column */}                      <div style={{                         width: '200px',                        padding: '12px',                        borderRight: '2px solid #d9d9d9',                        position: 'sticky',                        left: 0,                        zIndex: 5,                        background: user.isAvailable ? '#f6ffed' : '#fff2e8',                        display: 'flex',                        flexDirection: 'column',                        justifyContent: 'center'                      }}>                        <Space direction="vertical" size={2}>                          <Text strong style={{ fontSize: '14px' }}>{user.userName}</Text>                          <Text type="secondary" style={{ fontSize: '11px' }}>{user.userEmail}</Text>                          <Space size={4}>                            <Tag                               color={user.isAvailable ? 'success' : 'error'}                              style={{ fontSize: '10px', margin: 0 }}                            >                              {user.isAvailable ? 'Available' : 'Busy'}                            </Tag>                            <Tag color="blue" style={{ fontSize: '10px', margin: 0 }}>                              {user.role}                            </Tag>                          </Space>                        </Space>                      </div>                      {/* Timeline Cells */}                      {dateColumns.map((date, index) => {                        const endDate = index < dateColumns.length - 1                           ? dateColumns[index + 1].subtract(1, 'day')                          : dateRange[1];                        const { active: activeProjects, inactive: inactiveProjects } = getProjectsInRange(user, date, endDate);                        const isToday = dayjs().isBetween(date, endDate, 'day', '[]');                        return (                          <div                             key={index}                            style={{                               minWidth: `${cellWidth}px`,                              borderRight: '1px solid #f0f0f0',                              padding: '4px 2px',                              display: 'flex',                              flexDirection: 'column',                              gap: '3px',                              justifyContent: 'flex-start',                              background: isToday ? '#e6f7ff' : 'transparent',                              position: 'relative'                            }}                          >                            {/* Active Projects - Bold and prominent */}                            {activeProjects.map((project) => {                              const projectStart = dayjs(project.assignedDate);                              const projectEnd = project.plannedReleaseDate                                 ? dayjs(project.plannedReleaseDate)                                 : dayjs().add(2, 'year');                              // Determine if this is start, middle, or end of project                              const isStart = date.isSame(projectStart, 'day') ||                                             (date.isSameOrBefore(projectStart) && endDate.isSameOrAfter(projectStart));                              const isEnd = endDate.isSame(projectEnd, 'day') ||                                           (date.isSameOrBefore(projectEnd) && endDate.isSameOrAfter(projectEnd));                              return (                                <Tooltip                                  key={`active-${project.projectId}`}                                  title={                                    <div>                                      <div><strong>{project.projectName}</strong></div>                                      <div style={{ color: '#52c41a', marginTop: 4 }}>✓ Active Assignment</div>                                      <div style={{ marginTop: 4 }}>                                        From: {formatDateWithNepali(projectStart)}                                      </div>                                      {project.plannedReleaseDate ? (                                        <div>Until: {formatDateWithNepali(projectEnd)}</div>                                      ) : (                                        <div>Until: Project deadline</div>                                      )}                                      <Button                                        type="primary"                                        size="small"                                        icon={<ClockCircleOutlined />}                                        onClick={(e) => {                                          e.stopPropagation();                                          handleExtendClick(user, project);                                        }}                                        style={{ marginTop: 8, width: '100%' }}                                      >                                        Extend Assignment                                      </Button>                                    </div>                                  }                                >                                  <div                                    style={{                                      width: '100%',                                      height: '26px',                                      background: projectColors[project.projectId],                                      borderRadius: isStart && isEnd ? '4px' : isStart ? '4px 0 0 4px' : isEnd ? '0 4px 4px 0' : '0',                                      display: 'flex',                                      alignItems: 'center',                                      justifyContent: isStart ? 'flex-start' : 'center',                                      paddingLeft: isStart ? '6px' : '2px',                                      paddingRight: '2px',                                      cursor: 'pointer',                                      position: 'relative',                                      boxShadow: '0 2px 4px rgba(0,0,0,0.15)',                                      border: '1px solid rgba(0,0,0,0.1)'                                    }}                                  >                                    {isStart && (                                      <Text                                         style={{                                           fontSize: '10px',                                           color: '#fff',                                           fontWeight: 'bold',                                          whiteSpace: 'nowrap',                                          overflow: 'hidden',                                          textOverflow: 'ellipsis',                                          textShadow: '0 1px 2px rgba(0,0,0,0.3)'                                        }}                                      >                                        {project.projectName.length > 15                                           ? project.projectName.substring(0, 12) + '...'                                          : project.projectName                                        }                                      </Text>                                    )}                                  </div>                                </Tooltip>                              );                            })}                            {/* Inactive Projects Dropdown */}                            {inactiveProjects.length > 0 && (                              <Dropdown                                overlay={                                  <Menu>                                    {inactiveProjects.map((project) => {                                      const projectStart = dayjs(project.assignedDate);                                      const projectEnd = project.plannedReleaseDate                                         ? dayjs(project.plannedReleaseDate)                                         : dayjs().add(2, 'year');                                      return (                                        <Menu.Item key={`inactive-menu-${project.projectId}`}>                                          <div style={{ padding: '4px 0' }}>                                            <div style={{ fontWeight: 'bold', color: projectColors[project.projectId] }}>                                              {project.projectName}                                            </div>                                            <div style={{ fontSize: '11px', color: '#8c8c8c' }}>                                              ○ Inactive / Released                                            </div>                                            <div style={{ fontSize: '11px', color: '#666' }}>                                              From: {formatDateWithNepali(projectStart, 'MMM DD, YY')}                                            </div>                                            <div style={{ fontSize: '11px', color: '#666' }}>                                              Until: {project.plannedReleaseDate                                                 ? formatDateWithNepali(projectEnd, 'MMM DD, YY')                                                : 'Project deadline'                                              }                                            </div>                                          </div>                                        </Menu.Item>                                      );                                    })}                                  </Menu>                                }                                trigger={['click']}                                placement="bottomLeft"                              >                                <div                                  style={{                                    width: '100%',                                    height: '20px',                                    background: 'rgba(0,0,0,0.04)',                                    borderRadius: '3px',                                    display: 'flex',                                    alignItems: 'center',                                    justifyContent: 'center',                                    cursor: 'pointer',                                    border: '1px dashed #d9d9d9',                                    gap: '4px'                                  }}                                >                                  <Text style={{ fontSize: '9px', color: '#8c8c8c' }}>                                    +{inactiveProjects.length} inactive                                  </Text>                                  <DownOutlined style={{ fontSize: '8px', color: '#8c8c8c' }} />                                </div>                              </Dropdown>                            )}                            {/* Hidden: Inactive projects are now only shown via dropdown above */}                            {false && inactiveProjects.map((project) => {                              const projectStart = dayjs(project.assignedDate);                              const projectEnd = project.plannedReleaseDate                                 ? dayjs(project.plannedReleaseDate)                                 : dayjs().add(2, 'year');                              // Determine if this is start, middle, or end of project                              const isStart = date.isSame(projectStart, 'day') ||                                             (date.isSameOrBefore(projectStart) && endDate.isSameOrAfter(projectStart));                              const isEnd = endDate.isSame(projectEnd, 'day') ||                                           (date.isSameOrBefore(projectEnd) && endDate.isSameOrAfter(projectEnd));                              return (                                <Tooltip                                  key={`inactive-${project.projectId}`}                                  title={                                    <div>                                      <div><strong>{project.projectName}</strong></div>                                      <div style={{ color: '#8c8c8c' }}>○ Inactive / Released</div>                                      <div>From: {formatDateWithNepali(projectStart)}</div>                                      {project.plannedReleaseDate ? (                                        <div>Until: {formatDateWithNepali(projectEnd)}</div>                                      ) : (                                        <div>Until: Project deadline</div>                                      )}                                    </div>                                  }                                >                                  <div                                    style={{                                      width: '100%',                                      height: '20px',                                      background: `linear-gradient(135deg, ${projectColors[project.projectId]}40 25%, transparent 25%, transparent 50%, ${projectColors[project.projectId]}40 50%, ${projectColors[project.projectId]}40 75%, transparent 75%, transparent)`,                                      backgroundSize: '8px 8px',                                      borderRadius: isStart && isEnd ? '3px' : isStart ? '3px 0 0 3px' : isEnd ? '0 3px 3px 0' : '0',                                      display: 'flex',                                      alignItems: 'center',                                      justifyContent: isStart ? 'flex-start' : 'center',                                      paddingLeft: isStart ? '6px' : '2px',                                      paddingRight: '2px',                                      cursor: 'pointer',                                      position: 'relative',                                      border: `1px dashed ${projectColors[project.projectId]}80`,                                      opacity: 0.6                                    }}                                  >                                    {isStart && (                                      <Text                                         style={{                                           fontSize: '9px',                                           color: projectColors[project.projectId],                                           fontWeight: '500',                                          whiteSpace: 'nowrap',                                          overflow: 'hidden',                                          textOverflow: 'ellipsis',                                          fontStyle: 'italic'                                        }}                                      >                                        {project.projectName.length > 15                                           ? project.projectName.substring(0, 12) + '...'                                          : project.projectName                                        }                                      </Text>                                    )}                                  </div>                                </Tooltip>                              );                            })}                          </div>                        );                      })}                    </div>                  ))}                </div>              </div>            </div>            {/* Legend */}            <div style={{ marginTop: 24 }}>              <Title level={5}>Project Legend</Title>              <Space direction="vertical" size="middle" style={{ width: '100%' }}>                <div>                  <Text strong style={{ marginRight: 12 }}>Active Assignments:</Text>                  <Space wrap size={[8, 8]}>                    {Object.entries(projectColors).map(([projectId, color]) => {                      // Find project name and check if it's active                      let projectName = projectId;                      let hasActive = false;                      filteredUsers.forEach(user => {                        const project = user.currentProjects.find(p => p.projectId === projectId && p.isActive);                        if (project) {                          projectName = project.projectName;                          hasActive = true;                        }                      });                      if (!hasActive) return null;                      return (                        <Tag                          key={projectId}                          color={color}                          style={{                             padding: '4px 12px',                             fontSize: '12px',                            border: '1px solid rgba(0,0,0,0.1)'                          }}                        >                          {projectName}                        </Tag>                      );                    })}                  </Space>                </div>                <div>                  <Text strong style={{ marginRight: 12 }}>Inactive/Released (Passive):</Text>                  <Space wrap size={[8, 8]}>                    {Object.entries(projectColors).map(([projectId, color]) => {                      // Find project name and check if it's inactive                      let projectName = projectId;                      let hasInactive = false;                      filteredUsers.forEach(user => {                        const project = user.currentProjects.find(p => p.projectId === projectId && !p.isActive);                        if (project) {                          projectName = project.projectName;                          hasInactive = true;                        }                      });                      if (!hasInactive) return null;                      return (                        <div                          key={projectId}                          style={{                            display: 'inline-block',                            padding: '4px 12px',                            fontSize: '12px',                            background: `linear-gradient(135deg, ${color}40 25%, transparent 25%, transparent 50%, ${color}40 50%, ${color}40 75%, transparent 75%, transparent)`,                            backgroundSize: '8px 8px',                            border: `1px dashed ${color}80`,                            borderRadius: '4px',                            opacity: 0.7,                            fontStyle: 'italic',                            color: color                          }}                        >                          {projectName}                        </div>                      );                    })}                  </Space>                </div>              </Space>            </div>            {/* Quick Stats */}            <div style={{ marginTop: 24 }}>              <Title level={5}>Quick Statistics & Actions</Title>              <Row gutter={[16, 16]}>                {filteredUsers.map(user => {                  const activeProjects = user.currentProjects.filter(p => p.isActive);                  return (                    <Col xs={24} sm={12} md={8} lg={6} key={user.userId}>                      <Card size="small">                        <Space direction="vertical" size={8} style={{ width: '100%' }}>                          <Text strong>{user.userName}</Text>                          <div>                            <Text type="secondary" style={{ fontSize: '12px' }}>                              Active Projects:                             </Text>                            <Text strong style={{ fontSize: '14px', marginLeft: '8px' }}>                              {activeProjects.length}                            </Text>                          </div>                          {user.busyUntil && (                            <div>                              <Text type="secondary" style={{ fontSize: '12px' }}>                                Busy Until:                               </Text>                              <Text strong style={{ fontSize: '12px', marginLeft: '8px' }}>                                {formatDateWithNepali(dayjs(user.busyUntil), 'MMM DD, YY')}                              </Text>                            </div>                          )}                          {activeProjects.length > 0 && (                            <div style={{ marginTop: 8 }}>                              <Text type="secondary" style={{ fontSize: '11px', display: 'block', marginBottom: 4 }}>                                Extend:                              </Text>                              <Space direction="vertical" size={4} style={{ width: '100%' }}>                                {activeProjects.map(project => (                                  <Button                                    key={project.projectId}                                    size="small"                                    icon={<ClockCircleOutlined />}                                    onClick={() => handleExtendClick(user, project)}                                    style={{                                       width: '100%',                                       fontSize: '11px',                                      height: '24px'                                    }}                                  >                                    {project.projectName.length > 12                                       ? project.projectName.substring(0, 12) + '...'                                      : project.projectName                                    }                                  </Button>                                ))}                              </Space>                            </div>                          )}                        </Space>                      </Card>                    </Col>                  );                })}              </Row>            </div>          </Space>        </Spin>      </Card>      {/* Extend Assignment Modal */}      <Modal        title={          <Space>            <ClockCircleOutlined />            <span>Extend User Assignment</span>          </Space>        }        open={extendModalVisible}        onOk={handleExtendSubmit}        onCancel={handleExtendCancel}        confirmLoading={extending}        okText="Extend Assignment"        cancelText="Cancel"        width={500}      >        {selectedExtension && (          <Space direction="vertical" size="large" style={{ width: '100%' }}>            <div>              <Text strong>User: </Text>              <Text>{selectedExtension.userName}</Text>            </div>            <div>              <Text strong>Project: </Text>              <Text>{selectedExtension.projectName}</Text>            </div>            <div>              <Text strong>Current Planned Release Date: </Text>              <Text>                {selectedExtension.currentDate                   ? formatDateWithNepali(dayjs(selectedExtension.currentDate))                  : 'Not set'                }              </Text>            </div>            <div>              <Text strong>New Planned Release Date: </Text>              <DatePicker                value={newPlannedDate}                onChange={(date) => setNewPlannedDate(date)}                format="YYYY-MM-DD"                style={{ width: '100%', marginTop: 8 }}                disabledDate={(current) => {                  // Can't select dates before current planned date                  if (selectedExtension.currentDate) {                    return current && current.isBefore(dayjs(selectedExtension.currentDate), 'day');                  }                  return current && current.isBefore(dayjs(), 'day');                }}              />              {newPlannedDate && (                <Text type="secondary" style={{ fontSize: '12px', marginTop: 4, display: 'block' }}>                  New Date (Nepali): {getShortNepaliDate(newPlannedDate)}                  {selectedExtension.currentDate && (                    <span style={{ marginLeft: 8 }}>                      | Extension: {dayjs(newPlannedDate).diff(dayjs(selectedExtension.currentDate), 'day')} days                    </span>                  )}                </Text>              )}            </div>          </Space>        )}      </Modal>    </>  );};export default UserAvailabilityDashboard;
+import React, { useState, useEffect, useMemo } from 'react';
+import {
+  Card,
+  Tag,
+  Space,
+  Button,
+  Typography,
+  Row,
+  Col,
+  Spin,
+  Select,
+  DatePicker,
+  Tooltip,
+  Modal,
+  message,
+  Dropdown,
+  Avatar,
+  Input,
+  Badge,
+  Empty,
+  Statistic,
+} from 'antd';
+import {
+  UserOutlined,
+  ReloadOutlined,
+  ZoomInOutlined,
+  ZoomOutOutlined,
+  CalendarOutlined,
+  ClockCircleOutlined,
+  DownOutlined,
+  SearchOutlined,
+  CheckCircleOutlined,
+  FilterOutlined,
+  ProjectOutlined,
+  TeamOutlined,
+  ArrowLeftOutlined,
+} from '@ant-design/icons';
+import axios from 'axios';
+import dayjs, { Dayjs } from 'dayjs';
+import isBetween from 'dayjs/plugin/isBetween';
+import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
+import isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
+import PageTitle from '@/components/PageTitle';
+import { DualDateConverter } from '@/utils/dateConverter';
+
+dayjs.extend(isBetween);
+dayjs.extend(isSameOrBefore);
+dayjs.extend(isSameOrAfter);
+
+const { RangePicker } = DatePicker;
+const { Title, Text } = Typography;
+
+const backendURI = import.meta.env.VITE_BACKEND_URI;
+
+// Enterprise color palette for projects
+const PROJECT_PALETTE = [
+  '#2563eb', // Royal Blue
+  '#0284c7', // Sky Blue
+  '#0d9488', // Teal
+  '#4f46e5', // Indigo
+  '#7c3aed', // Violet
+  '#059669', // Emerald
+  '#d97706', // Amber
+  '#e11d48', // Rose
+  '#0891b2', // Cyan
+  '#475569', // Slate
+  '#b45309', // Warm Bronze
+  '#9333ea', // Purple
+];
+
+export interface ProjectInfo {
+  projectId: string;
+  projectName: string;
+  assignedDate: string;
+  plannedReleaseDate: string | null;
+  isActive: boolean;
+}
+
+export interface UserAvailability {
+  userId: string;
+  userName: string;
+  userEmail: string;
+  role: string;
+  isAvailable: boolean;
+  busyUntil: string | null;
+  currentProjects: ProjectInfo[];
+}
+
+export interface UserAvailabilityDashboardProps {
+  onBack?: () => void;
+  backText?: string;
+}
+
+export const UserAvailabilityDashboard: React.FC<UserAvailabilityDashboardProps> = ({
+  onBack,
+  backText = 'Back to Reports',
+}) => {
+  const [loading, setLoading] = useState(false);
+  const [userAvailability, setUserAvailability] = useState<UserAvailability[]>([]);
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [roleFilter, setRoleFilter] = useState<string>('all');
+  const [dateRange, setDateRange] = useState<[Dayjs, Dayjs]>([
+    dayjs().startOf('month'),
+    dayjs().add(6, 'month').endOf('month'),
+  ]);
+  const [zoomLevel, setZoomLevel] = useState<number>(7); // Days per column
+
+  // Extension modal state
+  const [extendModalVisible, setExtendModalVisible] = useState(false);
+  const [selectedExtension, setSelectedExtension] = useState<{
+    userId: string;
+    userName: string;
+    projectId: string;
+    projectName: string;
+    currentDate: string | null;
+  } | null>(null);
+  const [newPlannedDate, setNewPlannedDate] = useState<Dayjs | null>(null);
+  const [extending, setExtending] = useState(false);
+
+  // Helper function to format date with Nepali
+  const formatDateWithNepali = (date: Dayjs, format: string = 'MMM DD, YYYY'): string => {
+    try {
+      const nepaliDate = DualDateConverter.gregorianToNepali(date);
+      return `${date.format(format)} (${nepaliDate.format('YYYY-MM-DD', 'np')})`;
+    } catch {
+      return date.format(format);
+    }
+  };
+
+  // Helper function to get short Nepali date
+  const getShortNepaliDate = (date: Dayjs): string => {
+    try {
+      const nepaliDate = DualDateConverter.gregorianToNepali(date);
+      return nepaliDate.format('YYYY-MM-DD', 'np');
+    } catch {
+      return '';
+    }
+  };
+
+  const fetchUserAvailability = async () => {
+    setLoading(true);
+    try {
+      const response = await axios.get(`${backendURI}/projects/availability/users`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+      setUserAvailability(Array.isArray(response.data) ? response.data : []);
+    } catch (error) {
+      console.error('Failed to fetch user availability:', error);
+      message.error('Failed to load user availability data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchUserAvailability();
+  }, []);
+
+  // Distinct roles for filter
+  const availableRoles = useMemo(() => {
+    const roles = new Set<string>();
+    userAvailability.forEach((u) => {
+      if (u.role && u.role.toLowerCase() !== 'superuser') {
+        roles.add(u.role);
+      }
+    });
+    return Array.from(roles).sort();
+  }, [userAvailability]);
+
+  // Filter users based on query, status, and role
+  const filteredUsers = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    return userAvailability.filter((user) => {
+      // Exclude superuser
+      if (user.role?.toLowerCase() === 'superuser') return false;
+
+      // Status filter
+      if (statusFilter === 'available' && !user.isAvailable) return false;
+      if (statusFilter === 'busy' && user.isAvailable) return false;
+
+      // Role filter
+      if (roleFilter !== 'all' && user.role !== roleFilter) return false;
+
+      // Search keyword filter (name, email, or assigned projects)
+      if (query) {
+        const matchesName = user.userName?.toLowerCase().includes(query);
+        const matchesEmail = user.userEmail?.toLowerCase().includes(query);
+        const matchesProject = user.currentProjects?.some((p) =>
+          p.projectName?.toLowerCase().includes(query)
+        );
+        if (!matchesName && !matchesEmail && !matchesProject) return false;
+      }
+
+      return true;
+    });
+  }, [userAvailability, statusFilter, roleFilter, searchQuery]);
+
+  // Generate date columns based on zoom level
+  const dateColumns = useMemo(() => {
+    const columns: Dayjs[] = [];
+    const startDate = dateRange[0];
+    const endDate = dateRange[1];
+    const daysCount = endDate.diff(startDate, 'day');
+    for (let i = 0; i <= daysCount; i += zoomLevel) {
+      columns.push(startDate.add(i, 'day'));
+    }
+    return columns;
+  }, [dateRange, zoomLevel]);
+
+  // Deterministic project colors
+  const projectColors = useMemo(() => {
+    const colorMap: { [key: string]: string } = {};
+    let colorIndex = 0;
+    userAvailability.forEach((user) => {
+      user.currentProjects?.forEach((project) => {
+        if (!colorMap[project.projectId]) {
+          colorMap[project.projectId] =
+            PROJECT_PALETTE[colorIndex % PROJECT_PALETTE.length];
+          colorIndex++;
+        }
+      });
+    });
+    return colorMap;
+  }, [userAvailability]);
+
+  // Get all active and inactive projects that span across a date range cell
+  const getProjectsInRange = (
+    user: UserAvailability,
+    startDate: Dayjs,
+    endDate: Dayjs
+  ): { active: ProjectInfo[]; inactive: ProjectInfo[] } => {
+    const active: ProjectInfo[] = [];
+    const inactive: ProjectInfo[] = [];
+
+    user.currentProjects?.forEach((project) => {
+      const assignedDate = dayjs(project.assignedDate);
+      const releaseDate = project.plannedReleaseDate
+        ? dayjs(project.plannedReleaseDate)
+        : dayjs().add(2, 'year');
+
+      // Check if project overlaps with this date range
+      if (
+        assignedDate.isSameOrBefore(endDate, 'day') &&
+        releaseDate.isSameOrAfter(startDate, 'day')
+      ) {
+        if (project.isActive) {
+          active.push(project);
+        } else {
+          inactive.push(project);
+        }
+      }
+    });
+
+    return { active, inactive };
+  };
+
+  // KPIs
+  const nonSuperUsers = useMemo(
+    () => userAvailability.filter((u) => u.role?.toLowerCase() !== 'superuser'),
+    [userAvailability]
+  );
+  const totalTeamCount = nonSuperUsers.length;
+  const availableCount = nonSuperUsers.filter((u) => u.isAvailable).length;
+  const busyCount = nonSuperUsers.filter((u) => !u.isAvailable).length;
+  const availablePercent =
+    totalTeamCount > 0 ? Math.round((availableCount / totalTeamCount) * 100) : 0;
+  const busyPercent =
+    totalTeamCount > 0 ? Math.round((busyCount / totalTeamCount) * 100) : 0;
+
+  // Distinct active projects
+  const distinctActiveProjects = useMemo(() => {
+    const set = new Set<string>();
+    nonSuperUsers.forEach((u) => {
+      u.currentProjects?.forEach((p) => {
+        if (p.isActive) set.add(p.projectName);
+      });
+    });
+    return set.size;
+  }, [nonSuperUsers]);
+
+  const handleZoomIn = () => {
+    setZoomLevel((prev) => Math.max(1, prev <= 3 ? 1 : prev <= 7 ? 3 : prev <= 14 ? 7 : 14));
+  };
+
+  const handleZoomOut = () => {
+    setZoomLevel((prev) => Math.min(30, prev >= 14 ? 30 : prev >= 7 ? 14 : prev >= 3 ? 7 : 3));
+  };
+
+  const handlePresetDate = (months: number) => {
+    setDateRange([dayjs().startOf('month'), dayjs().add(months, 'month').endOf('month')]);
+  };
+
+  const handleExtendClick = (user: UserAvailability, project: ProjectInfo) => {
+    setSelectedExtension({
+      userId: user.userId,
+      userName: user.userName,
+      projectId: project.projectId,
+      projectName: project.projectName,
+      currentDate: project.plannedReleaseDate,
+    });
+    setNewPlannedDate(
+      project.plannedReleaseDate
+        ? dayjs(project.plannedReleaseDate).add(1, 'month')
+        : dayjs().add(1, 'month')
+    );
+    setExtendModalVisible(true);
+  };
+
+  const handleExtendSubmit = async () => {
+    if (!selectedExtension || !newPlannedDate) {
+      message.error('Please select a new date');
+      return;
+    }
+    setExtending(true);
+    try {
+      await axios.patch(
+        `${backendURI}/projects/${selectedExtension.projectId}/users/${selectedExtension.userId}`,
+        {
+          plannedReleaseDate: newPlannedDate.format('YYYY-MM-DD'),
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('token')}`,
+          },
+        }
+      );
+      message.success(
+        `Extended ${selectedExtension.userName}'s assignment on ${selectedExtension.projectName} to ${newPlannedDate.format('MMM DD, YYYY')}`
+      );
+      setExtendModalVisible(false);
+      setSelectedExtension(null);
+      setNewPlannedDate(null);
+      fetchUserAvailability();
+    } catch (error: any) {
+      message.error(error.response?.data?.message || 'Failed to extend assignment');
+    } finally {
+      setExtending(false);
+    }
+  };
+
+  const handleExtendCancel = () => {
+    setExtendModalVisible(false);
+    setSelectedExtension(null);
+    setNewPlannedDate(null);
+  };
+
+  const cellWidth = 115;
+  const userRowHeight = 64;
+
+  return (
+    <div className="pb-12 px-1 sm:px-0">
+      {/* Top Header Bar */}
+      <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+        <div className="flex items-center gap-3">
+          {onBack && (
+            <Button
+              icon={<ArrowLeftOutlined />}
+              onClick={onBack}
+              className="flex items-center justify-center font-medium"
+            >
+              {backText}
+            </Button>
+          )}
+          <div>
+            <h1 className="text-xl font-bold text-slate-800 m-0 leading-tight">
+              Team Availability & Allocation Timeline
+            </h1>
+            <p className="text-xs text-slate-500 m-0 mt-0.5">
+              Live schedule of member assignments, active deadlines, and capacity forecasting
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Button
+            icon={<ReloadOutlined spin={loading} />}
+            onClick={fetchUserAvailability}
+            loading={loading}
+            className="flex items-center"
+          >
+            Refresh Data
+          </Button>
+        </div>
+      </div>
+
+      {/* Modern KPI Summary Cards */}
+      <Row gutter={[16, 16]} className="mb-4">
+        <Col xs={12} sm={6}>
+          <Card
+            styles={{ body: { padding: '16px' } }}
+            className="border border-slate-200/80 shadow-xs rounded-xl bg-white hover:border-slate-300 transition-colors"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-slate-500 uppercase tracking-wider m-0">
+                  Total Team
+                </p>
+                <div className="flex items-baseline gap-2 mt-1">
+                  <span className="text-2xl font-bold text-slate-800">
+                    {totalTeamCount}
+                  </span>
+                  <span className="text-xs text-slate-400">members</span>
+                </div>
+              </div>
+              <div className="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+                <TeamOutlined className="text-lg" />
+              </div>
+            </div>
+            <p className="text-[11px] text-slate-400 m-0 mt-2">
+              Active staff in roster
+            </p>
+          </Card>
+        </Col>
+
+        <Col xs={12} sm={6}>
+          <Card
+            styles={{ body: { padding: '16px' } }}
+            className="border border-emerald-100 shadow-xs rounded-xl bg-white hover:border-emerald-200 transition-colors"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-emerald-600 uppercase tracking-wider m-0">
+                  Available Now
+                </p>
+                <div className="flex items-baseline gap-2 mt-1">
+                  <span className="text-2xl font-bold text-emerald-600">
+                    {availableCount}
+                  </span>
+                  <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
+                    {availablePercent}%
+                  </span>
+                </div>
+              </div>
+              <div className="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                <CheckCircleOutlined className="text-lg" />
+              </div>
+            </div>
+            <p className="text-[11px] text-slate-400 m-0 mt-2">
+              Ready for immediate allocation
+            </p>
+          </Card>
+        </Col>
+
+        <Col xs={12} sm={6}>
+          <Card
+            styles={{ body: { padding: '16px' } }}
+            className="border border-slate-200/80 shadow-xs rounded-xl bg-white hover:border-slate-300 transition-colors"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-indigo-600 uppercase tracking-wider m-0">
+                  Allocated / Busy
+                </p>
+                <div className="flex items-baseline gap-2 mt-1">
+                  <span className="text-2xl font-bold text-indigo-600">
+                    {busyCount}
+                  </span>
+                  <span className="text-xs font-semibold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded">
+                    {busyPercent}%
+                  </span>
+                </div>
+              </div>
+              <div className="w-10 h-10 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                <ClockCircleOutlined className="text-lg" />
+              </div>
+            </div>
+            <p className="text-[11px] text-slate-400 m-0 mt-2">
+              Assigned to active projects
+            </p>
+          </Card>
+        </Col>
+
+        <Col xs={12} sm={6}>
+          <Card
+            styles={{ body: { padding: '16px' } }}
+            className="border border-slate-200/80 shadow-xs rounded-xl bg-white hover:border-slate-300 transition-colors"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-slate-500 uppercase tracking-wider m-0">
+                  Active Projects
+                </p>
+                <div className="flex items-baseline gap-2 mt-1">
+                  <span className="text-2xl font-bold text-slate-800">
+                    {distinctActiveProjects}
+                  </span>
+                  <span className="text-xs text-slate-400">concurrent</span>
+                </div>
+              </div>
+              <div className="w-10 h-10 rounded-lg bg-sky-50 text-sky-600 flex items-center justify-center">
+                <ProjectOutlined className="text-lg" />
+              </div>
+            </div>
+            <p className="text-[11px] text-slate-400 m-0 mt-2">
+              Under execution with staff
+            </p>
+          </Card>
+        </Col>
+      </Row>
+
+      {/* Main Timeline Card */}
+      <Card
+        styles={{ body: { padding: '16px 20px' } }}
+        className="border border-slate-200/80 shadow-xs rounded-xl bg-white"
+      >
+        <Spin spinning={loading}>
+          {/* Controls Bar */}
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-4 border-b border-slate-100">
+            {/* Search and Filters */}
+            <div className="flex items-center gap-2 flex-wrap flex-1">
+              <Input
+                placeholder="Search member, email, project..."
+                prefix={<SearchOutlined className="text-slate-400" />}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                allowClear
+                className="w-full sm:w-64"
+              />
+
+              <Select
+                value={statusFilter}
+                onChange={setStatusFilter}
+                style={{ width: 140 }}
+                options={[
+                  { label: 'All Statuses', value: 'all' },
+                  { label: 'Available Only', value: 'available' },
+                  { label: 'Allocated Only', value: 'busy' },
+                ]}
+              />
+
+              {availableRoles.length > 0 && (
+                <Select
+                  value={roleFilter}
+                  onChange={setRoleFilter}
+                  style={{ width: 140 }}
+                  options={[
+                    { label: 'All Roles', value: 'all' },
+                    ...availableRoles.map((r) => ({ label: r, value: r })),
+                  ]}
+                />
+              )}
+            </div>
+
+            {/* Date Range & Zoom Controls */}
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Quick Presets */}
+              <div className="hidden sm:flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => handlePresetDate(1)}
+                  className="px-2 py-1 text-xs font-medium rounded text-slate-600 hover:text-slate-900 hover:bg-white transition-all"
+                >
+                  1M
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handlePresetDate(3)}
+                  className="px-2 py-1 text-xs font-medium rounded text-slate-600 hover:text-slate-900 hover:bg-white transition-all"
+                >
+                  3M
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handlePresetDate(6)}
+                  className="px-2 py-1 text-xs font-medium rounded text-slate-600 hover:text-slate-900 hover:bg-white transition-all"
+                >
+                  6M
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handlePresetDate(12)}
+                  className="px-2 py-1 text-xs font-medium rounded text-slate-600 hover:text-slate-900 hover:bg-white transition-all"
+                >
+                  1Y
+                </button>
+              </div>
+
+              <RangePicker
+                value={dateRange}
+                onChange={(dates) => {
+                  if (dates && dates[0] && dates[1]) {
+                    setDateRange([dates[0], dates[1]]);
+                  }
+                }}
+                format="YYYY-MM-DD"
+                className="w-56"
+              />
+
+              {/* Granularity & Zoom */}
+              <div className="flex items-center gap-1.5 ml-1">
+                <Select
+                  value={zoomLevel}
+                  onChange={setZoomLevel}
+                  style={{ width: 105 }}
+                  options={[
+                    { label: 'Daily (1d)', value: 1 },
+                    { label: '3 Days', value: 3 },
+                    { label: 'Weekly (7d)', value: 7 },
+                    { label: 'Bi-weekly (14d)', value: 14 },
+                    { label: 'Monthly (30d)', value: 30 },
+                  ]}
+                />
+                <Tooltip title="Zoom In (More detail)">
+                  <Button
+                    icon={<ZoomInOutlined />}
+                    onClick={handleZoomIn}
+                    disabled={zoomLevel <= 1}
+                    size="middle"
+                  />
+                </Tooltip>
+                <Tooltip title="Zoom Out (Broader view)">
+                  <Button
+                    icon={<ZoomOutOutlined />}
+                    onClick={handleZoomOut}
+                    disabled={zoomLevel >= 30}
+                    size="middle"
+                  />
+                </Tooltip>
+              </div>
+            </div>
+          </div>
+
+          {/* Timeline Table Container */}
+          <div className="mt-4">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-slate-700">
+                  Timeline Gantt View
+                </span>
+                <span className="text-xs text-slate-400">
+                  ({filteredUsers.length} members matching criteria)
+                </span>
+              </div>
+              <span className="text-[11px] text-slate-400 italic">
+                Scroll horizontally to browse timeline • Click bar to extend assignment
+              </span>
+            </div>
+
+            {filteredUsers.length === 0 ? (
+              <div className="py-16 text-center bg-slate-50/50 rounded-xl border border-dashed border-slate-200 my-4">
+                <Empty
+                  description={
+                    <span className="text-slate-500 text-sm">
+                      No team members match the selected filters.
+                    </span>
+                  }
+                >
+                  <Button
+                    type="primary"
+                    onClick={() => {
+                      setSearchQuery('');
+                      setStatusFilter('all');
+                      setRoleFilter('all');
+                    }}
+                  >
+                    Reset Filters
+                  </Button>
+                </Empty>
+              </div>
+            ) : (
+              <div className="overflow-x-auto overflow-y-auto border border-slate-200 rounded-xl bg-white shadow-xs max-h-[640px]">
+                <div className="inline-block min-w-full align-middle">
+                  {/* Header Row */}
+                  <div className="flex sticky top-0 z-20 bg-slate-50 border-b border-slate-200">
+                    {/* User column header (Sticky Left) */}
+                    <div
+                      style={{ width: '240px', minWidth: '240px' }}
+                      className="p-3 text-xs font-bold text-slate-700 uppercase tracking-wider border-r border-slate-200 bg-slate-50 sticky left-0 z-30 flex items-center justify-between"
+                    >
+                      <span>Team Member</span>
+                      <span className="text-[10px] text-slate-400 font-normal">
+                        Role & Status
+                      </span>
+                    </div>
+
+                    {/* Date Column Headers */}
+                    {dateColumns.map((date, index) => {
+                      const endDate =
+                        index < dateColumns.length - 1
+                          ? dateColumns[index + 1].subtract(1, 'day')
+                          : dateRange[1];
+                      const isToday = dayjs().isBetween(date, endDate, 'day', '[]');
+                      const nepaliDateStr = getShortNepaliDate(date);
+
+                      return (
+                        <div
+                          key={index}
+                          style={{
+                            minWidth: `${cellWidth}px`,
+                            width: `${cellWidth}px`,
+                          }}
+                          className={`p-2 text-center border-r border-slate-200 flex flex-col justify-center transition-colors ${
+                            isToday
+                              ? 'bg-blue-50/80 border-b-2 border-b-blue-500'
+                              : 'bg-slate-50/90'
+                          }`}
+                        >
+                          <div className="text-xs font-semibold text-slate-800">
+                            {date.format('MMM DD')}
+                          </div>
+                          <div className="text-[10px] text-slate-500 font-normal">
+                            {nepaliDateStr || date.format('YYYY')}
+                          </div>
+                          {isToday && (
+                            <div className="mt-1">
+                              <span className="inline-block px-1.5 py-0.2 text-[9px] font-bold text-blue-700 bg-blue-100 rounded-full">
+                                TODAY
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Body: User Rows */}
+                  {filteredUsers.map((user) => (
+                    <div
+                      key={user.userId}
+                      style={{ minHeight: `${userRowHeight}px` }}
+                      className="flex border-b border-slate-100 bg-white hover:bg-slate-50/60 transition-colors group"
+                    >
+                      {/* User Info Column (Sticky Left) */}
+                      <div
+                        style={{ width: '240px', minWidth: '240px' }}
+                        className="p-3 border-r border-slate-200 sticky left-0 z-10 bg-white group-hover:bg-slate-50/90 flex items-center gap-2.5 transition-colors"
+                      >
+                        <Avatar
+                          size={34}
+                          className="flex-shrink-0 font-semibold"
+                          style={{
+                            backgroundColor: user.isAvailable ? '#10b981' : '#6366f1',
+                            color: '#ffffff',
+                          }}
+                        >
+                          {user.userName ? user.userName.charAt(0).toUpperCase() : 'U'}
+                        </Avatar>
+
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center justify-between gap-1">
+                            <span
+                              className="text-xs font-semibold text-slate-800 truncate"
+                              title={user.userName}
+                            >
+                              {user.userName}
+                            </span>
+                          </div>
+
+                          <div
+                            className="text-[11px] text-slate-400 truncate"
+                            title={user.userEmail}
+                          >
+                            {user.userEmail}
+                          </div>
+
+                          <div className="flex items-center gap-1 mt-1">
+                            {user.isAvailable ? (
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200/80">
+                                Available
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-indigo-50 text-indigo-700 border border-indigo-200/80">
+                                Allocated
+                              </span>
+                            )}
+
+                            {user.role && (
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] text-slate-500 bg-slate-100 border border-slate-200/60 truncate max-w-[90px]">
+                                {user.role}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Timeline Cells for this User */}
+                      {dateColumns.map((date, index) => {
+                        const endDate =
+                          index < dateColumns.length - 1
+                            ? dateColumns[index + 1].subtract(1, 'day')
+                            : dateRange[1];
+                        const { active: activeProjects, inactive: inactiveProjects } =
+                          getProjectsInRange(user, date, endDate);
+                        const isToday = dayjs().isBetween(date, endDate, 'day', '[]');
+
+                        // Build modern menu items for inactive/released projects
+                        const inactiveMenuItems = inactiveProjects.map((p) => {
+                          const pStart = dayjs(p.assignedDate);
+                          const pEnd = p.plannedReleaseDate
+                            ? dayjs(p.plannedReleaseDate)
+                            : null;
+                          return {
+                            key: `inactive-${p.projectId}-${date.format('YYYYMMDD')}`,
+                            label: (
+                              <div className="py-1">
+                                <div className="font-semibold text-slate-800 text-xs">
+                                  {p.projectName}
+                                </div>
+                                <div className="text-[11px] text-slate-500">
+                                  Released / Inactive Assignment
+                                </div>
+                                <div className="text-[10px] text-slate-400 mt-0.5">
+                                  {formatDateWithNepali(pStart, 'MMM DD, YYYY')} -{' '}
+                                  {pEnd ? formatDateWithNepali(pEnd, 'MMM DD, YYYY') : 'Project close'}
+                                </div>
+                              </div>
+                            ),
+                          };
+                        });
+
+                        return (
+                          <div
+                            key={index}
+                            style={{
+                              minWidth: `${cellWidth}px`,
+                              width: `${cellWidth}px`,
+                            }}
+                            className={`p-1 border-r border-slate-100 flex flex-col gap-1 justify-center transition-colors ${
+                              isToday ? 'bg-blue-50/30' : 'bg-transparent'
+                            }`}
+                          >
+                            {/* Active Projects Bars */}
+                            {activeProjects.map((project) => {
+                              const projectStart = dayjs(project.assignedDate);
+                              const projectEnd = project.plannedReleaseDate
+                                ? dayjs(project.plannedReleaseDate)
+                                : dayjs().add(2, 'year');
+
+                              const isStart =
+                                date.isSame(projectStart, 'day') ||
+                                (date.isSameOrBefore(projectStart) &&
+                                  endDate.isSameOrAfter(projectStart));
+                              const isEnd =
+                                endDate.isSame(projectEnd, 'day') ||
+                                (date.isSameOrBefore(projectEnd) &&
+                                  endDate.isSameOrAfter(projectEnd));
+
+                              const barColor =
+                                projectColors[project.projectId] || '#2563eb';
+
+                              return (
+                                <Tooltip
+                                  key={`active-${project.projectId}`}
+                                  title={
+                                    <div className="p-1 space-y-1.5 max-w-[260px]">
+                                      <div className="font-bold text-white text-sm">
+                                        {project.projectName}
+                                      </div>
+                                      <div className="text-emerald-300 text-xs flex items-center gap-1">
+                                        <CheckCircleOutlined /> Active Assignment
+                                      </div>
+                                      <div className="text-slate-200 text-xs">
+                                        From: {formatDateWithNepali(projectStart)}
+                                      </div>
+                                      <div className="text-slate-200 text-xs">
+                                        Until:{' '}
+                                        {project.plannedReleaseDate
+                                          ? formatDateWithNepali(projectEnd)
+                                          : 'Until project deadline'}
+                                      </div>
+                                      <Button
+                                        type="primary"
+                                        size="small"
+                                        icon={<ClockCircleOutlined />}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleExtendClick(user, project);
+                                        }}
+                                        className="w-full mt-2 text-xs h-7"
+                                      >
+                                        Extend Assignment
+                                      </Button>
+                                    </div>
+                                  }
+                                >
+                                  <div
+                                    onClick={() => handleExtendClick(user, project)}
+                                    style={{
+                                      backgroundColor: barColor,
+                                      borderRadius:
+                                        isStart && isEnd
+                                          ? '6px'
+                                          : isStart
+                                          ? '6px 0 0 6px'
+                                          : isEnd
+                                          ? '0 6px 6px 0'
+                                          : '0',
+                                    }}
+                                    className="w-full h-6 px-1.5 flex items-center cursor-pointer shadow-xs hover:brightness-110 transition-all select-none"
+                                  >
+                                    {isStart && (
+                                      <span className="text-[11px] font-semibold text-white truncate drop-shadow-xs">
+                                        {project.projectName}
+                                      </span>
+                                    )}
+                                  </div>
+                                </Tooltip>
+                              );
+                            })}
+
+                            {/* Inactive Projects Dropdown */}
+                            {inactiveProjects.length > 0 && (
+                              <Dropdown
+                                menu={{ items: inactiveMenuItems }}
+                                trigger={['click']}
+                                placement="bottomLeft"
+                              >
+                                <button
+                                  type="button"
+                                  className="w-full h-5 px-1 text-[10px] text-slate-500 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded flex items-center justify-center gap-1 transition-colors"
+                                >
+                                  <span>+{inactiveProjects.length} released</span>
+                                  <DownOutlined className="text-[8px] text-slate-400" />
+                                </button>
+                              </Dropdown>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Project Legend */}
+          <div className="mt-6 pt-4 border-t border-slate-100">
+            <div className="flex items-center gap-2 mb-2">
+              <ProjectOutlined className="text-slate-400 text-sm" />
+              <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                Assigned Projects Legend
+              </span>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {Object.entries(projectColors).map(([projectId, color]) => {
+                let projectName = projectId;
+                let hasActive = false;
+                userAvailability.forEach((u) => {
+                  const p = u.currentProjects?.find(
+                    (cp) => cp.projectId === projectId && cp.isActive
+                  );
+                  if (p) {
+                    projectName = p.projectName;
+                    hasActive = true;
+                  }
+                });
+
+                if (!hasActive) return null;
+
+                return (
+                  <div
+                    key={projectId}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-slate-50 border border-slate-200 text-slate-700"
+                  >
+                    <span
+                      className="w-2.5 h-2.5 rounded-full"
+                      style={{ backgroundColor: color }}
+                    />
+                    <span>{projectName}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </Spin>
+      </Card>
+
+      {/* Extend Assignment Modal */}
+      <Modal
+        title={
+          <div className="flex items-center gap-2 text-slate-800">
+            <ClockCircleOutlined className="text-blue-600" />
+            <span>Extend Assignment Schedule</span>
+          </div>
+        }
+        open={extendModalVisible}
+        onOk={handleExtendSubmit}
+        onCancel={handleExtendCancel}
+        confirmLoading={extending}
+        okText="Save Extension"
+        cancelText="Cancel"
+        styles={{ body: { padding: '20px 0' } }}
+        width={480}
+      >
+        {selectedExtension && (
+          <div className="space-y-4">
+            <div className="bg-slate-50 p-3.5 rounded-lg border border-slate-200/80 space-y-2">
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-slate-500">Team Member:</span>
+                <span className="font-semibold text-slate-800">
+                  {selectedExtension.userName}
+                </span>
+              </div>
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-slate-500">Project:</span>
+                <span className="font-semibold text-slate-800">
+                  {selectedExtension.projectName}
+                </span>
+              </div>
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-slate-500">Current Planned Release:</span>
+                <span className="font-semibold text-slate-800">
+                  {selectedExtension.currentDate
+                    ? formatDateWithNepali(dayjs(selectedExtension.currentDate))
+                    : 'Not specified'}
+                </span>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                New Planned Release Date (AD)
+              </label>
+              <DatePicker
+                value={newPlannedDate}
+                onChange={(date) => setNewPlannedDate(date)}
+                format="YYYY-MM-DD"
+                className="w-full"
+                disabledDate={(current) => {
+                  if (selectedExtension.currentDate) {
+                    return current && current.isBefore(dayjs(selectedExtension.currentDate), 'day');
+                  }
+                  return current && current.isBefore(dayjs(), 'day');
+                }}
+              />
+
+              {newPlannedDate && (
+                <div className="mt-2 p-2.5 rounded bg-blue-50/60 border border-blue-100 text-xs text-blue-900 space-y-1">
+                  <div>
+                    <span className="font-medium">Nepali Date (BS):</span>{' '}
+                    {getShortNepaliDate(newPlannedDate)}
+                  </div>
+                  {selectedExtension.currentDate && (
+                    <div>
+                      <span className="font-medium">Extension Duration:</span>{' '}
+                      {dayjs(newPlannedDate).diff(dayjs(selectedExtension.currentDate), 'day')}{' '}
+                      additional days
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </Modal>
+    </div>
+  );
+};
+
+export default UserAvailabilityDashboard;

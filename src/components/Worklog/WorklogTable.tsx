@@ -1,11 +1,9 @@
-
-
 import { Table, Space, Button, Input, Tooltip, Empty, Tag } from "antd";
 import moment from "moment";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { SearchOutlined, EditOutlined, DeleteOutlined, ClockCircleOutlined, UserOutlined } from "@ant-design/icons";
 import Highlighter from 'react-highlight-words';
-import { fetchUsers } from "@/service/user.service";
+import { fetchUsers, listActiveUsers } from "@/service/user.service";
 import { UserType } from "@/types/user";
 import useIsMobile from "@/hooks/useIsMobile";
 import { ResponsiveTable } from "@/components/ui/MobileCardList";
@@ -36,19 +34,98 @@ const WorklogTable = ({ data, visibleColumnKeys }: WorklogTableProps) => {
   const [userMap, setUserMap] = useState<{ [key: string]: string }>({});
 
   useEffect(() => {
-    // Fetch all users (active, large limit, first page, no keywords)
-    fetchUsers({ status: "active", limit: 1000, page: 1, keywords: "" })
-      .then((res: any) => {
-        // If paginated, use res.results, else fallback to res
-        const users: UserType[] = res?.results || res || [];
-        const map: { [key: string]: string } = {};
+    let isMounted = true;
+    const loadUsers = async () => {
+      const map: { [key: string]: string } = {};
+
+      // 1. Fetch via listActiveUsers (accessible to all authenticated users without admin permission)
+      try {
+        const activeUsers = await listActiveUsers();
+        if (Array.isArray(activeUsers)) {
+          activeUsers.forEach((u: any) => {
+            if (u.id) {
+              const name = u.name || u.username || u.email || "";
+              map[u.id.toString()] = name;
+            }
+          });
+        }
+      } catch (err) {
+        console.warn("listActiveUsers failed", err);
+      }
+
+      // 2. Fetch full users list as fallback/enrichment for any inactive/historical users
+      try {
+        const res: any = await fetchUsers({ status: "all", limit: 1000, page: 1, keywords: "" });
+        const users: UserType[] = res?.results || (Array.isArray(res) ? res : []);
         users.forEach((u) => {
-          if (u.id) map[u.id.toString()] = u.name || u.username || u.email || u.id.toString();
+          if (u.id && !map[u.id.toString()]) {
+            const name = u.name || u.username || u.email || "";
+            map[u.id.toString()] = name;
+          }
         });
+      } catch {
+        // Fallback error ignored
+      }
+
+      if (isMounted) {
         setUserMap(map);
-      })
-      .catch(() => {});
+      }
+    };
+
+    loadUsers();
+    return () => {
+      isMounted = false;
+    };
   }, []);
+
+  const formatName = useCallback((rawName?: string): string => {
+    if (!rawName) return "";
+    const clean = rawName.trim();
+    if (false) {
+      /* ignore */
+    }
+    return clean;
+  }, []);
+
+  const resolveUserDisplayName = useCallback(
+    (fieldValue: any, userRelation?: any): string => {
+      // 1. Populated relation object on the worklog (requestToUser, approvedByUser, rejectByUser, user)
+      if (userRelation) {
+        if (userRelation.name) return formatName(userRelation.name);
+        if (userRelation.username) return formatName(userRelation.username);
+        if (userRelation.email) return formatName(userRelation.email);
+      }
+
+      // 2. If fieldValue is an object
+      if (typeof fieldValue === "object" && fieldValue !== null) {
+        if (fieldValue.name) return formatName(fieldValue.name);
+        if (fieldValue.username) return formatName(fieldValue.username);
+        if (fieldValue.id && userMap[fieldValue.id.toString()]) {
+          return formatName(userMap[fieldValue.id.toString()]);
+        }
+      }
+
+      // 3. String / UUID identifier
+      if (fieldValue) {
+        const str = fieldValue.toString().trim();
+        if (false) {
+          /* ignore */
+        }
+        if (userMap[str]) {
+          return formatName(userMap[str]);
+        }
+        // If it's a UUID not found in userMap, return a graceful fallback
+        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+        if (isUUID) {
+          return "Team Member";
+        }
+        return formatName(str);
+      }
+
+      return "-";
+    },
+    [userMap, formatName]
+  );
 
   const handleSearch = (selectedKeys: string[], confirm: () => void, dataIndex: string) => {
     confirm();
@@ -100,18 +177,27 @@ const WorklogTable = ({ data, visibleColumnKeys }: WorklogTableProps) => {
       <SearchOutlined style={{ color: filtered ? '#1890ff' : undefined }} />
     ),
     onFilter: (value: string, record: any) => {
-      if (dataIndex.includes('.')) {
+      let resolvedText = '';
+      if (dataIndex === 'requestTo') {
+        resolvedText = resolveUserDisplayName(record?.requestTo, record?.requestToUser);
+      } else if (dataIndex === 'approvedBy') {
+        resolvedText = resolveUserDisplayName(record?.approvedBy, record?.approvedByUser);
+      } else if (dataIndex === 'rejectBy') {
+        resolvedText = resolveUserDisplayName(record?.rejectBy, record?.rejectByUser);
+      } else if (dataIndex === 'user.name' || dataIndex === 'userId') {
+        resolvedText = resolveUserDisplayName(record?.user?.id || record?.userId, record?.user);
+      } else if (dataIndex.includes('.')) {
         const keys = dataIndex.split('.');
         let val = record;
         for (const key of keys) {
           if (!val) return false;
           val = val[key];
         }
-        return val ? val.toString().toLowerCase().includes(value.toLowerCase()) : false;
+        resolvedText = val ? val.toString() : '';
+      } else {
+        resolvedText = record[dataIndex] ? record[dataIndex].toString() : '';
       }
-      return record[dataIndex]
-        ? record[dataIndex].toString().toLowerCase().includes(value.toLowerCase())
-        : '';
+      return resolvedText.toLowerCase().includes(value.toLowerCase());
     },
     onFilterDropdownOpenChange: (visible: boolean) => {
       if (visible) {
@@ -138,9 +224,20 @@ const WorklogTable = ({ data, visibleColumnKeys }: WorklogTableProps) => {
       key: "requestTo",
       defaultWidth: 160,
       ...getColumnSearchProps('requestTo', 'Request To'),
+      sorter: (a: any, b: any) => {
+        const nameA = resolveUserDisplayName(a?.requestTo, a?.requestToUser);
+        const nameB = resolveUserDisplayName(b?.requestTo, b?.requestToUser);
+        return nameA.localeCompare(nameB);
+      },
+      sortOrder: sortedInfo.columnKey === 'requestTo' && sortedInfo.order,
       render: (_: any, record: any) => {
-        if (!record?.requestTo) return "-";
-        return userMap[record.requestTo?.toString()] || record.requestTo;
+        const name = resolveUserDisplayName(record?.requestTo, record?.requestToUser);
+        if (!name || name === "-") return "-";
+        return (
+          <span className="font-medium text-slate-800">
+            {name}
+          </span>
+        );
       },
     },
     {
@@ -149,9 +246,20 @@ const WorklogTable = ({ data, visibleColumnKeys }: WorklogTableProps) => {
       key: "approvedBy",
       defaultWidth: 160,
       ...getColumnSearchProps('approvedBy', 'Approved By'),
+      sorter: (a: any, b: any) => {
+        const nameA = resolveUserDisplayName(a?.approvedBy, a?.approvedByUser);
+        const nameB = resolveUserDisplayName(b?.approvedBy, b?.approvedByUser);
+        return nameA.localeCompare(nameB);
+      },
+      sortOrder: sortedInfo.columnKey === 'approvedBy' && sortedInfo.order,
       render: (_: any, record: any) => {
-        if (!record?.approvedBy) return "-";
-        return userMap[record.approvedBy?.toString()] || record.approvedBy;
+        const name = resolveUserDisplayName(record?.approvedBy, record?.approvedByUser);
+        if (!name || name === "-") return "-";
+        return (
+          <span className="font-medium text-slate-800">
+            {name}
+          </span>
+        );
       },
     },
     {
@@ -160,9 +268,20 @@ const WorklogTable = ({ data, visibleColumnKeys }: WorklogTableProps) => {
       key: "rejectBy",
       defaultWidth: 160,
       ...getColumnSearchProps('rejectBy', 'Rejected By'),
+      sorter: (a: any, b: any) => {
+        const nameA = resolveUserDisplayName(a?.rejectBy, a?.rejectByUser);
+        const nameB = resolveUserDisplayName(b?.rejectBy, b?.rejectByUser);
+        return nameA.localeCompare(nameB);
+      },
+      sortOrder: sortedInfo.columnKey === 'rejectBy' && sortedInfo.order,
       render: (_: any, record: any) => {
-        if (!record?.rejectBy) return "-";
-        return userMap[record.rejectBy?.toString()] || record.rejectBy;
+        const name = resolveUserDisplayName(record?.rejectBy, record?.rejectByUser);
+        if (!name || name === "-") return "-";
+        return (
+          <span className="font-medium text-red-600">
+            {name}
+          </span>
+        );
       },
     },
     {
@@ -204,10 +323,14 @@ const WorklogTable = ({ data, visibleColumnKeys }: WorklogTableProps) => {
       key: "userId",
       defaultWidth: 150,
       ...getColumnSearchProps('user.name', 'Logged by'),
-      sorter: (a: any, b: any) => (a.user?.name || '').localeCompare(b.user?.name || ''),
+      sorter: (a: any, b: any) => {
+        const nameA = resolveUserDisplayName(a?.user?.id || a?.userId, a?.user);
+        const nameB = resolveUserDisplayName(b?.user?.id || b?.userId, b?.user);
+        return nameA.localeCompare(nameB);
+      },
       sortOrder: sortedInfo.columnKey === 'userId' && sortedInfo.order,
       render: (_: any, record: any) => {
-        return (record?.user?.name);
+        return resolveUserDisplayName(record?.user?.id || record?.userId, record?.user);
       }
     },
   ];
@@ -261,16 +384,17 @@ const WorklogTable = ({ data, visibleColumnKeys }: WorklogTableProps) => {
         const startTime = record?.startTime ? moment(record.startTime).format("hh:mm A") : "";
         const endTime = record?.endTime ? moment(record.endTime).format("hh:mm A") : "";
         const logDate = record?.startTime ? moment(record.startTime).format("MMM DD, YYYY") : "";
-        const reqTo = record?.requestTo ? (userMap[record.requestTo.toString()] || record.requestTo) : null;
-        const appBy = record?.approvedBy ? (userMap[record.approvedBy.toString()] || record.approvedBy) : null;
-        const rejBy = record?.rejectBy ? (userMap[record.rejectBy.toString()] || record.rejectBy) : null;
+        const reqTo = resolveUserDisplayName(record?.requestTo, record?.requestToUser);
+        const appBy = resolveUserDisplayName(record?.approvedBy, record?.approvedByUser);
+        const rejBy = resolveUserDisplayName(record?.rejectBy, record?.rejectByUser);
+        const loggedBy = resolveUserDisplayName(record?.user?.id || record?.userId, record?.user);
 
         return (
           <div className="flex flex-col gap-2">
             <div className="flex items-start justify-between gap-2">
               <div>
                 <div className="font-semibold text-gray-800 text-sm">
-                  {record?.user?.name || "Unknown User"}
+                  {loggedBy || "Unknown User"}
                 </div>
                 <div className="text-xs text-gray-500">{logDate}</div>
               </div>
@@ -281,18 +405,18 @@ const WorklogTable = ({ data, visibleColumnKeys }: WorklogTableProps) => {
             </div>
 
             <div className="flex flex-wrap gap-2 text-xs">
-              {reqTo && (
+              {reqTo && reqTo !== "-" && (
                 <div className="text-gray-600 bg-gray-50 px-2 py-0.5 rounded border border-gray-100">
                   <span className="text-gray-400 mr-1">To:</span>
                   <span className="font-medium">{reqTo}</span>
                 </div>
               )}
-              {appBy && (
+              {appBy && appBy !== "-" && (
                 <Tag color="success" style={{ margin: 0 }}>
                   Approved by: {appBy}
                 </Tag>
               )}
-              {rejBy && (
+              {rejBy && rejBy !== "-" && (
                 <Tag color="error" style={{ margin: 0 }}>
                   Rejected by: {rejBy}
                 </Tag>

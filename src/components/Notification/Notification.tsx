@@ -180,9 +180,9 @@ const Notification: React.FC<NotificationProps> = ({ onItemClick }) => {
                 window.dispatchEvent(new Event("refreshWorklogTable"));
             }
         };
-        const handleNotificationRead = () => {
+        const handleNotificationRead = () => { refetch(); /* Notification Read toast disabled */ }; const _disabledNotificationRead = () => {
             antdNotification.success({
-                message: "Notification Read",
+                // message: "Notification Read",
                 placement: "top",
             });
             refetch();

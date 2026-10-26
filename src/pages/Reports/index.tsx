@@ -23,6 +23,7 @@ import {
 } from "antd";
 import { ReportGeneratorStudio } from "./components/ReportGeneratorStudio";
 import { FormattedWorklogDescription } from "./components/FormattedWorklogDescription";
+import UserAvailabilityDashboard from "@/pages/Project/availability";
 import { ActiveReportKey } from "./types/reportTypes";
 import { stripHtml } from "@/utils/formatUtils";
 import {
@@ -153,6 +154,18 @@ const REPORT_CATALOG: ReportCatalogItem[] = [
     iconColor: "#722ed1",
     tag: "Delivery & Budget",
     tagColor: "purple",
+  },
+  {
+    key: "availability",
+    title: "Team Availability & Allocation",
+    description: "Interactive timeline of employee project assignments, availability dates, release schedules, and workload capacity.",
+    category: "Projects & Financials",
+    icon: <TeamOutlined style={{ fontSize: 20, color: "#0284c7" }} />,
+    iconBg: "bg-sky-50 border border-sky-100",
+    iconColor: "#0284c7",
+    tag: "Capacity & Schedule",
+    tagColor: "processing",
+    badge: "Timeline",
   },
   {
     key: "analytics",
@@ -1022,7 +1035,13 @@ const ReportsPage: React.FC = () => {
                         </p>
                       </div>
                       <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-blue-600">
-                        <span>{item.key === "analytics" ? "Open Visual Dashboard" : "Generate Report Sheet"}</span>
+                        <span>
+                          {item.key === "analytics"
+                            ? "Open Visual Dashboard"
+                            : item.key === "availability"
+                            ? "Open Availability Timeline"
+                            : "Generate Report Sheet"}
+                        </span>
                         <span className="text-slate-400 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-transform font-bold">→</span>
                       </div>
                     </div>
@@ -1044,7 +1063,16 @@ const ReportsPage: React.FC = () => {
     );
   }
 
-  // 2. If a generator report is selected, show ReportGeneratorStudio in detailed view with Back button!
+  // 2. If availability timeline is selected, show UserAvailabilityDashboard with Back button!
+  if (selectedReport === "availability") {
+    return (
+      <div className="pb-16 sm:pb-0 px-2 sm:px-0">
+        <UserAvailabilityDashboard onBack={() => handleSelectReport(null)} />
+      </div>
+    );
+  }
+
+  // 3. If a generator report is selected, show ReportGeneratorStudio in detailed view with Back button!
   if (selectedReport !== "analytics") {
     return (
       <div className="pb-16 sm:pb-0 px-2 sm:px-0">
@@ -1057,7 +1085,7 @@ const ReportsPage: React.FC = () => {
     );
   }
 
-  // 3. Otherwise (selectedReport === "analytics"), show Visual Analytics Dashboard with Back button!
+  // 4. Otherwise (selectedReport === "analytics"), show Visual Analytics Dashboard with Back button!
   return (
     <div className="pb-16 sm:pb-0 px-2 sm:px-0">
       {/* Top Header Bar with Back Button */}

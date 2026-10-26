@@ -12,6 +12,7 @@ import ResponsiveTable from "@/components/ui/MobileCardList";
 import { PowerTable, PowerTableColumn } from "@/components/Table";
 import { Tag } from "antd";
 import { useIsMobile } from "@/hooks/useIsMobile";
+import { formatUserName } from "@/utils/formatUtils";
 
 const columns = (
   status: string, 
@@ -72,7 +73,7 @@ const columns = (
         const requestAt = record?.requestedAt ? new Date(record.requestedAt).toLocaleString() : null;
         return user ? (
           <Tooltip title={<span>{user.email || user.name}<br/>{requestAt && <span>Requested At: {requestAt}</span>}</span>}>
-            <span>{user.name}</span>
+            <span>{formatUserName(user.name)}</span>
           </Tooltip>
         ) : "-";
       }
@@ -159,7 +160,7 @@ const columns = (
         
         return user ? (
           <Tooltip title={<span>{user.email || user.name}<br/>{extra}</span>}>
-            <span>{user.name}</span>
+            <span>{formatUserName(user.name)}</span>
           </Tooltip>
         ) : "-";
       }

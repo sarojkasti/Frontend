@@ -105,3 +105,11 @@ export const hasHtmlTags = (str?: string | null): boolean => {
   return /<[a-z][\s\S]*>/i.test(String(str));
 };
 
+/**
+ * Formats user display names cleanly without altering the original name
+ */
+export const formatUserName = (rawName?: string | null): string => {
+  if (!rawName) return "";
+  return String(rawName).trim();
+};
+

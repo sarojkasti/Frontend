@@ -19,6 +19,7 @@ import { getWorklogType, getWorklogTypeColor, getWorklogTypeDescription, Worklog
 import ResponsiveTable from "@/components/ui/MobileCardList";
 import { PowerTable, PowerTableColumn, useColumnVisibility } from "@/components/Table";
 import { useIsMobile } from "@/hooks/useIsMobile";
+import { formatUserName } from "@/utils/formatUtils";
 
 const ADMIN_WORKLOG_COLUMNS = [
   { key: "date", title: "Date", defaultVisible: true, required: true, defaultWidth: 90 },
@@ -518,7 +519,7 @@ const AdminWorklogTable = ({ headerControls }: { headerControls?: React.ReactNod
         defaultWidth: 140,
         render: (_: any, record: any) => {
           if (record.requestTo) {
-            const requestToName = record.requestToUser?.name || record.requestTo;
+            const requestToName = formatUserName(record.requestToUser?.name || record.requestTo);
             return (
               <Tooltip 
                 title={
@@ -616,7 +617,7 @@ const AdminWorklogTable = ({ headerControls }: { headerControls?: React.ReactNod
         defaultWidth: 140,
         render: (_: any, record: any) => {
           if (record.status === "approved" && record.approvedBy) {
-            const approverName = record.approvedByUser?.name || record.approvedBy;
+            const approverName = formatUserName(record.approvedByUser?.name || record.approvedBy);
             return (
               <Tooltip 
                 title={
