@@ -832,7 +832,7 @@ const TaskTable = ({
         if (record.isSubTask) return recordMatches(record);
         return false;
       },
-      onFilterDropdownVisibleChange: (visible: boolean) => {
+      onFilterDropdownOpenChange: (visible: boolean) => {
         if (visible) {
           setTimeout(() => searchInput.current?.select(), 100);
         }

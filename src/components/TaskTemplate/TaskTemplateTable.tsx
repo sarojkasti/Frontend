@@ -519,7 +519,7 @@ const TaskTemplateTable = ({
       }
       return false;
     },
-    onFilterDropdownVisibleChange: (visible: boolean) => {
+    onFilterDropdownOpenChange: (visible: boolean) => {
       if (visible) {
         setTimeout(() => searchInput.current?.select(), 100);
       }

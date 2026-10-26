@@ -113,7 +113,7 @@ const WorklogTable = ({ data, visibleColumnKeys }: WorklogTableProps) => {
         ? record[dataIndex].toString().toLowerCase().includes(value.toLowerCase())
         : '';
     },
-    onFilterDropdownVisibleChange: (visible: boolean) => {
+    onFilterDropdownOpenChange: (visible: boolean) => {
       if (visible) {
         setTimeout(() => searchInput.current?.select(), 100);
       }

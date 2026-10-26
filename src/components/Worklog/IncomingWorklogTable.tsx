@@ -1,7 +1,7 @@
 import { useEditWorklog } from "@/hooks/worklog/useEditWorklog";
 import { Tooltip, Button, Card, Modal, Input, Popconfirm, Space, Tag, message } from "antd";
 import moment from "moment";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import TableToolbar from "../Table/TableToolbar";
 import { useDeleteWorklog } from "@/hooks/worklog/useDeleteWorklog";
 import { useSession } from "@/context/SessionContext";
@@ -267,6 +267,11 @@ interface IncomingWorklogTableProps {
 const IncomingWorklogTable = ({ status, searchQuery, visibleColumnKeys }: IncomingWorklogTableProps) => {
   const navigate = useNavigate();
   const { isMobile } = useIsMobile();
+  const [searchParams] = useSearchParams();
+  const highlightId = searchParams.get('worklogId');
+  const [highlightedRowId, setHighlightedRowId] = useState<string | null>(highlightId || null);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(10);
   const { profile } = useSession();
   const currentUserId = (profile as any)?.id;
   const { data: worklogs, isPending } = useWorklogbyUser(status);
@@ -575,6 +580,33 @@ const IncomingWorklogTable = ({ status, searchQuery, visibleColumnKeys }: Incomi
       );
     });
   }, [worklogs, currentUserId, status, searchQuery]);
+
+  useEffect(() => {
+    if (highlightId && filteredWorklogs.length > 0) {
+      const targetIndex = filteredWorklogs.findIndex(
+        (w: any) => String(w.id) === String(highlightId)
+      );
+      if (targetIndex !== -1) {
+        const targetPage = Math.ceil((targetIndex + 1) / pageSize);
+        setCurrentPage(targetPage);
+        setHighlightedRowId(String(highlightId));
+
+        setTimeout(() => {
+          const rowElem =
+            document.getElementById(`incoming-worklog-row-${highlightId}`) ||
+            document.getElementById(`incoming-worklog-card-${highlightId}`);
+          if (rowElem) {
+            rowElem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 500);
+
+        const timer = setTimeout(() => {
+          setHighlightedRowId(null);
+        }, 6000);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [highlightId, filteredWorklogs, pageSize]);
 
   const rowSelection =
     !isMobile && status.toLowerCase() === "requested" && (canApproveWorklogs || canRejectWorklogs)

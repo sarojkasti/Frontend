@@ -14,6 +14,14 @@ export { useTablePersistence } from "./hooks/useTablePersistence";
 export { useEditableCell } from "./hooks/useEditableCell";
 export { useColumnVisibility } from "./hooks/useColumnVisibility";
 
+// Pagination Utilities
+export {
+  getGlobalPaginationConfig,
+  formatPaginationTotal,
+  DEFAULT_PAGE_SIZE_OPTIONS,
+} from "./utils/pagination";
+export type { GlobalPaginationOptions } from "./utils/pagination";
+
 // Types
 export type {
   PowerTableColumn,

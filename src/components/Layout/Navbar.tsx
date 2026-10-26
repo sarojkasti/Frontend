@@ -12,8 +12,8 @@ import {
   Dropdown,
 } from "antd";
 import { Header } from "antd/es/layout/layout";
-import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import Notification from "../Notification/Notification";
 import SearchBarWithPopover from "../SearchBarPopover";
 import Clock from "../Clock/Clock";
@@ -27,6 +27,7 @@ const Navbar = ({
 }) => {
   const { profile } = useSession();
   const navigate = useNavigate();
+  const location = useLocation();
   const [open, setOpen] = useState(false);
   const { isMobile } = useIsMobile();
 
@@ -37,6 +38,32 @@ const Navbar = ({
   const onClose = () => {
     setOpen(false);
   };
+
+  // Auto-open notification drawer when redirected via /notifications or ?openNotifications=true
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    if (searchParams.get("openNotifications") === "true") {
+      setOpen(true);
+      searchParams.delete("openNotifications");
+      const newSearch = searchParams.toString();
+      navigate(
+        {
+          pathname: location.pathname,
+          search: newSearch ? `?${newSearch}` : "",
+        },
+        { replace: true }
+      );
+    }
+  }, [location.search, location.pathname, navigate]);
+
+  // Global event listener to open notifications drawer from anywhere
+  useEffect(() => {
+    const handleOpenDrawer = () => setOpen(true);
+    window.addEventListener("openNotificationsDrawer", handleOpenDrawer);
+    return () => {
+      window.removeEventListener("openNotificationsDrawer", handleOpenDrawer);
+    };
+  }, []);
   // Get userId from profile for notifications
   const userId = profile?.id ? String(profile.id) : '';
   const { data: notification } = useMyNotifications(userId);

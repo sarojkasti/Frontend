@@ -208,11 +208,6 @@ export function useTableSearch<T = any>(options?: UseTableSearchOptions<T>) {
           setTimeout(() => searchInputRef.current?.select(), 100);
         }
       },
-      onFilterDropdownVisibleChange: (visible: boolean) => {
-        if (visible) {
-          setTimeout(() => searchInputRef.current?.select(), 100);
-        }
-      },
       render: (text: any) => {
         if (extraOptions?.highlightMatch === false) return text;
         const textStr =

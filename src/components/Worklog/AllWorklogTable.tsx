@@ -3,7 +3,7 @@ import { useWorklog } from "@/hooks/worklog/useWorklog";
 import { Button, Card, Table, Popconfirm, Input, Space } from "antd";
 import { Tooltip } from "antd";
 import moment from "moment";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useDeleteWorklog } from "@/hooks/worklog/useDeleteWorklog";
 import { useState, useRef, useMemo, useEffect } from "react";
 import { SearchOutlined, EditOutlined, DeleteOutlined, DownOutlined, UpOutlined } from "@ant-design/icons";
@@ -242,6 +242,11 @@ interface AllWorklogTableProps {
 const AllWorklogTable = ({ status, searchQuery, visibleColumnKeys }: AllWorklogTableProps) => {
   const navigate = useNavigate();
   const { isMobile } = useIsMobile();
+  const [searchParams] = useSearchParams();
+  const highlightId = searchParams.get('worklogId');
+  const [highlightedRowId, setHighlightedRowId] = useState<string | null>(highlightId || null);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(10);
   const { data: worklogs, isPending } = useWorklog(status);
   const { isPending: isEditPending } = useEditWorklog();
   const { mutate: deleteWorklog } = useDeleteWorklog();
@@ -554,6 +559,33 @@ const AllWorklogTable = ({ status, searchQuery, visibleColumnKeys }: AllWorklogT
       );
     });
   }, [worklogs, searchQuery]);
+
+  useEffect(() => {
+    if (highlightId && filteredWorklogs.length > 0) {
+      const targetIndex = filteredWorklogs.findIndex(
+        (w: any) => String(w.id) === String(highlightId)
+      );
+      if (targetIndex !== -1) {
+        const targetPage = Math.ceil((targetIndex + 1) / pageSize);
+        setCurrentPage(targetPage);
+        setHighlightedRowId(String(highlightId));
+
+        setTimeout(() => {
+          const rowElem =
+            document.getElementById(`worklog-row-${highlightId}`) ||
+            document.getElementById(`worklog-card-${highlightId}`);
+          if (rowElem) {
+            rowElem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 500);
+
+        const timer = setTimeout(() => {
+          setHighlightedRowId(null);
+        }, 6000);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [highlightId, filteredWorklogs, pageSize]);
 
   return (
     <Card styles={{ body: { padding: '12px' } }}>

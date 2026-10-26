@@ -241,7 +241,7 @@ const Notification: React.FC<NotificationProps> = ({ onItemClick }) => {
         const message = (item?.notification?.message || '').toLowerCase();
 
         // 1. If explicit link exists, extract relative route if same host and sanitize
-        if (rawLink) {
+        if (rawLink && rawLink !== '/notifications' && rawLink !== '/') {
             // Strip any accidental leading "undefined", "/undefined", or "http(s)://undefined"
             rawLink = rawLink.replace(/^(https?:\/\/)?undefined\/?/i, '/');
             rawLink = rawLink.replace(/^\/undefined\/?/i, '/');
@@ -467,11 +467,11 @@ const Notification: React.FC<NotificationProps> = ({ onItemClick }) => {
             <List.Item
                 onClick={() => {
                     if (item.notification.link) {
-                        window.open(item.notification.link, '_self');
+                        handleNotificationClick(item);
                     }
                 }}
                 style={{ 
-                    cursor: item.notification.link ? 'pointer' : 'default',
+                    cursor: 'pointer',
                     padding: '10px 12px',
                     marginBottom: '4px',
                     borderRadius: '8px',

@@ -19,6 +19,7 @@ import CustomerSetting from "@/pages/Setting/CustomerSetting";
 import DepartmentSetting from "@/pages/Setting/DepartmentSetting";
 import MailSettings from "@/pages/Setting/MailSettings";
 import NotificationSetting from "@/pages/Setting/NotificationSetting";
+import NotificationRedirect from "@/pages/Notifications/NotificationRedirect";
 import ClientReportDocumentTypeSetting from "@/pages/Setting/ClientReportDocumentTypeSetting";
 import AllTask from "@/pages/Task/all";
 import NewTask from "@/pages/Task/new";
@@ -504,6 +505,10 @@ const Router = [
       {
         path: "/notification-settings",
         element: <NotificationSetting />,
+      },
+      {
+        path: "/notifications",
+        element: <NotificationRedirect />,
       },
       {
         path: "/mail-settings",

@@ -9,6 +9,7 @@ import { TableEmptyState } from "./components/TableEmptyState";
 import { TableLoadingState } from "./components/TableLoadingState";
 import { useTableSearch, getNestedValue } from "./hooks/useTableSearch";
 import { useTablePersistence } from "./hooks/useTablePersistence";
+import { getGlobalPaginationConfig } from "./utils/pagination";
 import type {
   PowerTableProps,
   PowerTableColumn,
@@ -25,6 +26,7 @@ import type {
  *  - Column Customization (Show/Hide, DnD Reorder)
  *  - LocalStorage Persistence for Column Widths, Visible Columns, and Pagination
  *  - Seamless Mobile Card Transformation
+ *  - Standardized Global Pagination (Auto-Hides when total <= pageSize)
  *  - 100% Backward-Compatible with all Ant Design Table props
  */
 export function PowerTable<T extends Record<string, any> = any>({
@@ -131,8 +133,8 @@ export function PowerTable<T extends Record<string, any> = any>({
     persistenceKey,
     columns: columnDefs,
     defaultPageSize:
-      typeof customPagination === "object" && customPagination?.pageSize
-        ? customPagination.pageSize
+      typeof customPagination === "object"
+        ? (customPagination?.pageSize || customPagination?.defaultPageSize || 10)
         : 10,
   });
 
@@ -385,24 +387,14 @@ export function PowerTable<T extends Record<string, any> = any>({
     };
   }, [customComponents]);
 
-  // Pagination Configuration with Persistence
+  // Pagination Configuration with Persistence & Global Smart Defaults
   const effectivePagination = useMemo(() => {
-    if (customPagination === false) return false;
-    if (isMobile && enableMobileCards) return false;
-
-    const basePagination =
-      typeof customPagination === "object" ? customPagination : {};
-
-    return {
+    return getGlobalPaginationConfig(customPagination, {
       pageSize,
-      showSizeChanger: true,
-      showQuickJumper: true,
-      pageSizeOptions: [5, 10, 20, 50, 100],
-      showTotal: (total: number, range: [number, number]) =>
-        `${range[0]}-${range[1]} of ${total} items`,
-      ...basePagination,
-    };
-  }, [customPagination, pageSize, isMobile, enableMobileCards]);
+      dataSourceLength: Array.isArray(dataSource) ? dataSource.length : 0,
+      isMobile: isMobile && enableMobileCards,
+    });
+  }, [customPagination, pageSize, isMobile, enableMobileCards, dataSource]);
 
   // Handle pagination size change
   const handleTableChange: TableProps<T>["onChange"] = (

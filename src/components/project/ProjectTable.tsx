@@ -413,7 +413,7 @@ const ProjectTable: React.FC<ProjectTableProps> = ({
           ? fieldValue.toString().toLowerCase().includes(value.toLowerCase())
           : false;
       },
-      onFilterDropdownVisibleChange: (visible: boolean) => {
+      onFilterDropdownOpenChange: (visible: boolean) => {
         if (visible) {
           setTimeout(() => searchInput.current?.select(), 100);
         }

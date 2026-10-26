@@ -57,7 +57,12 @@ export function MobileCardList<T = any>({
         ))}
       </div>
 
-      {pagination && pagination !== false && (
+      {pagination &&
+        pagination !== false &&
+        (pagination.hideOnSinglePage !== true ||
+          (pagination.total !== undefined
+            ? pagination.total > (pagination.pageSize || 10)
+            : (dataSource?.length || 0) > (pagination.pageSize || 10))) && (
         <div className="flex justify-center py-4 bg-white rounded-lg border border-gray-100 mt-2">
           <Pagination
             size="small"
