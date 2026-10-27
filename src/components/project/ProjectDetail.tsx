@@ -3,7 +3,7 @@ import { Button, Card, Col, Modal, Row, Select, Tabs, message } from 'antd';
 import { useSession } from '@/context/SessionContext';
 import TaskTable from '../Task/TaskTable';
 import TaskForm from '../Task/TaskForm';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import ProjectSummary from './ProjectSummary';
 import ProjectUserCard from './ProjectUserCard';
 import ProjectTimeline from './ProjectTimeline';
@@ -11,11 +11,12 @@ import ProjectDetails from './ProjectDetails';
 import ProjectRanking from './ProjectRanking';
 import ProjectBudget from './ProjectBudget';
 import ProjectCompletionWorkflow from './ProjectCompletionWorkflow';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, useQuery } from '@tanstack/react-query';
 import ProjectUserAssignment from './ProjectUserAssignment';
 import ProjectWorklogs from './ProjectWorklogs';
 import DsaManager from './dsa/DsaManager';
 import { useUser } from '@/hooks/user/useUser';
+import { listActiveUsers } from '@/service/user.service';
 import { editProject, exportProjectExcel } from '@/service/project.service';
 import { DownloadOutlined, ArrowLeftOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
@@ -38,6 +39,10 @@ const ProjectDetailComponent = ({ project, loading }: ProjectDetailProps) => {
   const [isExporting, setIsExporting] = useState(false);
   const { profile, permissions } = useSession();
   const queryClient = useQueryClient();
+  const { data: activeUsersData, isPending: isPendingActiveUsers } = useQuery({
+    queryKey: ['active-users'],
+    queryFn: listActiveUsers,
+  });
   const { data: allUsersData, isPending: isUsersLoading } = useUser({
     limit: 1000,
     page: 1,
@@ -80,17 +85,43 @@ const ProjectDetailComponent = ({ project, loading }: ProjectDetailProps) => {
   };
 
   const normalizeId = (id: unknown): string => String(id ?? '').trim();
-  const memberOptions = (allUsersData?.results ?? [])
-    .map((user: any) => ({
-      value: normalizeId(user.id),
-      label: `${user.name} (${user.email})`
-    }))
-    .filter((option: { value: string }) => option.value.length > 0);
+  const memberOptions = useMemo(() => {
+    const map = new Map<string, any>();
+    if (Array.isArray(activeUsersData)) {
+      activeUsersData.forEach((u: any) => {
+        if (u?.id) map.set(normalizeId(u.id), u);
+      });
+    }
+    const paginated = allUsersData?.results || (Array.isArray(allUsersData) ? allUsersData : []);
+    paginated.forEach((u: any) => {
+      if (u?.id) map.set(normalizeId(u.id), { ...map.get(normalizeId(u.id)), ...u });
+    });
+    if (project?.users && Array.isArray(project.users)) {
+      project.users.forEach((u: any) => {
+        const uId = normalizeId(typeof u === 'string' ? u : u?.id);
+        if (uId) {
+          const existing = map.get(uId) || {};
+          const uObj = typeof u === 'string' ? { id: uId } : u;
+          map.set(uId, { ...existing, ...uObj });
+        }
+      });
+    }
+    return Array.from(map.values())
+      .map((user: any) => {
+        const userName = user.name || user.username || 'User';
+        const emailStr = user.email ? ` (${user.email})` : '';
+        return {
+          value: normalizeId(user.id),
+          label: `${userName}${emailStr}`,
+        };
+      })
+      .filter((option) => option.value.length > 0);
+  }, [activeUsersData, allUsersData, project?.users]);
 
   const selectedSet = new Set(selectedMemberIds);
   const sortedMemberOptions = [
-    ...memberOptions.filter((option: { value: string }) => !selectedSet.has(option.value)),
-    ...memberOptions.filter((option: { value: string }) => selectedSet.has(option.value))
+    ...memberOptions.filter((option: { value: string }) => selectedSet.has(option.value)),
+    ...memberOptions.filter((option: { value: string }) => !selectedSet.has(option.value))
   ];
 
   const openInviteModal = () => {
@@ -277,9 +308,15 @@ const ProjectDetailComponent = ({ project, loading }: ProjectDetailProps) => {
           placeholder="Select users to include in this project"
           value={selectedMemberIds}
           onChange={(values) => setSelectedMemberIds((values as Array<string | number>).map((value) => normalizeId(value)))}
-          loading={isUsersLoading}
+          loading={isUsersLoading || isPendingActiveUsers}
           options={sortedMemberOptions}
           optionFilterProp="label"
+          showSearch
+          filterOption={(input, option) =>
+            option?.label && typeof option.label === 'string'
+              ? option.label.toLowerCase().includes(input.toLowerCase())
+              : false
+          }
         />
       </Modal>
       <Col span={24}>

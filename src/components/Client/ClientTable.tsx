@@ -55,32 +55,46 @@ const ClientTable = ({
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(getSavedClientPageSize());
   const { data: clientData, isPending } = useClient(status);
+  const [sortedInfo, setSortedInfo] = useState<any>({});
 
   const filteredClientData = useMemo(() => {
     if (!clientData || !Array.isArray(clientData)) return [];
-    if (!searchQuery?.trim()) return clientData;
-    const q = searchQuery.trim().toLowerCase();
-    return clientData.filter((client: any) => {
-      const name = (client.name || "").toLowerCase();
-      const shortName = (client.shortName || "").toLowerCase();
-      const pan = (client.panNo || client.pan || "").toString().toLowerCase();
-      const code = (client.code || "").toLowerCase();
-      const contactPerson = (client.contactPerson || "").toLowerCase();
-      const email = (client.email || "").toLowerCase();
-      const phone = (client.phoneNumber || client.phone || "").toString().toLowerCase();
-      const address = (client.address || client.localJurisdiction || client.district || client.state || "").toLowerCase();
-      return (
-        name.includes(q) ||
-        shortName.includes(q) ||
-        pan.includes(q) ||
-        code.includes(q) ||
-        contactPerson.includes(q) ||
-        email.includes(q) ||
-        phone.includes(q) ||
-        address.includes(q)
-      );
-    });
-  }, [clientData, searchQuery]);
+    let list = clientData;
+    if (searchQuery?.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      list = clientData.filter((client: any) => {
+        const name = (client.name || "").toLowerCase();
+        const shortName = (client.shortName || "").toLowerCase();
+        const pan = (client.panNo || client.pan || "").toString().toLowerCase();
+        const code = (client.code || "").toLowerCase();
+        const contactPerson = (client.contactPerson || "").toLowerCase();
+        const email = (client.email || "").toLowerCase();
+        const phone = (client.phoneNumber || client.phone || "").toString().toLowerCase();
+        const address = (client.address || client.localJurisdiction || client.district || client.state || "").toLowerCase();
+        return (
+          name.includes(q) ||
+          shortName.includes(q) ||
+          pan.includes(q) ||
+          code.includes(q) ||
+          contactPerson.includes(q) ||
+          email.includes(q) ||
+          phone.includes(q) ||
+          address.includes(q)
+        );
+      });
+    }
+
+    // Default sort: latest on top (createdAt desc)
+    if (!sortedInfo.order) {
+      return [...list].sort((a: any, b: any) => {
+        const aDate = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const bDate = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return bDate - aDate;
+      });
+    }
+
+    return list;
+  }, [clientData, searchQuery, sortedInfo]);
 
   // Column Widths State with localStorage Persistence
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>(
@@ -99,8 +113,6 @@ const ClientTable = ({
       return updated;
     });
   };
-
-  const [sortedInfo, setSortedInfo] = useState<any>({});
   const { getColumnSearchProps, searchedColumn, searchText } = useTableSearch({
     dataSource: clientData,
   });

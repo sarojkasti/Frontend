@@ -44,31 +44,44 @@ const UserTable = ({
     keywords: searchQuery
   });
 
+  const [sortedInfo, setSortedInfo] = useState<any>({});
+
   const filteredUsers = useMemo(() => {
     const rawUsers: UserType[] = Array.isArray(user) ? user : user?.results || [];
-    if (!searchQuery?.trim()) return rawUsers;
-    const q = searchQuery.trim().toLowerCase();
-    return rawUsers.filter((u: any) => {
-      const name = (u.name || "").toLowerCase();
-      const email = (u.email || "").toLowerCase();
-      const username = (u.username || "").toLowerCase();
-      const phone = (u.phoneNumber || u.phone || "").toString().toLowerCase();
-      const empId = (u.employeeId || "").toString().toLowerCase();
-      const roleName = (u.role?.displayName || u.role?.name || "").toLowerCase();
-      const department = (u.profile?.department?.name || "").toLowerCase();
-      return (
-        name.includes(q) ||
-        email.includes(q) ||
-        username.includes(q) ||
-        phone.includes(q) ||
-        empId.includes(q) ||
-        roleName.includes(q) ||
-        department.includes(q)
-      );
-    });
-  }, [user, searchQuery]);
+    let result = rawUsers;
+    if (searchQuery?.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      result = rawUsers.filter((u: any) => {
+        const name = (u.name || "").toLowerCase();
+        const email = (u.email || "").toLowerCase();
+        const username = (u.username || "").toLowerCase();
+        const phone = (u.phoneNumber || u.phone || "").toString().toLowerCase();
+        const empId = (u.employeeId || "").toString().toLowerCase();
+        const roleName = (u.role?.displayName || u.role?.name || "").toLowerCase();
+        const department = (u.profile?.department?.name || "").toLowerCase();
+        return (
+          name.includes(q) ||
+          email.includes(q) ||
+          username.includes(q) ||
+          phone.includes(q) ||
+          empId.includes(q) ||
+          roleName.includes(q) ||
+          department.includes(q)
+        );
+      });
+    }
 
-  const [sortedInfo, setSortedInfo] = useState<any>({});
+    // Default sort: latest on top (createdAt desc)
+    if (!sortedInfo.order) {
+      return [...result].sort((a: any, b: any) => {
+        const aDate = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const bDate = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return bDate - aDate;
+      });
+    }
+
+    return result;
+  }, [user, searchQuery, sortedInfo]);
   const [expandedIds, setExpandedIds] = useState<string[]>([]);
   const toggleExpand = (id: string | number) => {
     const strId = String(id);

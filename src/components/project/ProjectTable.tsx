@@ -484,11 +484,30 @@ const ProjectTable: React.FC<ProjectTableProps> = ({
         );
       });
     }
+    const isStatusActive = status === "active";
     return filtered.sort((a: any, b: any) => {
-      const aCreatedAt = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-      const bCreatedAt = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-      if (aCreatedAt !== bCreatedAt) {
-        return bCreatedAt - aCreatedAt;
+      if (isStatusActive) {
+        // Active projects: sort according to creation date (latest on top)
+        const aCreatedAt = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const bCreatedAt = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        if (aCreatedAt !== bCreatedAt) {
+          return bCreatedAt - aCreatedAt;
+        }
+      } else {
+        // Other statuses (completed, suspended, archived, signed_off): based on updated date (status changed)
+        const aUpdatedAt = a.updatedAt
+          ? new Date(a.updatedAt).getTime()
+          : a.createdAt
+          ? new Date(a.createdAt).getTime()
+          : 0;
+        const bUpdatedAt = b.updatedAt
+          ? new Date(b.updatedAt).getTime()
+          : b.createdAt
+          ? new Date(b.createdAt).getTime()
+          : 0;
+        if (aUpdatedAt !== bUpdatedAt) {
+          return bUpdatedAt - aUpdatedAt;
+        }
       }
       return (a.name || "").localeCompare(b.name || "");
     });

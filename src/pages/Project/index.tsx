@@ -637,15 +637,27 @@ const ProjectPage: React.FC = () => {
 
       {open && (
         <Modal
-          title={editTaskGroupData ? "Edit Project" : "Create New Project"}
+          title={
+            <span className="text-base font-semibold text-gray-800">
+              {editTaskGroupData ? "Edit Project" : "Create New Project"}
+            </span>
+          }
           footer={null}
           open={open}
           onCancel={handleCancel}
-          width="min(1100px, 95vw)"
-          style={{ top: 24 }}
-          bodyStyle={{ paddingTop: 12 }}
+          width="min(1000px, 95vw)"
+          centered
+          styles={{
+            body: {
+              maxHeight: "calc(88vh - 100px)",
+              overflowY: "auto",
+              overflowX: "hidden",
+              padding: "16px 20px",
+            },
+          }}
+          destroyOnClose
         >
-          <div className="max-h-[80vh] overflow-y-auto pr-2">
+          <div className="overflow-x-hidden w-full">
             <ProjectForm editProjectData={editTaskGroupData} handleCancel={handleCancel} />
           </div>
         </Modal>

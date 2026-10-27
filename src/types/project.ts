@@ -22,6 +22,14 @@ export interface NatureOfWorkGroupType {
     updatedAt?: string;
 }
 
+export enum ProjectStatus {
+    ACTIVE = "active",
+    SUSPENDED = "suspended",
+    ARCHIVED = "archived",
+    COMPLETED = "completed",
+    SIGNED_OFF = "signed_off",
+}
+
 export interface ProjectType {
     id: number;
     name: string;
