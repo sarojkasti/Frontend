@@ -749,7 +749,7 @@ const NotificationSetting: React.FC = () => {
                   columns={subscriberColumns}
                   rowKey="userId"
                   loading={subscribersLoading}
-                  pagination={{ pageSize: 10 }}
+                  pagination={{ pageSize: 10, hideOnSinglePage: true }}
                   locale={{
                     emptyText: (
                       <div style={{ padding: '24px 0', textAlign: 'center' }}>

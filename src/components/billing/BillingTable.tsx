@@ -1,8 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { useDeleteBilling } from "@/hooks/billing/useDeleteBilling";
 import { BillingType } from "@/types/billing";
 import { Button, Popconfirm, Space, Tag, message } from "antd";
-import { PowerTable, PowerTableColumn } from "@/components/Table";
+import { PowerTable, PowerTableColumn, getGlobalPaginationConfig } from "@/components/Table";
 
 interface BillingTableProps {
   data: BillingType[];
@@ -51,8 +51,9 @@ const BillingTable = ({
       key: "name",
       defaultWidth: 180,
       required: true,
-      sorter: (a, b) => a.name.localeCompare(b.name),
+      sorter: (a, b) => (a.name || "").localeCompare(b.name || ""),
       sortOrder: sortedInfo.columnKey === "name" && sortedInfo.order,
+      render: (text) => text || "-",
     },
     {
       title: "Short Name",
@@ -61,7 +62,7 @@ const BillingTable = ({
       defaultWidth: 130,
       sorter: (a, b) => (a.shortName || "").localeCompare(b.shortName || ""),
       sortOrder: sortedInfo.columnKey === "shortName" && sortedInfo.order,
-      render: (text) => text || "N/A",
+      render: (text) => text || "-",
     },
     {
       title: "PAN Number",
@@ -70,7 +71,7 @@ const BillingTable = ({
       defaultWidth: 140,
       sorter: (a, b) => (a.pan_number || "").localeCompare(b.pan_number || ""),
       sortOrder: sortedInfo.columnKey === "pan_number" && sortedInfo.order,
-      render: (text) => text || "N/A",
+      render: (text) => text || "-",
     },
     {
       title: "Email",
@@ -79,7 +80,7 @@ const BillingTable = ({
       defaultWidth: 200,
       sorter: (a, b) => (a.email || "").localeCompare(b.email || ""),
       sortOrder: sortedInfo.columnKey === "email" && sortedInfo.order,
-      render: (text) => text || "N/A",
+      render: (text) => text || "-",
     },
     {
       title: "Phone",
@@ -88,7 +89,7 @@ const BillingTable = ({
       defaultWidth: 140,
       sorter: (a, b) => (a.phone || "").localeCompare(b.phone || ""),
       sortOrder: sortedInfo.columnKey === "phone" && sortedInfo.order,
-      render: (text) => text || "N/A",
+      render: (text) => text || "-",
     },
     {
       title: "Reg. Number",
@@ -96,7 +97,7 @@ const BillingTable = ({
       key: "registration_number",
       defaultWidth: 140,
       defaultVisible: false,
-      render: (text) => text || "N/A",
+      render: (text) => text || "-",
     },
     {
       title: "VAT Number",
@@ -104,7 +105,7 @@ const BillingTable = ({
       key: "vat_number",
       defaultWidth: 140,
       defaultVisible: false,
-      render: (text) => text || "N/A",
+      render: (text) => text || "-",
     },
     {
       title: "Bank Name",
@@ -112,7 +113,7 @@ const BillingTable = ({
       key: "bank_name",
       defaultWidth: 160,
       defaultVisible: false,
-      render: (text) => text || "N/A",
+      render: (text) => text || "-",
     },
     {
       title: "Address",
@@ -120,16 +121,17 @@ const BillingTable = ({
       key: "address",
       defaultWidth: 180,
       defaultVisible: false,
-      render: (text) => text || "N/A",
+      render: (text) => text || "-",
     },
     {
       title: "Status",
       dataIndex: "status",
       key: "status",
       defaultWidth: 120,
-      sorter: (a, b) => a.status.localeCompare(b.status),
+      sorter: (a, b) => (a.status || "").localeCompare(b.status || ""),
       sortOrder: sortedInfo.columnKey === "status" && sortedInfo.order,
       render: (status: string) => {
+        if (!status) return "-";
         let color = "green";
         if (status === "suspended") {
           color = "orange";
@@ -166,6 +168,23 @@ const BillingTable = ({
     },
   ];
 
+  const paginationConfig = useMemo(() => {
+    return getGlobalPaginationConfig(
+      {
+        pageSize: 10,
+        showSizeChanger: true,
+        showQuickJumper: true,
+        pageSizeOptions: [5, 10, 20, 50],
+        showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} items`,
+      },
+      {
+        pageSize: 10,
+        total: data?.length || 0,
+        hideOnSinglePage: true,
+      }
+    );
+  }, [data?.length]);
+
   return (
     <PowerTable<BillingType>
       columns={columns}
@@ -177,13 +196,7 @@ const BillingTable = ({
       visibleColumnKeys={visibleColumnKeys}
       onVisibleColumnKeysChange={onVisibleColumnKeysChange}
       persistenceKey="billing_table"
-      pagination={{
-        pageSize: 10,
-        showSizeChanger: true,
-        showQuickJumper: true,
-        pageSizeOptions: [5, 10, 20, 50],
-        showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} items`,
-      }}
+      pagination={paginationConfig}
       onChange={handleTableChange}
       bordered
     />

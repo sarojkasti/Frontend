@@ -2206,7 +2206,7 @@ const TaskTable = ({
           dataSource={completeAllTaskCandidates}
           rowKey="id"
           size="small"
-          pagination={{ pageSize: 10, showSizeChanger: false }}
+          pagination={{ pageSize: 10, showSizeChanger: false, hideOnSinglePage: true }}
           columns={[
             {
               title: "Status",

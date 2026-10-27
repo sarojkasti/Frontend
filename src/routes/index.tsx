@@ -165,7 +165,7 @@ const Router = [
         element: (
           <ProtectedRoute
             method="get"
-            resource="user"
+            resource="default"
             component={<Dashboard />}
           />
         ),
@@ -646,7 +646,7 @@ const Router = [
   element: (
     <ProtectedRoute
       method="get"
-      resource="todo-task"
+      resource="default"
       component={<TodoTaskPage />}
     />
   ),
@@ -656,7 +656,7 @@ const Router = [
   element: (
     <ProtectedRoute
       method="get"
-      resource="todo-task"
+      resource="default"
       component={<TodoTaskPage />}
     />
   ),

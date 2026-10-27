@@ -144,7 +144,7 @@ const ClientDashboard: React.FC = () => {
       key: "title",
       render: (title: string, record: ClientReportType) => (
         <div>
-          <div className="font-medium">{title}</div>
+          <div className="font-medium">{title || "-"}</div>
           {record.description && (
             <Text type="secondary" className="text-sm">
               {record.description}
@@ -318,7 +318,7 @@ const ClientDashboard: React.FC = () => {
               dataSource={filteredReports}
               columns={columns}
               rowKey="id"
-              pagination={{ pageSize: 10 }}
+              pagination={{ pageSize: 10, hideOnSinglePage: true }}
             />
           ) : (
             <Empty description={

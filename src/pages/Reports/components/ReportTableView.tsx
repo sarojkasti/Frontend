@@ -270,6 +270,7 @@ export const ReportTableView: React.FC<ReportTableViewProps> = ({
           pageSize: pageSize,
           pageSizeOptions: ["10", "25", "50", "100", "500"],
           showSizeChanger: true,
+          hideOnSinglePage: true,
           onShowSizeChange: (_, size) => setPageSize(size),
           showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} records`,
           style: { marginTop: 16 },

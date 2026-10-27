@@ -513,6 +513,7 @@ const UserHistoryDetails: React.FC = () => {
             loading={isLoading}
             pagination={{
               pageSize: 10,
+              hideOnSinglePage: true,
               showSizeChanger: true,
               pageSizeOptions: ['10', '20', '50'],
               showTotal: (total) => `Total ${total} history entries`,

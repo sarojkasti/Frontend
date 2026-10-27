@@ -1,10 +1,80 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Table, Spin, Empty, Pagination, Checkbox, Divider } from 'antd';
 import type { TableProps } from 'antd';
 import type { ColumnsType, ColumnType } from 'antd/es/table';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { TableEmptyState } from '@/components/Table/components/TableEmptyState';
 import { TableLoadingState } from '@/components/Table/components/TableLoadingState';
+import { getGlobalPaginationConfig } from '@/components/Table/utils/pagination';
+
+/**
+ * Global blank rule enforcer.
+ * Standardizes cell display when values are null, undefined, or empty string.
+ * Renders '-' instead of leaving an empty blank void.
+ */
+export function applyBlankRule(rendered: any): any {
+  if (rendered === null || rendered === undefined || rendered === "") {
+    return "-";
+  }
+  if (
+    rendered &&
+    typeof rendered === "object" &&
+    !React.isValidElement(rendered) &&
+    "props" in rendered &&
+    "children" in rendered
+  ) {
+    if (rendered.props?.colSpan === 0 || rendered.props?.rowSpan === 0) {
+      return rendered;
+    }
+    if (
+      rendered.children === null ||
+      rendered.children === undefined ||
+      rendered.children === ""
+    ) {
+      return { ...rendered, children: "-" };
+    }
+  }
+  if (Array.isArray(rendered) && rendered.length === 0) {
+    return "-";
+  }
+  return rendered;
+}
+
+/**
+ * Recursively injects the blank rule into column renderers (except action/operation columns).
+ */
+export function processColumnsWithBlankRule(cols: any[]): any[] {
+  if (!cols || !Array.isArray(cols)) return cols;
+  return cols.map((col: any) => {
+    if (Array.isArray(col.children) && col.children.length > 0) {
+      return {
+        ...col,
+        children: processColumnsWithBlankRule(col.children),
+      };
+    }
+    const keyStr = String(col.key || col.dataIndex || "").toLowerCase();
+    const titleStr = typeof col.title === "string" ? col.title.toLowerCase() : "";
+    const isActionCol =
+      keyStr.includes("action") ||
+      keyStr.includes("operation") ||
+      titleStr.includes("action") ||
+      titleStr.includes("operation");
+
+    if (isActionCol) return col;
+
+    const originalRender = col.render;
+    return {
+      ...col,
+      render: (val: any, record: any, index: number) => {
+        if (originalRender) {
+          const rendered = originalRender(val, record, index);
+          return applyBlankRule(rendered);
+        }
+        return applyBlankRule(val);
+      },
+    };
+  });
+}
 
 export interface MobileCardListProps<T = any> {
   dataSource: T[];
@@ -59,10 +129,9 @@ export function MobileCardList<T = any>({
 
       {pagination &&
         pagination !== false &&
-        (pagination.hideOnSinglePage !== true ||
-          (pagination.total !== undefined
-            ? pagination.total > (pagination.pageSize || 10)
-            : (dataSource?.length || 0) > (pagination.pageSize || 10))) && (
+        (pagination.total !== undefined
+          ? pagination.total > (pagination.pageSize || 10)
+          : (dataSource?.length || 0) > (pagination.pageSize || 10)) && (
         <div className="flex justify-center py-4 bg-white rounded-lg border border-gray-100 mt-2">
           <Pagination
             size="small"
@@ -273,14 +342,45 @@ export function ResponsiveTable<T = any>(props: ResponsiveTableProps<T>) {
         dataSource={rawData}
         renderCard={cardRenderer}
         loading={isTableLoading}
-        emptyText={actualTableProps.locale?.emptyText as string}
-        pagination={actualTableProps.pagination}
+        emptyText={typeof actualTableProps.locale?.emptyText === 'string' ? actualTableProps.locale.emptyText : 'No data'}
+        pagination={
+          actualTableProps.pagination === false
+            ? false
+            : getGlobalPaginationConfig(actualTableProps.pagination, {
+                dataSourceLength: rawData.length,
+                isMobile: false,
+              })
+        }
       />
     );
   }
 
-  // Desktop view: untouched Ant Design Table
-  return <Table<T> {...actualTableProps} />;
+  const processedColumns = useMemo(() => {
+    return processColumnsWithBlankRule((actualTableProps.columns as any[]) || []);
+  }, [actualTableProps.columns]);
+
+  const desktopPagination = useMemo(() => {
+    if (actualTableProps.pagination === false) return false;
+    return getGlobalPaginationConfig(actualTableProps.pagination, {
+      dataSourceLength: Array.isArray(actualTableProps.dataSource)
+        ? actualTableProps.dataSource.length
+        : 0,
+      isMobile: false,
+    });
+  }, [actualTableProps.pagination, actualTableProps.dataSource]);
+
+  // Desktop view: Ant Design Table with global blank rule, auto-hide pagination & empty state
+  return (
+    <Table<T>
+      {...actualTableProps}
+      columns={processedColumns}
+      pagination={desktopPagination}
+      locale={{
+        emptyText: actualTableProps.locale?.emptyText || <TableEmptyState />,
+        ...actualTableProps.locale,
+      }}
+    />
+  );
 }
 
 export default ResponsiveTable;

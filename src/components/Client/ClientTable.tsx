@@ -24,8 +24,7 @@ import {
 } from "antd";
 import { useState, useRef, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ResizableHeader as ResizableTitle, useTableSearch } from "@/components/Table";
-import ResponsiveTable from "@/components/ui/MobileCardList";
+import { PowerTable, ResizableHeader as ResizableTitle, useTableSearch, getGlobalPaginationConfig } from "@/components/Table";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import dayjs from "dayjs";
 import {
@@ -148,7 +147,7 @@ const ClientTable = ({
               className="text-slate-800 cursor-pointer hover:text-blue-600"
               onClick={() => navigate(`/client/view/${record.id}`)}
             >
-              {name}
+              {name || "-"}
             </strong>
           </div>
         )
@@ -562,18 +561,40 @@ const ClientTable = ({
     );
   };
 
+  const paginationConfig = useMemo(() => {
+    return getGlobalPaginationConfig(
+      {
+        current: page,
+        pageSize: limit,
+        total: filteredClientData?.length,
+        showSizeChanger: true,
+        showQuickJumper: true,
+        pageSizeOptions: [5, 10, 20, 50],
+        showTotal: (total, range) =>
+          `${range[0]}-${range[1]} of ${total} clients`,
+        onChange: (newPage: number, newPageSize?: number) => {
+          setPage(newPage);
+          if (newPageSize && newPageSize !== limit) {
+            setLimit(newPageSize);
+            saveClientPageSize(newPageSize);
+          }
+        },
+      },
+      {
+        pageSize: limit,
+        total: filteredClientData?.length,
+        hideOnSinglePage: true,
+      }
+    );
+  }, [page, limit, filteredClientData?.length]);
+
   return (
     <Card
       styles={{ body: { padding: isMobile ? 0 : 12 } }}
       bordered={!isMobile}
       className={isMobile ? "bg-transparent border-0 shadow-none" : ""}
     >
-      <ResponsiveTable
-        components={{
-          header: {
-            cell: ResizableTitle
-          }
-        }}
+      <PowerTable
         loading={isPending}
         dataSource={filteredClientData}
         columns={activeColumns}
@@ -581,21 +602,12 @@ const ClientTable = ({
         onChange={handleTableChange}
         rowKey="id"
         size="small"
-        tableLayout="fixed"
+        enableResize
+        showToolbar={false}
+        enableSearch={false}
+        enableColumnCustomizer={false}
         scroll={isMobile ? undefined : { x: "max-content" }}
-        pagination={
-          isMobile
-            ? false
-            : {
-                current: page,
-                pageSize: limit,
-                showSizeChanger: true,
-                showQuickJumper: true,
-                pageSizeOptions: [5, 10, 20, 50],
-                showTotal: (total, range) =>
-                  `${range[0]}-${range[1]} of ${total} clients`
-              }
-        }
+        pagination={paginationConfig}
         renderMobileCard={renderClientCard}
       />
     </Card>

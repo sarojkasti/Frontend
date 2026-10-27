@@ -45,8 +45,7 @@ import Highlighter from "react-highlight-words";
 import moment from "moment";
 import dayjs from "dayjs";
 import useIsMobile from "@/hooks/useIsMobile";
-import { ResponsiveTable } from "@/components/ui/MobileCardList";
-import { ResizableHeader as ResizableTitle } from "@/components/Table";
+import { PowerTable, ResizableHeader as ResizableTitle, getGlobalPaginationConfig } from "@/components/Table";
 import {
   ALL_PROJECT_COLUMNS,
   getSavedColumnWidths,
@@ -541,7 +540,7 @@ const ProjectTable: React.FC<ProjectTableProps> = ({
       ...getColumnSearchProps("name", "Project Name"),
       render: (_: any, record: any) => (
         <Link to={`/projects/${record.id}`} className="text-blue-600 font-medium">
-          {record.name}
+          {record.name || "-"}
         </Link>
       ),
     },
@@ -568,10 +567,13 @@ const ProjectTable: React.FC<ProjectTableProps> = ({
       },
       sortOrder: sortedInfo.columnKey === "natureOfWork" && sortedInfo.order,
       ...getColumnSearchProps("natureOfWork.name", "Nature Of Project"),
-      render: (_: any, record: any) =>
-        typeof record.natureOfWork === "object"
-          ? record.natureOfWork?.name
-          : record.natureOfWork || "-",
+      render: (_: any, record: any) => {
+        const val =
+          typeof record.natureOfWork === "object"
+            ? record.natureOfWork?.name
+            : record.natureOfWork;
+        return val || "-";
+      },
     },
     client: {
       title: "Client",
@@ -604,7 +606,7 @@ const ProjectTable: React.FC<ProjectTableProps> = ({
       sortOrder: sortedInfo.columnKey === "projectManager" && sortedInfo.order,
       ...getColumnSearchProps("projectManager.name", "Manager"),
       render: (_: any, record: any) =>
-        record?.projectManager ? (
+        record?.projectManager?.name ? (
           <Space size={6}>
             <Avatar
               size="small"
@@ -638,7 +640,7 @@ const ProjectTable: React.FC<ProjectTableProps> = ({
       sortOrder: sortedInfo.columnKey === "projectLead" && sortedInfo.order,
       ...getColumnSearchProps("projectLead.name", "Lead"),
       render: (_: any, record: any) =>
-        record?.projectLead ? (
+        record?.projectLead?.name ? (
           <Space size={6}>
             <Avatar
               size="small"
@@ -961,17 +963,32 @@ const ProjectTable: React.FC<ProjectTableProps> = ({
     return activeCols;
   }, [visibleColumnKeys, columnWidths, sortedInfo, searchedColumn, searchText]);
 
-  const paginationOptions = {
-    current: page,
-    pageSize: limit,
-    total: filteredProject?.length,
-    showSizeChanger: true,
-    showQuickJumper: true,
-    hideOnSinglePage: false,
-    pageSizeOptions: [5, 10, 20, 30, 50, 100],
-    showTotal: (total: number, range: number[]) =>
-      `${range[0]}-${range[1]} of ${total}`,
-  };
+  const paginationConfig = useMemo(() => {
+    return getGlobalPaginationConfig(
+      {
+        current: page,
+        pageSize: limit,
+        total: filteredProject?.length,
+        showSizeChanger: true,
+        showQuickJumper: true,
+        pageSizeOptions: [5, 10, 20, 30, 50, 100],
+        showTotal: (total: number, range: [number, number]) =>
+          `${range[0]}-${range[1]} of ${total} items`,
+        onChange: (newPage: number, newPageSize?: number) => {
+          setPage(newPage);
+          if (newPageSize && newPageSize !== limit) {
+            setLimit(newPageSize);
+            savePageSize(newPageSize);
+          }
+        },
+      },
+      {
+        pageSize: limit,
+        total: filteredProject?.length,
+        hideOnSinglePage: true,
+      }
+    );
+  }, [page, limit, filteredProject?.length]);
 
   const rowSelection: TableProps<ProjectType>["rowSelection"] = {
     type: "checkbox",
@@ -1230,24 +1247,22 @@ const ProjectTable: React.FC<ProjectTableProps> = ({
         bordered={!isMobile}
         className={isMobile ? "bg-transparent border-0 shadow-none" : ""}
       >
-        <ResponsiveTable
-          components={{
-            header: {
-              cell: ResizableTitle,
-            },
-          }}
+        <PowerTable<ProjectType>
           loading={isPending}
-          pagination={isMobile ? false : paginationOptions}
-          rowSelection={rowSelection}
+          pagination={paginationConfig}
+          rowSelection={isMobile ? undefined : rowSelection}
           showSorterTooltip={true}
           dataSource={filteredProject}
           columns={columns}
           onChange={handleTableChange}
           rowKey={"id"}
           size="small"
-          tableLayout="fixed"
+          enableResize
+          showToolbar={false}
+          enableSearch={false}
+          enableColumnCustomizer={false}
           scroll={{ x: "max-content" }}
-          mobileRenderCard={renderMobileProjectCard}
+          renderMobileCard={renderMobileProjectCard}
         />
       </Card>
 

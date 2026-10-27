@@ -22,6 +22,14 @@ export {
 } from "./utils/pagination";
 export type { GlobalPaginationOptions } from "./utils/pagination";
 
+// Responsive & Blank Rule Utilities
+export {
+  ResponsiveTable,
+  MobileCardList,
+  applyBlankRule,
+  processColumnsWithBlankRule,
+} from "@/components/ui/MobileCardList";
+
 // Types
 export type {
   PowerTableColumn,

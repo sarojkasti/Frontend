@@ -322,10 +322,8 @@ const TodoTaskPage = () => {
   };
   // Get permissions
   const { permissions = [] } = useSession();
-  const hasCreatePermission = permissions.some(
-    (permission: any) =>
-      permission.method === "post" && permission.resource === "todo-task",
-  );
+  // Todo tasks can be created by any authenticated user (authenticated default route)
+  const hasCreatePermission = true;
   // Check specifically for all-tasks view permission
   const hasViewAllPermission = permissions.some(
     (permission: any) =>

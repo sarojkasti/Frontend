@@ -254,7 +254,7 @@ const ClientUsersTab: React.FC<ClientUsersTabProps> = ({ clientId, clientName })
         dataSource={users || []}
         columns={columns}
         rowKey="id"
-        pagination={{ pageSize: 10 }}
+        pagination={{ pageSize: 10, hideOnSinglePage: true }}
       />
 
       {/* Add Client User Modal */}

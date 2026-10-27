@@ -67,7 +67,7 @@ const ClientProjects: React.FC<ClientProjectsProps> = ({ clientId }) => {
       columns={columns} 
       dataSource={projects || []} 
       rowKey="id" 
-      pagination={{ pageSize: 10 }}
+      pagination={{ pageSize: 10, hideOnSinglePage: true }}
     />
   );
 };

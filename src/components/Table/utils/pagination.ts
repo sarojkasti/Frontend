@@ -24,6 +24,7 @@ export function getGlobalPaginationConfig(
     total?: number;
     dataSourceLength?: number;
     hideOnSinglePage?: boolean;
+    forceShow?: boolean;
     isMobile?: boolean;
   }
 ): TablePaginationConfig | false {
@@ -33,10 +34,10 @@ export function getGlobalPaginationConfig(
   const base = typeof customPagination === "object" ? customPagination : {};
 
   const totalCount =
-    base.total !== undefined
-      ? base.total
-      : options?.total !== undefined
+    options?.total !== undefined
       ? options.total
+      : base.total !== undefined
+      ? base.total
       : options?.dataSourceLength !== undefined
       ? options.dataSourceLength
       : 0;
@@ -44,9 +45,11 @@ export function getGlobalPaginationConfig(
   const effectivePageSize =
     options?.pageSize || base.pageSize || base.defaultPageSize || 10;
 
+  // The global rule requires auto-hiding when list count <= pageSize.
+  // Unless explicitly requested via options.forceShow=true, we always hide on single page.
   const shouldHideOnSinglePage =
-    base.hideOnSinglePage !== undefined
-      ? base.hideOnSinglePage
+    options?.forceShow === true
+      ? false
       : options?.hideOnSinglePage !== undefined
       ? options.hideOnSinglePage
       : true;
@@ -61,7 +64,7 @@ export function getGlobalPaginationConfig(
     showQuickJumper: true,
     pageSizeOptions: DEFAULT_PAGE_SIZE_OPTIONS,
     showTotal: formatPaginationTotal,
-    hideOnSinglePage: shouldHideOnSinglePage,
+    hideOnSinglePage: true,
     ...base,
     pageSize: effectivePageSize,
     total: totalCount,

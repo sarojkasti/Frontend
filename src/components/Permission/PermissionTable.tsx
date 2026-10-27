@@ -1,4 +1,4 @@
-﻿import {
+import {
   EditOutlined,
   SyncOutlined,
   DeleteOutlined,
@@ -7,7 +7,6 @@
 } from '@ant-design/icons';
 import {
   Button,
-  Table,
   Space,
   Tooltip,
   message,
@@ -16,7 +15,8 @@ import {
   Tag,
   Card
 } from 'antd';
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
+import { PowerTable, getGlobalPaginationConfig } from '@/components/Table';
 import { usePermission } from '../../hooks/permission/usePermission';
 import { useSyncPermissions } from '../../hooks/permission/useSyncPermissions';
 import { useDeletePermission } from '../../hooks/permission/useDeletePermission';
@@ -269,16 +269,29 @@ const PermissionTable = ({ showEditModal }: { showEditModal: any }) => {
 
   const totalCount = permissionData?.totalItems || permissionData?.totalCount || 0;
 
-  const paginationOptions = {
-    current: page,
-    pageSize: limit,
-    total: totalCount,
-    showSizeChanger: true,
-    showQuickJumper: true,
-    pageSizeOptions: [10, 20, 50, 100],
-    showTotal: (total: number, range: number[]) =>
-      `${range[0]}-${range[1]} of ${total} permissions`
-  };
+  const paginationConfig = useMemo(() => {
+    return getGlobalPaginationConfig(
+      {
+        current: page,
+        pageSize: limit,
+        total: totalCount,
+        showSizeChanger: true,
+        showQuickJumper: true,
+        pageSizeOptions: [10, 20, 50, 100],
+        showTotal: (total: number, range: number[]) =>
+          `${range[0]}-${range[1]} of ${total} permissions`,
+        onChange: (p: number, s?: number) => {
+          setPage(p);
+          if (s && s !== limit) setLimit(s);
+        },
+      },
+      {
+        pageSize: limit,
+        total: totalCount,
+        hideOnSinglePage: true,
+      }
+    );
+  }, [page, limit, totalCount]);
 
   return (
     <Card className="shadow-sm rounded-lg border border-slate-200">
@@ -299,14 +312,17 @@ const PermissionTable = ({ showEditModal }: { showEditModal: any }) => {
         </Button>
       </div>
 
-      <Table
+      <PowerTable
         loading={isPending}
-        pagination={paginationOptions}
+        pagination={paginationConfig}
         dataSource={permissionData?.results || []}
         columns={columns(showEditModal, handleDelete, getColumnSearchProps, sortedInfo)}
         onChange={handleTableChange}
         rowKey="id"
         size="middle"
+        showToolbar={false}
+        enableResize
+        enableColumnSearch={false}
         className="overflow-x-auto"
       />
     </Card>

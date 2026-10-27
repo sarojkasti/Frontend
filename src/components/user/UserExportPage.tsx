@@ -1064,6 +1064,7 @@ export const UserExportPage: React.FC<UserExportPageProps> = ({
           loading={isLoading || isLoadingWorkingTime}
           pagination={{
             pageSize: 8,
+            hideOnSinglePage: true,
             showSizeChanger: true,
             pageSizeOptions: ["8", "15", "30", "50"],
             showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} users`,

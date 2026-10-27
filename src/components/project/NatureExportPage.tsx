@@ -977,6 +977,7 @@ export const NatureExportPage: React.FC<NatureExportPageProps> = ({
             loading={isLoading}
             pagination={{
               pageSize: pageSize,
+              hideOnSinglePage: true,
               showSizeChanger: true,
               pageSizeOptions: ["8", "15", "30", "50"],
               onShowSizeChange: (_curr, size) => {
@@ -995,6 +996,7 @@ export const NatureExportPage: React.FC<NatureExportPageProps> = ({
             loading={isLoading}
             pagination={{
               pageSize: pageSize,
+              hideOnSinglePage: true,
               showSizeChanger: true,
               pageSizeOptions: ["8", "15", "30", "50"],
               onShowSizeChange: (_curr, size) => {
