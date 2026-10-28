@@ -61,7 +61,9 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ editProjectData, handleCancel
 
   const { data: clients } = useClient();
   const { data: billings } = useBilling("active");
-  const isProjectInactive = editProjectData && editProjectData.status !== "active";
+  const watchedStatus = Form.useWatch("status", form);
+  const effectiveStatus = watchedStatus || editProjectData?.status || "active";
+  const isProjectInactive = editProjectData && effectiveStatus !== "active";
 
   // 1. Fetch active users via default route /users/list-active (no admin permission required)
   const { data: activeUsersData, isPending: isPendingActiveUsers } = useQuery({
@@ -1023,9 +1025,31 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ editProjectData, handleCancel
           </Form.Item>
         </Col>
 
-        <Form.Item name="status" style={{ display: "none" }} initialValue={ProjectStatus.ACTIVE}>
-          <input style={{ display: "none" }} />
-        </Form.Item>
+        {editProjectData ? (
+          <Col xs={24} sm={12}>
+            <Form.Item
+              label="Project Status"
+              name="status"
+              rules={[{ required: true, message: "Please select the project status!" }]}
+            >
+              <Select
+                className="h-[48px] w-full"
+                placeholder="Select project status"
+                options={[
+                  { label: "Active", value: ProjectStatus.ACTIVE },
+                  { label: "Suspended", value: ProjectStatus.SUSPENDED },
+                  { label: "Completed", value: ProjectStatus.COMPLETED },
+                  { label: "Signed Off", value: ProjectStatus.SIGNED_OFF },
+                  { label: "Archived", value: ProjectStatus.ARCHIVED },
+                ]}
+              />
+            </Form.Item>
+          </Col>
+        ) : (
+          <Form.Item name="status" style={{ display: "none" }} initialValue={ProjectStatus.ACTIVE}>
+            <input style={{ display: "none" }} />
+          </Form.Item>
+        )}
 
         <Col span={24}>
           <Form.Item
