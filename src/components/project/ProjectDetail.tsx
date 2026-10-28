@@ -63,27 +63,6 @@ const ProjectDetailComponent = ({ project, loading }: ProjectDetailProps) => {
   const users = project?.users || [];
   const name = project?.name || '';
 
-  if (!project && loading) {
-    return (
-      <div style={{ textAlign: 'center', padding: '50px' }}>
-        Loading project details...
-      </div>
-    );
-  }
-
-  if (!project) {
-    return (
-      <div style={{ textAlign: 'center', padding: '50px' }}>
-        Project not found
-      </div>
-    );
-  }
-
-  const handleCancel = () => {
-    setIsModalOpen(false);
-    setSelectedTask(null);
-  };
-
   const normalizeId = (id: unknown): string => String(id ?? '').trim();
   const memberOptions = useMemo(() => {
     const map = new Map<string, any>();
@@ -123,6 +102,27 @@ const ProjectDetailComponent = ({ project, loading }: ProjectDetailProps) => {
     ...memberOptions.filter((option: { value: string }) => selectedSet.has(option.value)),
     ...memberOptions.filter((option: { value: string }) => !selectedSet.has(option.value))
   ];
+
+  if (!project && loading) {
+    return (
+      <div style={{ textAlign: 'center', padding: '50px' }}>
+        Loading project details...
+      </div>
+    );
+  }
+
+  if (!project) {
+    return (
+      <div style={{ textAlign: 'center', padding: '50px' }}>
+        Project not found
+      </div>
+    );
+  }
+
+  const handleCancel = () => {
+    setIsModalOpen(false);
+    setSelectedTask(null);
+  };
 
   const openInviteModal = () => {
     const existingIds = (project?.users ?? [])
