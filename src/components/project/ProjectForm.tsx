@@ -97,6 +97,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ editProjectData, handleCancel
 
   const [nepaliStartDate, setNepaliStartDate] = useState<NepaliDate | undefined>(undefined);
   const [nepaliEndDate, setNepaliEndDate] = useState<NepaliDate | undefined>(undefined);
+  const [isEndDateManuallyChanged, setIsEndDateManuallyChanged] = useState<boolean>(false);
 
   const projectLead = Form.useWatch("projectLead", form);
   const projectManager = Form.useWatch("projectManager", form);
@@ -486,6 +487,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ editProjectData, handleCancel
 
       if (nepaliStart) setNepaliStartDate(nepaliStart);
       if (nepaliEnd) setNepaliEndDate(nepaliEnd);
+      setIsEndDateManuallyChanged(true);
 
       setTimeout(() => {
         const formData: any = {
@@ -547,8 +549,9 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ editProjectData, handleCancel
         }, 100);
       }, 200);
     } else {
-      // For new project, initialize strictly with today's date from DualDateConverter (Nepal Time)
+      // For new project, initialize start date with today and default end date to 1 month from today
       form.resetFields();
+      setIsEndDateManuallyChanged(false);
       const todayDual = DualDateConverter.getToday();
       const todayNepali: NepaliDate = {
         year: todayDual.nepali.getYear(),
@@ -557,8 +560,17 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ editProjectData, handleCancel
       };
       const todayAD = todayDual.gregorianString;
 
+      // 1 month from start date (user can change this)
+      const endDual = DualDateConverter.createDualDate(dayjs(todayAD).add(1, "month"));
+      const endNepali: NepaliDate = {
+        year: endDual.nepali.getYear(),
+        month: endDual.nepali.getMonth() + 1,
+        day: endDual.nepali.getDate(),
+      };
+      const endAD = endDual.gregorianString;
+
       setNepaliStartDate(todayNepali);
-      setNepaliEndDate(undefined);
+      setNepaliEndDate(endNepali);
 
       setTimeout(() => {
         form.setFieldsValue({
@@ -566,16 +578,16 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ editProjectData, handleCancel
           startingDateNepali: todayNepali,
           startingDate: todayAD,
           startingDateEnglish: todayAD,
-          endingDateNepali: undefined,
-          endingDate: undefined,
-          endingDateEnglish: undefined,
+          endingDateNepali: endNepali,
+          endingDate: endAD,
+          endingDateEnglish: endAD,
           allowSubtaskWorklog: true,
           countsForAvailability: true,
           isPaymentDone: false,
           isPaymentTemporarilyEnabled: false,
         });
         form
-          .validateFields(["startingDateNepali"])
+          .validateFields(["startingDateNepali", "endingDateNepali"])
           .then(() => {})
           .catch(() => {});
       }, 200);
@@ -921,13 +933,31 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ editProjectData, handleCancel
                   const nepaliDateStr = formatNepaliDateForForm(bs);
                   if (nepaliDateStr) {
                     const adDate = DualDateConverter.convertToAD(nepaliDateStr);
-                    form.setFieldsValue({
+                    const newValues: any = {
                       startingDateNepali: bs,
                       startingDate: adDate,
                       startingDateEnglish: adDate,
-                    });
+                    };
+
+                    // Auto-adjust default end date to 1 month from start date if not manually customized or before start date
+                    const currentEndDate = form.getFieldValue("endingDate");
+                    if (!isEndDateManuallyChanged || !currentEndDate || dayjs(currentEndDate).isBefore(dayjs(adDate))) {
+                      const newEndDual = DualDateConverter.createDualDate(dayjs(adDate).add(1, "month"));
+                      const newEndNepali: NepaliDate = {
+                        year: newEndDual.nepali.getYear(),
+                        month: newEndDual.nepali.getMonth() + 1,
+                        day: newEndDual.nepali.getDate(),
+                      };
+                      const newEndAD = newEndDual.gregorianString;
+                      setNepaliEndDate(newEndNepali);
+                      newValues.endingDateNepali = newEndNepali;
+                      newValues.endingDate = newEndAD;
+                      newValues.endingDateEnglish = newEndAD;
+                    }
+
+                    form.setFieldsValue(newValues);
                     setTimeout(() => {
-                      form.validateFields(["startingDateNepali"]);
+                      form.validateFields(["startingDateNepali", "endingDateNepali"]);
                     }, 50);
                   }
                 } catch (error) {}
@@ -964,6 +994,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ editProjectData, handleCancel
               value={nepaliEndDate}
               disabled={!!isProjectInactive}
               onChange={(bs) => {
+                setIsEndDateManuallyChanged(true);
                 setNepaliEndDate(bs);
                 try {
                   const nepaliDateStr = formatNepaliDateForForm(bs);
