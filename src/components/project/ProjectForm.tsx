@@ -558,7 +558,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ editProjectData, handleCancel
       const todayAD = todayDual.gregorianString;
 
       setNepaliStartDate(todayNepali);
-      setNepaliEndDate(todayNepali);
+      setNepaliEndDate(undefined);
 
       setTimeout(() => {
         form.setFieldsValue({
@@ -566,16 +566,16 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ editProjectData, handleCancel
           startingDateNepali: todayNepali,
           startingDate: todayAD,
           startingDateEnglish: todayAD,
-          endingDateNepali: todayNepali,
-          endingDate: todayAD,
-          endingDateEnglish: todayAD,
+          endingDateNepali: undefined,
+          endingDate: undefined,
+          endingDateEnglish: undefined,
           allowSubtaskWorklog: true,
           countsForAvailability: true,
           isPaymentDone: false,
           isPaymentTemporarilyEnabled: false,
         });
         form
-          .validateFields(["startingDateNepali", "endingDateNepali"])
+          .validateFields(["startingDateNepali"])
           .then(() => {})
           .catch(() => {});
       }, 200);

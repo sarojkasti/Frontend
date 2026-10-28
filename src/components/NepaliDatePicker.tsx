@@ -72,15 +72,10 @@ const NepaliDatePicker: React.FC<NepaliDatePickerProps> = ({
   label,
   disabled = false,
 }) => {
-  // Get today's Nepali date as default
-  const today = getTodayNepaliDate();
-  // Use either the provided value or today's date as default
-  const defaultDate = value || today;
-
-  // Initialize state with the default date
-  const [selectedYear, setSelectedYear] = useState<number>(defaultDate.year);
-  const [selectedMonth, setSelectedMonth] = useState<number>(defaultDate.month);
-  const [selectedDay, setSelectedDay] = useState<number>(defaultDate.day);
+  // Initialize state with the provided value or undefined
+  const [selectedYear, setSelectedYear] = useState<number | undefined>(value?.year);
+  const [selectedMonth, setSelectedMonth] = useState<number | undefined>(value?.month);
+  const [selectedDay, setSelectedDay] = useState<number | undefined>(value?.day);
 
   // Update the component when the external value changes
   useEffect(() => {
@@ -88,13 +83,18 @@ const NepaliDatePicker: React.FC<NepaliDatePickerProps> = ({
       setSelectedYear(value.year);
       setSelectedMonth(value.month);
       setSelectedDay(value.day);
+    } else {
+      setSelectedYear(undefined);
+      setSelectedMonth(undefined);
+      setSelectedDay(undefined);
     }
   }, [value]);
 
   const handleChange = (type: "year" | "month" | "day", val: number) => {
-    let newYear = selectedYear;
-    let newMonth = selectedMonth;
-    let newDay = selectedDay;
+    const today = getTodayNepaliDate();
+    let newYear = selectedYear ?? today.year;
+    let newMonth = selectedMonth ?? today.month;
+    let newDay = selectedDay ?? today.day;
     if (type === "year") newYear = val;
     if (type === "month") newMonth = val;
     if (type === "day") newDay = val;
@@ -120,6 +120,7 @@ const NepaliDatePicker: React.FC<NepaliDatePickerProps> = ({
       <Col xs={24} sm={8}>
         <Select
           value={selectedYear}
+          placeholder="Year"
           disabled={disabled}
           onChange={(val) => handleChange("year", val)}
           style={{ width: "100%" }}
@@ -134,6 +135,7 @@ const NepaliDatePicker: React.FC<NepaliDatePickerProps> = ({
       <Col xs={24} sm={8}>
         <Select
           value={selectedMonth}
+          placeholder="Month"
           disabled={disabled}
           onChange={(val) => handleChange("month", val)}
           style={{ width: "100%" }}
@@ -148,6 +150,7 @@ const NepaliDatePicker: React.FC<NepaliDatePickerProps> = ({
       <Col xs={24} sm={8}>
         <Select
           value={selectedDay}
+          placeholder="Day"
           disabled={disabled}
           onChange={(val) => handleChange("day", val)}
           style={{ width: "100%" }}
