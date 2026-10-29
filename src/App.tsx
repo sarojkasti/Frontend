@@ -58,18 +58,17 @@ const AppContent: React.FC = () => {
     }
 
     // Staff portal routes (task.artha.com.np)
-    const publicRoutes = ["/login", "/signup", "/forgot-password"];
-    const isResetRoute = /^\/reset\//.test(pathname);
+    const isPublicStaffRoute =
+      ["/login", "/signup", "/register", "/forgot-password"].includes(pathname) ||
+      pathname.startsWith("/reset/") ||
+      pathname.startsWith("/verify/") ||
+      pathname.startsWith("/activate-account/");
 
     if (loading) return;
 
-    if (isAuthenticated && pathname === "/login") {
+    if (isAuthenticated && (pathname === "/login" || pathname === "/signup" || pathname === "/register")) {
       navigate("/", { replace: true });
-    } else if (
-      !isAuthenticated &&
-      ![...publicRoutes, ...(isResetRoute ? [pathname] : [])].includes(pathname) &&
-      !isOnClientRoute
-    ) {
+    } else if (!isAuthenticated && !isPublicStaffRoute && !isOnClientRoute) {
       navigate("/login", { replace: true });
     }
   }, [isAuthenticated, isClientAuthenticated, isClientLoading, loading, navigate, location.pathname]);

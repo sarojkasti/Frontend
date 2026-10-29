@@ -65,7 +65,7 @@ export const isStaffOnlyRoute = (pathname: string): boolean => {
   ];
   
   // Public routes accessible by both
-  const publicRoutes = ['/login', '/signup', '/forgot-password', '/reset'];
+  const publicRoutes = ['/login', '/signup', '/register', '/forgot-password', '/reset', '/verify', '/activate-account'];
   
   // If it's a client route, it's not staff-only
   if (clientRoutes.some(route => pathname.startsWith(route))) {

@@ -2,6 +2,17 @@ import axios from "axios";
 
 const backendURI = import.meta.env.VITE_BACKEND_URI;
 
+export const activateAccount = async (token: string) => {
+  try {
+    const response = await axios.get(
+      `${backendURI}/auth/activate-account?token=${token}`
+    );
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
 export const validateResetToken = async (token: string) => {
   try {
     const response = await axios.get(
