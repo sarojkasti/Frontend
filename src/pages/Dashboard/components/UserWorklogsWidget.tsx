@@ -35,6 +35,42 @@ import {
 } from "recharts";
 import { useWorklogbyUser } from "@/hooks/worklog/useWorklogbyUser";
 import useIsMobile from "@/hooks/useIsMobile";
+import { formatTime12Hour, parseTimeMoment } from "@/utils/formatUtils";
+
+const getLogDateStr = (log: any): string => {
+  if (log.date) {
+    const m = moment(log.date);
+    if (m.isValid()) return m.format("YYYY-MM-DD");
+  }
+  if (log.startTime) {
+    const parsed = parseTimeMoment(log.startTime, log.date);
+    if (parsed && parsed.isValid()) return parsed.format("YYYY-MM-DD");
+    if (typeof log.startTime === "string" && log.startTime.includes("T")) {
+      const m = moment(log.startTime);
+      if (m.isValid()) return m.format("YYYY-MM-DD");
+    }
+  }
+  if (log.createdAt) {
+    const m = moment(log.createdAt);
+    if (m.isValid()) return m.format("YYYY-MM-DD");
+  }
+  return "";
+};
+
+const getLogDurationMinutes = (log: any): number => {
+  if (typeof log.durationMinutes === "number" && !isNaN(log.durationMinutes)) {
+    return log.durationMinutes;
+  }
+  if (log.startTime && log.endTime) {
+    const baseDate = log.date || (log.createdAt ? moment(log.createdAt).format("YYYY-MM-DD") : moment().format("YYYY-MM-DD"));
+    const startM = parseTimeMoment(log.startTime, baseDate);
+    const endM = parseTimeMoment(log.endTime, baseDate);
+    if (startM && endM) {
+      return Math.max(0, endM.diff(startM, "minutes"));
+    }
+  }
+  return 0;
+};
 
 const { Text, Title } = Typography;
 
@@ -51,21 +87,17 @@ export const UserWorklogsWidget: React.FC = () => {
 
   // Today's worklogs
   const todayWorklogs = useMemo(() => {
-    const today = moment().startOf("day");
+    const todayStr = moment().format("YYYY-MM-DD");
     return worklogs.filter((log: any) => {
-      const logDate = moment(log.startTime || log.date).startOf("day");
-      return logDate.isSame(today, "day");
+      const logDate = getLogDateStr(log);
+      return logDate === todayStr;
     });
   }, [worklogs]);
 
   // Calculate today's total hours
   const todayTotalHours = useMemo(() => {
     return todayWorklogs.reduce((acc: number, log: any) => {
-      const durationMins =
-        log.durationMinutes ??
-        (log.startTime && log.endTime
-          ? moment(log.endTime).diff(moment(log.startTime), "minutes")
-          : 0);
+      const durationMins = getLogDurationMinutes(log);
       return acc + durationMins / 60;
     }, 0);
   }, [todayWorklogs]);
@@ -83,13 +115,9 @@ export const UserWorklogsWidget: React.FC = () => {
       const isFuture = dayMoment.isAfter(moment(), "day");
 
       const dayHours = worklogs.reduce((acc: number, log: any) => {
-        const logDate = moment(log.startTime || log.date).format("YYYY-MM-DD");
+        const logDate = getLogDateStr(log);
         if (logDate === dayStr) {
-          const mins =
-            log.durationMinutes ??
-            (log.startTime && log.endTime
-              ? moment(log.endTime).diff(moment(log.startTime), "minutes")
-              : 0);
+          const mins = getLogDurationMinutes(log);
           return acc + mins / 60;
         }
         return acc;
@@ -283,11 +311,7 @@ export const UserWorklogsWidget: React.FC = () => {
           ) : (
             <div className="flex flex-col divide-y divide-slate-100 max-h-[175px] overflow-y-auto pr-1">
               {todayWorklogs.map((log: any) => {
-                const durationMins =
-                  log.durationMinutes ??
-                  (log.startTime && log.endTime
-                    ? moment(log.endTime).diff(moment(log.startTime), "minutes")
-                    : 0);
+                const durationMins = getLogDurationMinutes(log);
                 const hours = (durationMins / 60).toFixed(1);
 
                 return (
@@ -320,7 +344,7 @@ export const UserWorklogsWidget: React.FC = () => {
                         <div className="font-bold text-slate-900">{hours} hrs</div>
                         <div className="text-[10px] text-slate-400">
                           {log.startTime && log.endTime
-                            ? `${moment(log.startTime).format("HH:mm")} - ${moment(log.endTime).format("HH:mm")}`
+                            ? `${formatTime12Hour(log.startTime)} - ${formatTime12Hour(log.endTime)}`
                             : `${durationMins}m`}
                         </div>
                       </div>

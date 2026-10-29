@@ -5,6 +5,7 @@ import { useProjectById } from "@/hooks/project/useProjectById";
 import { Card, Empty, Spin, Typography, Row, Col, Statistic, Button } from "antd";
 import { useParams, useNavigate } from "react-router-dom";
 import moment from "moment";
+import { parseTimeMoment } from "@/utils/formatUtils";
 import { useState, useEffect } from "react";
 
 const { Title, Paragraph } = Typography;
@@ -55,9 +56,10 @@ const ProjectWorklogs = ({ projectId, showHeader = false, wrapInCard = true }: P
     const userStats: { [key: string]: { name: string; hours: number } } = {};
 
     worklogs.forEach((log: any) => {
-      const startTime = moment(log.startTime);
-      const endTime = moment(log.endTime);
-      const hours = endTime.diff(startTime, 'hours', true);
+      const baseDate = log.date || (log.createdAt ? moment(log.createdAt).format('YYYY-MM-DD') : moment().format('YYYY-MM-DD'));
+      const startTime = parseTimeMoment(log.startTime, baseDate) || (log.date ? moment(log.date) : moment(log.createdAt || undefined));
+      const endTime = parseTimeMoment(log.endTime, baseDate) || startTime;
+      const hours = (startTime.isValid() && endTime.isValid()) ? Math.max(0, endTime.diff(startTime, 'hours', true)) : (log.durationMinutes ? log.durationMinutes / 60 : 0);
 
       // Total hours
       totalHours += hours;

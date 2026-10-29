@@ -344,12 +344,15 @@ const AttendenceTable = ({
         title: "Duration",
         key: "worklogDuration",
         render: (_: any, worklog: any) => {
-          const start = moment(worklog.startTime);
-          const end = moment(worklog.endTime);
-          const duration = moment.duration(end.diff(start));
-          const hours = Math.floor(duration.asHours());
-          const minutes = duration.minutes();
-          return `${hours}h ${minutes}m`;
+          const start = parseTimeMoment(worklog.startTime, worklog.date);
+          const end = parseTimeMoment(worklog.endTime, worklog.date);
+          if (start && end) {
+            const duration = moment.duration(end.diff(start));
+            const hours = Math.floor(duration.asHours());
+            const minutes = duration.minutes();
+            return `${hours}h ${minutes}m`;
+          }
+          return "-";
         },
       },
       {

@@ -1,4 +1,4 @@
-import { ConfigProvider } from "antd";
+import { ConfigProvider, App as AntdApp } from "antd";
 import "antd/dist/reset.css";
 import React, { useEffect } from "react";
 import { useNavigate, useRoutes, useLocation } from "react-router-dom";
@@ -80,11 +80,13 @@ const AppContent: React.FC = () => {
 const App: React.FC = () => {
   return (
     <ConfigProvider theme={antTheme}>
-      <ClientAuthProvider>
-        <SocketProvider>
-          <AppContent />
-        </SocketProvider>
-      </ClientAuthProvider>
+      <AntdApp>
+        <ClientAuthProvider>
+          <SocketProvider>
+            <AppContent />
+          </SocketProvider>
+        </ClientAuthProvider>
+      </AntdApp>
     </ConfigProvider>
   );
 };

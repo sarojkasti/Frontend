@@ -47,7 +47,7 @@ import {
 import { useExportAttendance } from "@/hooks/attendence/useExportAttendance";
 import { useUser } from "@/hooks/user/useUser";
 import { useSession } from "@/context/SessionContext";
-import { formatTime12Hour } from "@/utils/formatUtils";
+import { formatTime12Hour, parseTimeMoment } from "@/utils/formatUtils";
 
 const { RangePicker } = DatePicker;
 
@@ -656,7 +656,9 @@ export const AttendanceExportPage: React.FC<AttendanceExportPageProps> = ({
       const dayWorklogs = record.worklogsRaw || [];
       if (dayWorklogs.length > 0) {
         dayWorklogs.forEach((w: any) => {
-          const wDurationMin = w.startTime && w.endTime ? moment(w.endTime).diff(moment(w.startTime), "minutes") : 0;
+          const wStartM = parseTimeMoment(w.startTime, record.date);
+          const wEndM = parseTimeMoment(w.endTime, record.date);
+          const wDurationMin = wStartM && wEndM ? Math.max(0, wEndM.diff(wStartM, "minutes")) : 0;
           const wHours = Math.floor(wDurationMin / 60);
           const wMins = wDurationMin % 60;
 
@@ -670,8 +672,8 @@ export const AttendanceExportPage: React.FC<AttendanceExportPageProps> = ({
             "Project Code": w.project?.code || w.task?.project?.code || "-",
             "Task Title": w.task?.title || w.task?.name || "-",
             "Task Type": w.task?.taskType ? String(w.task.taskType).toUpperCase() : "-",
-            "Start Time": w.startTime ? moment(w.startTime).utcOffset("+05:45").format("hh:mm a") : "-",
-            "End Time": w.endTime ? moment(w.endTime).utcOffset("+05:45").format("hh:mm a") : "-",
+            "Start Time": formatTime12Hour(w.startTime),
+            "End Time": formatTime12Hour(w.endTime),
             "Logged Duration": `${wHours}h ${wMins}m`,
             "Status": w.status ? String(w.status).toUpperCase() : "-",
             "Approval Remark": w.approvedRemark || w.rejectedRemark || "-",

@@ -3,7 +3,7 @@ import { Socket } from "socket.io-client";
 import { initializeSocket, disconnectSocket } from "@/service/socket";
 import { useSession } from "@/context/SessionContext";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
-import { notification as antdNotification } from "antd";
+import { App as AntdApp, notification as antdNotification } from "antd";
 import { NotificationType, UserNotification } from "@/types/notification";
 import { fetchMyNotifications, updateNotifications, markAllAsReadByType } from "@/service/notification.service";
 
@@ -38,6 +38,15 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const queryClient = useQueryClient();
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
+
+  // Safely retrieve context notification if available inside AntdApp
+  let notificationApi: any = null;
+  try {
+    const antdApp = AntdApp.useApp();
+    notificationApi = antdApp?.notification;
+  } catch (e) {
+    notificationApi = null;
+  }
 
   const userId = profile?.id || localStorage.getItem("userId") || "";
 
@@ -117,12 +126,31 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       }
 
       // Show instant toast notification
-      antdNotification.info({
-        message: `${type.toUpperCase()} Alert`,
+      const notify = notificationApi || antdNotification;
+      const typeLabel = typeof type === "string" ? type.toUpperCase() : "SYSTEM";
+      notify.info({
+        message: `${typeLabel} Alert`,
         description: messageText,
         placement: "topRight",
         duration: 5,
       });
+    };
+
+    // Handler for broadcast module updates
+    const handleModuleProject = () => {
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      queryClient.invalidateQueries({ queryKey: ["project"] });
+    };
+
+    const handleModuleTask = () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["todo_tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["worklogs"] });
+    };
+
+    const handleModuleClient = () => {
+      queryClient.invalidateQueries({ queryKey: ["clients"] });
+      queryClient.invalidateQueries({ queryKey: ["client"] });
     };
 
     // Handler for read updates
@@ -131,6 +159,9 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     };
 
     sock.on("notification", handleNotification);
+    sock.on("module_project", handleModuleProject);
+    sock.on("module_task", handleModuleTask);
+    sock.on("module_client", handleModuleClient);
     sock.on("notification_read", handleRead);
     sock.on("notification_bulk_read", handleRead);
     sock.on("notification_deleted", handleRead);
@@ -140,12 +171,15 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       sock.off("connect", onConnect);
       sock.off("disconnect", onDisconnect);
       sock.off("notification", handleNotification);
+      sock.off("module_project", handleModuleProject);
+      sock.off("module_task", handleModuleTask);
+      sock.off("module_client", handleModuleClient);
       sock.off("notification_read", handleRead);
       sock.off("notification_bulk_read", handleRead);
       sock.off("notification_deleted", handleRead);
       sock.off("notification_archived", handleRead);
     };
-  }, [isAuthenticated, userId, queryClient]);
+  }, [isAuthenticated, userId, queryClient, notificationApi]);
 
   const markAsRead = useCallback(
     async (id: string) => {

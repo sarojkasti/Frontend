@@ -13,6 +13,7 @@ import dayjs from "dayjs";
 import { useSession } from "@/context/SessionContext";
 import { useGetMyAttendence } from "@/hooks/attendence/useGetMyAttendence";
 import { DualDateConverter } from "@/utils/dateConverter";
+import { formatTime12Hour, parseTimeMoment } from "@/utils/formatUtils";
 import useIsMobile from "@/hooks/useIsMobile";
 
 const { Title } = Typography;
@@ -72,26 +73,41 @@ export const UserHeroHeader: React.FC<UserHeroHeaderProps> = ({ onRequestLeave }
     }
 
     const todayRecord = attendanceData[0];
-    if (todayRecord.clockOut) {
-      const durationMins = moment(todayRecord.clockOut).diff(moment(todayRecord.clockIn), "minutes");
+    const todayStr = todayRecord.date || moment().format("YYYY-MM-DD");
+    const clockInMoment = parseTimeMoment(todayRecord.clockIn, todayStr);
+    const clockOutMoment = parseTimeMoment(todayRecord.clockOut, todayStr);
+
+    if (todayRecord.clockOut && clockOutMoment && clockInMoment) {
+      const durationMins = Math.max(0, clockOutMoment.diff(clockInMoment, "minutes"));
       const hours = Math.floor(durationMins / 60);
       const mins = durationMins % 60;
+      const formattedClockOut = formatTime12Hour(todayRecord.clockOut);
       return {
         status: "clocked_out",
         label: "Clocked Out",
         color: "default",
-        description: `Shift ended at ${moment(todayRecord.clockOut).format("hh:mm A")} (${hours}h ${mins}m)`,
+        description: `Shift ended at ${formattedClockOut} (${hours}h ${mins}m)`,
       };
     }
 
-    const activeMins = moment().diff(moment(todayRecord.clockIn), "minutes");
-    const hours = Math.floor(activeMins / 60);
-    const mins = activeMins % 60;
+    if (clockInMoment) {
+      const activeMins = Math.max(0, moment().diff(clockInMoment, "minutes"));
+      const hours = Math.floor(activeMins / 60);
+      const mins = activeMins % 60;
+      const formattedClockIn = formatTime12Hour(todayRecord.clockIn);
+      return {
+        status: "clocked_in",
+        label: "Clocked In",
+        color: "success",
+        description: `Active since ${formattedClockIn} (${hours}h ${mins}m)`,
+      };
+    }
+
     return {
-      status: "clocked_in",
-      label: "Clocked In",
-      color: "success",
-      description: `Active since ${moment(todayRecord.clockIn).format("hh:mm A")} (${hours}h ${mins}m)`,
+      status: "not_clocked_in",
+      label: "Not Clocked In",
+      color: "warning",
+      description: "You haven't clocked in today yet.",
     };
   }, [attendanceData, currentTime]);
 
