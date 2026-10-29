@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef } from "react";
 import { Button, Col, Divider, Form, Row, Select, Switch, Space, Tag, message } from "antd";
 import TextArea from "antd/es/input/TextArea";
 import { useQuery } from "@tanstack/react-query";
@@ -47,6 +47,15 @@ function formatNepaliDateForForm(nepaliDate: NepaliDate | undefined): string | n
   ).padStart(2, "0")}`;
 }
 
+function parseNepaliDateStr(nepaliDateStr: string | null | undefined): NepaliDate | undefined {
+  if (!nepaliDateStr) return undefined;
+  const parts = nepaliDateStr.split("-").map(Number);
+  if (parts.length === 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2])) {
+    return { year: parts[0], month: parts[1], day: parts[2] };
+  }
+  return undefined;
+}
+
 interface ProjectFormProps {
   id?: string;
   editProjectData?: ProjectType;
@@ -54,6 +63,7 @@ interface ProjectFormProps {
 }
 
 const ProjectForm: React.FC<ProjectFormProps> = ({ editProjectData, handleCancel }) => {
+  const isInitializedRef = useRef<string | null>(null);
   const [form] = Form.useForm();
   const { mutate, isPending } = useCreateProject();
   const { mutate: mutateEdit, isPending: isPendingEdit } = useEditProject();
@@ -452,6 +462,12 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ editProjectData, handleCancel
   }, [clients, natureOfWorkOptions, billings]);
 
   useEffect(() => {
+    const instanceKey = editProjectData?.id ? String(editProjectData.id) : "new";
+    if (isInitializedRef.current === instanceKey) {
+      return;
+    }
+    isInitializedRef.current = instanceKey;
+
     if (editProjectData) {
       const parseDate = (dateStr: string | null | undefined) => {
         if (!dateStr) return null;
@@ -470,86 +486,95 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ editProjectData, handleCancel
 
       const parsedStartDate = parseDate(editProjectData.startingDate);
       const parsedEndDate = parseDate(editProjectData.endingDate);
-      const startDateAD = parsedStartDate ? parsedStartDate.format("YYYY-MM-DD") : "";
-      const endDateAD = parsedEndDate ? parsedEndDate.format("YYYY-MM-DD") : "";
+      const startDateAD = parsedStartDate
+        ? parsedStartDate.format("YYYY-MM-DD")
+        : editProjectData.startingDate
+        ? editProjectData.startingDate.split("T")[0]
+        : "";
+      const endDateAD = parsedEndDate
+        ? parsedEndDate.format("YYYY-MM-DD")
+        : editProjectData.endingDate
+        ? editProjectData.endingDate.split("T")[0]
+        : "";
 
-      let nepaliStart: NepaliDate | undefined = undefined;
-      let nepaliEnd: NepaliDate | undefined = undefined;
-
-      if (parsedStartDate && startDateAD) {
+      let nepaliStart = parseNepaliDateStr(editProjectData.startingDateNepali);
+      if (!nepaliStart && startDateAD) {
         try {
           nepaliStart = adToBs(startDateAD);
         } catch (error) {}
       }
-      if (parsedEndDate && endDateAD) {
+
+      let nepaliEnd = parseNepaliDateStr(editProjectData.endingDateNepali);
+      if (!nepaliEnd && endDateAD) {
         try {
           nepaliEnd = adToBs(endDateAD);
         } catch (error) {}
       }
 
-      if (nepaliStart) setNepaliStartDate(nepaliStart);
-      if (nepaliEnd) setNepaliEndDate(nepaliEnd);
+      setNepaliStartDate(nepaliStart);
+      setNepaliEndDate(nepaliEnd);
       setIsEndDateManuallyChanged(true);
 
-      setTimeout(() => {
-        const formData: any = {
-          name: editProjectData.name || "",
-          description: editProjectData.description || "",
-          status: editProjectData.status || ProjectStatus.ACTIVE,
-          fiscalYear: editProjectData.fiscalYear,
-          users: (() => {
-            const leadId = editProjectData.projectLead?.id || (typeof editProjectData.projectLead === "string" ? editProjectData.projectLead : undefined);
-            const managerId = editProjectData.projectManager?.id || (typeof editProjectData.projectManager === "string" ? editProjectData.projectManager : undefined);
-            const allIds = (editProjectData.users || []).map((u: any) => typeof u === "string" ? u : u?.id).filter(Boolean);
-            const invitedOnly = allIds.filter((id: string) => id !== leadId && id !== managerId);
-            return invitedOnly;
-          })(),
-          projectLead: editProjectData.projectLead?.id || (typeof editProjectData.projectLead === "string" ? editProjectData.projectLead : undefined),
-          projectManager: editProjectData.projectManager?.id || (typeof editProjectData.projectManager === "string" ? editProjectData.projectManager : undefined),
-          client:
-            (editProjectData as any).client?.id ||
-            (editProjectData as any).customer?.id ||
-            (editProjectData as any).client ||
-            (editProjectData as any).customer,
-          billing: (editProjectData as any).billing?.id || (editProjectData as any).billing,
-          allowSubtaskWorklog:
-            editProjectData.allowSubtaskWorklog !== undefined
-              ? editProjectData.allowSubtaskWorklog
-              : true,
-          countsForAvailability:
-            editProjectData.countsForAvailability !== undefined
-              ? editProjectData.countsForAvailability
-              : true,
-          isPaymentDone: editProjectData.isPaymentDone || false,
-          isPaymentTemporarilyEnabled: editProjectData.isPaymentTemporarilyEnabled || false,
-          natureOfWork:
-            typeof editProjectData.natureOfWork === "string"
-              ? editProjectData.natureOfWork
-              : (editProjectData.natureOfWork as any)?.id,
-          natureOfWorkGroup:
-            (editProjectData as any).natureOfWorkGroup?.id ||
-            (editProjectData as any).natureOfWorkGroupId ||
-            (editProjectData as any).natureOfWork?.groupId ||
-            (editProjectData.natureOfWork && typeof editProjectData.natureOfWork !== "string"
-              ? UNCATEGORIZED_GROUP
-              : undefined),
-          startingDate: startDateAD,
-          endingDate: endDateAD,
-          startingDateEnglish: startDateAD,
-          endingDateEnglish: endDateAD,
-          startingDateNepali: nepaliStart,
-          endingDateNepali: nepaliEnd,
-        };
+      const formData: any = {
+        name: editProjectData.name || "",
+        description: editProjectData.description || "",
+        status: editProjectData.status || ProjectStatus.ACTIVE,
+        fiscalYear: editProjectData.fiscalYear,
+        users: (() => {
+          const leadId =
+            editProjectData.projectLead?.id ||
+            (typeof editProjectData.projectLead === "string" ? editProjectData.projectLead : undefined);
+          const managerId =
+            editProjectData.projectManager?.id ||
+            (typeof editProjectData.projectManager === "string" ? editProjectData.projectManager : undefined);
+          const allIds = (editProjectData.users || []).map((u: any) => typeof u === "string" ? u : u?.id).filter(Boolean);
+          const invitedOnly = allIds.filter((id: string) => id !== leadId && id !== managerId);
+          return invitedOnly;
+        })(),
+        projectLead:
+          editProjectData.projectLead?.id ||
+          (typeof editProjectData.projectLead === "string" ? editProjectData.projectLead : undefined),
+        projectManager:
+          editProjectData.projectManager?.id ||
+          (typeof editProjectData.projectManager === "string" ? editProjectData.projectManager : undefined),
+        client:
+          (editProjectData as any).client?.id ||
+          (editProjectData as any).customer?.id ||
+          (editProjectData as any).client ||
+          (editProjectData as any).customer,
+        billing: (editProjectData as any).billing?.id || (editProjectData as any).billing,
+        allowSubtaskWorklog:
+          editProjectData.allowSubtaskWorklog !== undefined
+            ? editProjectData.allowSubtaskWorklog
+            : true,
+        countsForAvailability:
+          editProjectData.countsForAvailability !== undefined
+            ? editProjectData.countsForAvailability
+            : true,
+        isPaymentDone: editProjectData.isPaymentDone || false,
+        isPaymentTemporarilyEnabled: editProjectData.isPaymentTemporarilyEnabled || false,
+        natureOfWork:
+          typeof editProjectData.natureOfWork === "string"
+            ? editProjectData.natureOfWork
+            : (editProjectData.natureOfWork as any)?.id,
+        natureOfWorkGroup:
+          (editProjectData as any).natureOfWorkGroup?.id ||
+          (editProjectData as any).natureOfWorkGroupId ||
+          (editProjectData as any).natureOfWork?.groupId ||
+          (editProjectData.natureOfWork && typeof editProjectData.natureOfWork !== "string"
+            ? UNCATEGORIZED_GROUP
+            : undefined),
+        startingDate: startDateAD,
+        endingDate: endDateAD,
+        startingDateEnglish: startDateAD,
+        endingDateEnglish: endDateAD,
+        startingDateNepali: nepaliStart,
+        endingDateNepali: nepaliEnd,
+      };
 
-        form.resetFields();
-        setTimeout(() => {
-          form.setFieldsValue(formData);
-          form
-            .validateFields(["startingDateNepali", "endingDateNepali"])
-            .then(() => {})
-            .catch(() => {});
-        }, 100);
-      }, 200);
+      form.resetFields();
+      form.setFieldsValue(formData);
+      form.validateFields(["startingDateNepali", "endingDateNepali"]).catch(() => {});
     } else {
       // For new project, initialize start date with today and default end date to 1 month from today
       form.resetFields();
@@ -574,25 +599,20 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ editProjectData, handleCancel
       setNepaliStartDate(todayNepali);
       setNepaliEndDate(endNepali);
 
-      setTimeout(() => {
-        form.setFieldsValue({
-          status: ProjectStatus.ACTIVE,
-          startingDateNepali: todayNepali,
-          startingDate: todayAD,
-          startingDateEnglish: todayAD,
-          endingDateNepali: endNepali,
-          endingDate: endAD,
-          endingDateEnglish: endAD,
-          allowSubtaskWorklog: true,
-          countsForAvailability: true,
-          isPaymentDone: false,
-          isPaymentTemporarilyEnabled: false,
-        });
-        form
-          .validateFields(["startingDateNepali", "endingDateNepali"])
-          .then(() => {})
-          .catch(() => {});
-      }, 200);
+      form.setFieldsValue({
+        status: ProjectStatus.ACTIVE,
+        startingDateNepali: todayNepali,
+        startingDate: todayAD,
+        startingDateEnglish: todayAD,
+        endingDateNepali: endNepali,
+        endingDate: endAD,
+        endingDateEnglish: endAD,
+        allowSubtaskWorklog: true,
+        countsForAvailability: true,
+        isPaymentDone: false,
+        isPaymentTemporarilyEnabled: false,
+      });
+      form.validateFields(["startingDateNepali", "endingDateNepali"]).catch(() => {});
     }
   }, [editProjectData, form]);
 
@@ -912,13 +932,13 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ editProjectData, handleCancel
           <Form.Item
             label="Starting Date (BS)"
             name="startingDateNepali"
-            initialValue={nepaliStartDate}
             rules={[
               {
                 required: true,
                 message: "Please select the starting date!",
                 validator: (_, value) => {
-                  if (value) {
+                  const val = value || nepaliStartDate;
+                  if (val && val.year && val.month && val.day) {
                     return Promise.resolve();
                   }
                   return Promise.reject(new Error("Please select the starting date!"));
@@ -941,9 +961,8 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ editProjectData, handleCancel
                       startingDateEnglish: adDate,
                     };
 
-                    // Auto-adjust default end date to 1 month from start date if not manually customized or before start date
-                    const currentEndDate = form.getFieldValue("endingDate");
-                    if (!isEndDateManuallyChanged || !currentEndDate || dayjs(currentEndDate).isBefore(dayjs(adDate))) {
+                    // Auto-adjust default end date to 1 month from start date if not manually customized
+                    if (!isEndDateManuallyChanged) {
                       const newEndDual = DualDateConverter.createDualDate(dayjs(adDate).add(1, "month"));
                       const newEndNepali: NepaliDate = {
                         year: newEndDual.nepali.getYear(),
@@ -958,9 +977,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ editProjectData, handleCancel
                     }
 
                     form.setFieldsValue(newValues);
-                    setTimeout(() => {
-                      form.validateFields(["startingDateNepali", "endingDateNepali"]);
-                    }, 50);
+                    form.validateFields(["startingDateNepali", "endingDateNepali"]).catch(() => {});
                   }
                 } catch (error) {}
               }}
@@ -978,13 +995,13 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ editProjectData, handleCancel
           <Form.Item
             label="Ending Date (BS)"
             name="endingDateNepali"
-            initialValue={nepaliEndDate}
             rules={[
               {
                 required: true,
                 message: "Please select the ending date!",
                 validator: (_, value) => {
-                  if (value) {
+                  const val = value || nepaliEndDate;
+                  if (val && val.year && val.month && val.day) {
                     return Promise.resolve();
                   }
                   return Promise.reject(new Error("Please select the ending date!"));
@@ -1007,12 +1024,10 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ editProjectData, handleCancel
                       endingDate: adDate,
                       endingDateEnglish: adDate,
                     });
-                    setTimeout(() => {
-                      form.validateFields(["endingDateNepali"]);
-                    }, 50);
+                    form.validateFields(["endingDateNepali"]).catch(() => {});
                   }
                 } catch (error: any) {
-                  alert("Error converting date: " + (error?.message || "Unknown error"));
+                  message.error("Error converting date: " + (error?.message || "Unknown error"));
                 }
               }}
             />

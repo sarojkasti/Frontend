@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { Select, Row, Col } from "antd";
 import dayjs from "dayjs";
 import { DualDateConverter } from "../utils/dateConverter";
@@ -72,41 +72,18 @@ const NepaliDatePicker: React.FC<NepaliDatePickerProps> = ({
   label,
   disabled = false,
 }) => {
-  // Initialize state with the provided value or undefined
-  const [selectedYear, setSelectedYear] = useState<number | undefined>(value?.year);
-  const [selectedMonth, setSelectedMonth] = useState<number | undefined>(value?.month);
-  const [selectedDay, setSelectedDay] = useState<number | undefined>(value?.day);
-
-  // Update the component when the external value changes
-  useEffect(() => {
-    if (value) {
-      setSelectedYear(value.year);
-      setSelectedMonth(value.month);
-      setSelectedDay(value.day);
-    } else {
-      setSelectedYear(undefined);
-      setSelectedMonth(undefined);
-      setSelectedDay(undefined);
-    }
-  }, [value]);
+  const currentYear = value?.year;
+  const currentMonth = value?.month;
+  const currentDay = value?.day;
 
   const handleChange = (type: "year" | "month" | "day", val: number) => {
     const today = getTodayNepaliDate();
-    let newYear = selectedYear ?? today.year;
-    let newMonth = selectedMonth ?? today.month;
-    let newDay = selectedDay ?? today.day;
-    if (type === "year") newYear = val;
-    if (type === "month") newMonth = val;
-    if (type === "day") newDay = val;
+    const newYear = type === "year" ? val : (currentYear ?? today.year);
+    const newMonth = type === "month" ? val : (currentMonth ?? today.month);
+    const newDay = type === "day" ? val : (currentDay ?? today.day);
 
-    setSelectedYear(newYear);
-    setSelectedMonth(newMonth);
-    setSelectedDay(newDay);
-
-    // Trigger the onChange callback with the new date
     if (onChange) {
-      const newDate = { year: newYear, month: newMonth, day: newDay };
-      onChange(newDate);
+      onChange({ year: newYear, month: newMonth, day: newDay });
     }
   };
 
@@ -119,7 +96,7 @@ const NepaliDatePicker: React.FC<NepaliDatePickerProps> = ({
       )}
       <Col xs={24} sm={8}>
         <Select
-          value={selectedYear}
+          value={currentYear}
           placeholder="Year"
           disabled={disabled}
           onChange={(val) => handleChange("year", val)}
@@ -134,7 +111,7 @@ const NepaliDatePicker: React.FC<NepaliDatePickerProps> = ({
       </Col>
       <Col xs={24} sm={8}>
         <Select
-          value={selectedMonth}
+          value={currentMonth}
           placeholder="Month"
           disabled={disabled}
           onChange={(val) => handleChange("month", val)}
@@ -149,7 +126,7 @@ const NepaliDatePicker: React.FC<NepaliDatePickerProps> = ({
       </Col>
       <Col xs={24} sm={8}>
         <Select
-          value={selectedDay}
+          value={currentDay}
           placeholder="Day"
           disabled={disabled}
           onChange={(val) => handleChange("day", val)}
