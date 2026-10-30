@@ -59,7 +59,7 @@ const AppContent: React.FC = () => {
 
     // Staff portal routes (task.artha.com.np)
     const isPublicStaffRoute =
-      ["/login", "/signup", "/register", "/forgot-password", "/reset-password"].includes(pathname) ||
+      ["/login", "/signup", "/register", "/forgot-password"].includes(pathname) ||
       pathname.startsWith("/reset/") ||
       pathname.startsWith("/verify/") ||
       pathname.startsWith("/activate-account/");

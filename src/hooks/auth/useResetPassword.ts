@@ -2,7 +2,7 @@ import { useMutation } from "@tanstack/react-query";
 import { resetPassword } from "../../service/auth.service";
 
 interface ResetPasswordDto {
-  token?: string;
+  token: string;
   password: string;
   confirmPassword?: string;
 }

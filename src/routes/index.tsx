@@ -13,6 +13,8 @@ import ProjectUsers from "@/pages/Project/users";
 import ProjectWorklogs from "@/components/project/ProjectWorklogs";
 import Request from "@/pages/Request";
 import ResetPasswordForm from "@/pages/ResetPassword";
+import ChangePasswordPage from "@/pages/ChangePassword";
+import ActivateAccountPage from "@/pages/ActivateAccount";
 import Setting from "@/pages/Setting";
 import ProjectSetting from "@/pages/Setting/ProjectSetting";
 import CustomerSetting from "@/pages/Setting/CustomerSetting";
@@ -151,6 +153,14 @@ const Router = [
   {
     path: "/reset/:token",
     element: <ResetPasswordForm />,
+  },
+  {
+    path: "/verify/:token",
+    element: <ActivateAccountPage />,
+  },
+  {
+    path: "/activate-account/:token",
+    element: <ActivateAccountPage />,
   },
   {
     path: "/",
@@ -481,6 +491,14 @@ const Router = [
       {
         path: "profile/:id/history",
         element: <UserHistoryDetails />,
+      },
+      {
+        path: "/reset-password",
+        element: <ChangePasswordPage />,
+      },
+      {
+        path: "/change-password",
+        element: <ChangePasswordPage />,
       },
       {
         path: "/calendar",

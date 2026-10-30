@@ -89,3 +89,19 @@ export const resetPassword = async (resetPasswordDto: {
     throw error;
   }
 };
+
+
+export const changePassword = async (changePasswordDto: {
+  oldPassword: string;
+  password: string;
+  confirmPassword: string;
+}) => {
+  const response = await axios.put(
+    `${backendURI}/auth/change-password`,
+    changePasswordDto,
+    {
+      withCredentials: true,
+    }
+  );
+  return response.data;
+};

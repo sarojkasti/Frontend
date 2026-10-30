@@ -4,7 +4,6 @@ import { useResetPassword } from '@/hooks/auth/useResetPassword';
 import Title from 'antd/es/typography/Title';
 import { useParams, Link } from 'react-router-dom';
 import { validateResetToken } from '@/service/auth.service';
-import { useSession } from '@/context/SessionContext';
 
 const { Paragraph, Text } = Typography;
 
@@ -19,38 +18,30 @@ const passwordValidations = {
 
 const ResetPasswordForm = () => {
   const [form] = Form.useForm();
-  const { token } = useParams();
-  const { isAuthenticated, loading: sessionLoading } = useSession();
+  const { token } = useParams<{ token?: string }>();
   const { mutate: resetPassword } = useResetPassword();
   const [loading, setLoading] = useState(false);
   const [resetSuccess, setResetSuccess] = useState(false);
   const [resetError, setResetError] = useState<string | null>(null);
   const [passwordStrength, setPasswordStrength] = useState(0);
-  // State for token validity
   const [tokenValid, setTokenValid] = useState<boolean | null>(null);
 
   useEffect(() => {
-    if (token) {
-      // Validate token with backend
-      validateResetToken(token)
-        .then((res: any) => {
-          if (res && res.valid) {
-            setTokenValid(true);
-          } else {
-            setTokenValid(false);
-          }
-        })
-        .catch(() => setTokenValid(false));
-    } else if (!sessionLoading) {
-      if (isAuthenticated) {
-        // Logged-in user resetting their password
-        setTokenValid(true);
-      } else {
-        // No token and not logged in
-        setTokenValid(false);
-      }
+    if (!token) {
+      setTokenValid(false);
+      return;
     }
-  }, [token, isAuthenticated, sessionLoading]);
+
+    validateResetToken(token)
+      .then((res: any) => {
+        if (res && res.valid) {
+          setTokenValid(true);
+        } else {
+          setTokenValid(false);
+        }
+      })
+      .catch(() => setTokenValid(false));
+  }, [token]);
 
   if (tokenValid === false) {
     return (
@@ -70,15 +61,13 @@ const ResetPasswordForm = () => {
   }
 
   if (tokenValid === null) {
-    // Loading state while checking token or session
     return (
       <div style={{ display: 'grid', placeItems: 'center', height: '100vh' }}>
-        <Result status="info" title="Checking reset authorization..." />
+        <Result status="info" title="Checking reset link..." />
       </div>
     );
   }
 
-  // Check password strength as user types
   const checkPasswordStrength = (password: string) => {
     if (!password) {
       setPasswordStrength(0);
@@ -96,8 +85,8 @@ const ResetPasswordForm = () => {
   };
 
   const onFinish = async (values: any) => {
-    if (!token && !isAuthenticated) {
-      setResetError('Invalid reset token or not logged in');
+    if (!token) {
+      setResetError('Invalid reset token');
       return;
     }
 
@@ -106,26 +95,26 @@ const ResetPasswordForm = () => {
 
     try {
       await resetPassword({
-        token: token || undefined,
+        token,
         password: values.password,
         confirmPassword: values.confirmPassword,
       });
+
       setResetSuccess(true);
       message.success('Password reset successfully!');
       form.resetFields();
     } catch (err: any) {
-      // Handle different types of errors
       if (err.response?.status === 404) {
         setResetError('Reset link is invalid or has expired.');
       } else if (err.response?.status === 422) {
-        if (Array.isArray(err.response.data.message)) {
+        if (Array.isArray(err.response.data?.message)) {
           const errorMessages = err.response.data.message
             .map((e: any) => Object.values(e.errors || {}).join(', '))
             .join(', ');
           setResetError(`Validation error: ${errorMessages}`);
         } else {
           setResetError(
-            err.response.data.message || 'Validation error. Please check your input.'
+            err.response.data?.message || 'Validation error. Please check your input.'
           );
         }
       } else if (err.response?.data?.message) {
@@ -135,7 +124,6 @@ const ResetPasswordForm = () => {
           'Failed to reset password. Please try again or contact support.'
         );
       }
-
       message.error('Failed to reset password!');
     } finally {
       setLoading(false);
@@ -154,12 +142,10 @@ const ResetPasswordForm = () => {
         <Result
           status="success"
           title="Password Reset Successful!"
-          subTitle="Your password has been changed successfully."
+          subTitle="Your password has been changed successfully. You can now login with your new password."
           extra={[
-            <Button type="primary" key="dashboard">
-              <Link to={isAuthenticated ? '/' : '/login'}>
-                {isAuthenticated ? 'Back to Dashboard' : 'Go to Login'}
-              </Link>
+            <Button type="primary" key="login">
+              <Link to="/login">Go to Login</Link>
             </Button>,
           ]}
         />
@@ -168,18 +154,33 @@ const ResetPasswordForm = () => {
   }
 
   return (
-    <div style={{ display: 'grid', placeItems: 'center', height: '100vh' }}>
-      <div style={{ maxWidth: '400px', width: '100%', padding: '20px' }}>
-        <Title level={3}>Reset Password</Title>
+    <div style={{ display: 'grid', placeItems: 'center', height: '100vh', padding: '20px' }}>
+      <div
+        style={{
+          maxWidth: '450px',
+          width: '100%',
+          padding: '30px',
+          background: '#fff',
+          borderRadius: '8px',
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
+        }}
+      >
+        <Title level={3} style={{ textAlign: 'center', marginBottom: '24px' }}>
+          Reset Password
+        </Title>
+
         {resetError && (
           <Alert
             message="Error"
             description={resetError}
             type="error"
             showIcon
+            closable
+            onClose={() => setResetError(null)}
             style={{ marginBottom: '20px' }}
           />
         )}
+
         <Form
           form={form}
           name="reset-password"
@@ -313,9 +314,7 @@ const ResetPasswordForm = () => {
           </Form.Item>
 
           <div style={{ textAlign: 'center', marginTop: '10px' }}>
-            <Link to={isAuthenticated ? '/' : '/login'}>
-              {isAuthenticated ? 'Return to Dashboard' : 'Return to Login'}
-            </Link>
+            <Link to="/login">Return to Login</Link>
           </div>
         </Form>
       </div>
