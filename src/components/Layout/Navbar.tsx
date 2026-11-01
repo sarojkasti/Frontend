@@ -3,7 +3,7 @@ import { BackgroundAlertsStatus } from "@/components/Notification/BackgroundAler
 import { useLogout } from "@/hooks/auth/useLogout";
 import { useMyNotifications } from "@/hooks/notification/useMyNotifications";
 import useIsMobile from "@/hooks/useIsMobile";
-import { BellOutlined, CloseOutlined, FileDoneOutlined, MenuFoldOutlined, MenuUnfoldOutlined, SettingOutlined } from "@ant-design/icons";
+import { BellOutlined, CloseOutlined, FileDoneOutlined, MenuFoldOutlined, MenuUnfoldOutlined, SettingOutlined, QuestionCircleOutlined } from "@ant-design/icons";
 import {
   Avatar,
   Badge,
@@ -17,6 +17,7 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import Notification from "../Notification/Notification";
 import SearchBarWithPopover from "../SearchBarPopover";
 import Clock from "../Clock/Clock";
+import { ContextualHelpDrawer } from "../Academy/ContextualHelpDrawer";
 
 const Navbar = ({
   collapsed,
@@ -29,6 +30,7 @@ const Navbar = ({
   const navigate = useNavigate();
   const location = useLocation();
   const [open, setOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
   const { isMobile } = useIsMobile();
 
   const showDrawer = () => {
@@ -145,6 +147,18 @@ const Navbar = ({
         >
           <SettingOutlined style={{ fontSize: "20px" }} />
         </span>
+
+        {/* Software Academy & Contextual Help Button */}
+        <span
+          className="flex items-center justify-center w-8 h-8 rounded-full hover:bg-blue-50 transition-colors cursor-pointer text-blue-600 hover:text-blue-700"
+          onClick={() => setHelpOpen(true)}
+          title="Software Help & Guides (?)"
+          aria-label="Software Help & Guides"
+        >
+          <QuestionCircleOutlined style={{ fontSize: "20px" }} />
+        </span>
+
+        <ContextualHelpDrawer open={helpOpen} onClose={() => setHelpOpen(false)} />
 
         <Drawer
           placement="right"

@@ -16,7 +16,9 @@ import {
   FieldTimeOutlined,
   CoffeeOutlined,
   BarChartOutlined,
-  UserSwitchOutlined
+  UserSwitchOutlined,
+  ReadOutlined,
+  CompassOutlined
 } from "@ant-design/icons";
 import type { MenuProps } from "antd";
 import _ from "lodash";
@@ -101,6 +103,18 @@ export const MenuItems = (): MenuProps[] => {
       label: "Attendance",
       resource: "default",
       icon: React.createElement(ClockCircleOutlined),
+    },
+    {
+      key: "/training",
+      label: "Training",
+      resource: "default",
+      icon: React.createElement(ReadOutlined),
+    },
+    {
+      key: "/academy",
+      label: "Software Academy",
+      resource: "default",
+      icon: React.createElement(CompassOutlined),
     },
     {
       key: "/leave-management",

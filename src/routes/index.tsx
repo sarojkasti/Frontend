@@ -1,3 +1,5 @@
+import TrainingPage from "@/pages/Training";
+import AcademyPage from "@/pages/Academy";
 import DashboardLayout from "@/components/Layout/DashboardLayout";
 import Attendence from "@/pages/Attendence";
 import Billing from "@/pages/Billing";
@@ -499,6 +501,14 @@ const Router = [
       {
         path: "/change-password",
         element: <ChangePasswordPage />,
+      },
+      {
+        path: "/training",
+        element: <TrainingPage />,
+      },
+      {
+        path: "/academy",
+        element: <AcademyPage />,
       },
       {
         path: "/calendar",
