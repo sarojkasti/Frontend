@@ -20,7 +20,8 @@ import {
   Space,
   Tooltip,
   TableProps,
-  Tag
+  Tag,
+  Avatar
 } from "antd";
 import { useState, useRef, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
@@ -349,6 +350,40 @@ const ClientTable = ({
           if (s === "archive" || s === "archived") return <Tag color="error">Archived</Tag>;
           return <Tag>{formatText(s)}</Tag>;
         }
+      },
+      createdBy: {
+        title: "Created By",
+        dataIndex: ["creator", "name"],
+        key: "createdBy",
+        width: columnWidths["createdBy"] || 160,
+        onHeaderCell: () => ({
+          width: columnWidths["createdBy"] || 160,
+          onResize: handleResize("createdBy"),
+          columnKey: "createdBy"
+        }),
+        sorter: (a: any, b: any) =>
+          (a.creator?.name || "").localeCompare(b.creator?.name || ""),
+        sortOrder: sortedInfo.columnKey === "createdBy" && sortedInfo.order,
+        ...getColumnSearchProps("creator.name", "Created By"),
+        render: (_: any, record: any) =>
+          record?.creator?.name ? (
+            <Space size={6}>
+              <Avatar
+                size="small"
+                className="bg-indigo-600"
+                src={
+                  record?.creator?.avatar
+                    ? `${import.meta.env.VITE_BACKEND_URI}/document/${record?.creator?.avatar}`
+                    : undefined
+                }
+              >
+                {record?.creator?.name?.[0]}
+              </Avatar>
+              <span className="font-medium text-slate-700">{record?.creator?.name}</span>
+            </Space>
+          ) : (
+            <span className="text-gray-400 italic">System</span>
+          )
       },
       action: {
         title: "Action",

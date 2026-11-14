@@ -1,3 +1,4 @@
+import { useWorkingYearContext } from "@/context/WorkingYearContext";
 import { useEditWorklog } from "@/hooks/worklog/useEditWorklog";
 import { Button, Card, Table, Popconfirm, Input, Space, DatePicker, Select, Modal, Form, Tooltip, Tag, message } from "antd";
 import moment from "moment";
@@ -45,8 +46,13 @@ const AdminWorklogTable = ({ headerControls }: { headerControls?: React.ReactNod
     columns: ADMIN_WORKLOG_COLUMNS,
     size: "small",
   });
+  const { selectedWorkingYearId } = useWorkingYearContext();
   const [filters, setFilters] = useState<WorklogFilters>({});
-  const { data: worklogs, isPending, refetch } = useAllWorklog(filters);
+  const effectiveFilters = useMemo(() => ({
+    ...filters,
+    workingYearId: selectedWorkingYearId || undefined,
+  }), [filters, selectedWorkingYearId]);
+  const { data: worklogs, isPending, refetch } = useAllWorklog(effectiveFilters);
   const { mutate: editWorklog, isPending: isEditPending } = useEditWorklog();
   const { mutate: deleteWorklog } = useDeleteWorklog();
   const { mutateAsync: bulkApproveWorklogs, isPending: isBulkApprovePending } = useBulkApproveWorklogs();
@@ -85,7 +91,7 @@ const AdminWorklogTable = ({ headerControls }: { headerControls?: React.ReactNod
   
   // For user and project filter dropdowns using proper hooks
   const { data: userData } = useUser({ status: "active", limit: 100, page: 1, keywords: "" });
-  const { data: projectData } = useProject({ status: "active" });
+  const { data: projectData } = useProject({ status: "active", workingYearId: selectedWorkingYearId || undefined });
   
   // Extract users and projects from the response
   const users = userData?.results || [];

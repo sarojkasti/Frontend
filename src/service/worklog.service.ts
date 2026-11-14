@@ -3,25 +3,39 @@ import axios from "axios";
 axios.defaults.withCredentials = true;
 const backendURI = import.meta.env.VITE_BACKEND_URI;
 
-export const fetchWorklogs = async (status?: string) => {
+export const fetchWorklogs = async (status?: string, workingYearId?: string) => {
   let url = `${backendURI}/worklogs`;
+  const params: string[] = [];
   if (status && status !== 'all') {
-    url += `?status=${status}`;
+    params.push(`status=${status}`);
+  }
+  if (workingYearId && workingYearId !== 'all') {
+    params.push(`workingYearId=${workingYearId}`);
+  }
+  if (params.length > 0) {
+    url += `?${params.join('&')}`;
   }
   const response = await axios.get(url);
   return response.data;
 };
 
-export const fetchWorklogsByUser = async (status?: string) => {
+export const fetchWorklogsByUser = async (status?: string, workingYearId?: string) => {
   let url = `${backendURI}/worklogs/user`;
+  const params: string[] = [];
   if (status && status !== 'all') {
-    url += `?status=${status}`;
+    params.push(`status=${status}`);
+  }
+  if (workingYearId && workingYearId !== 'all') {
+    params.push(`workingYearId=${workingYearId}`);
+  }
+  if (params.length > 0) {
+    url += `?${params.join('&')}`;
   }
   const response = await axios.get(url);
   return response.data;
-}
+};
 
-export const fetchAllWorklogs = async (filters: { status?: string, date?: string, userId?: string, projectId?: string, startDate?: string, endDate?: string }) => {
+export const fetchAllWorklogs = async (filters: { status?: string, date?: string, userId?: string, projectId?: string, startDate?: string, endDate?: string, workingYearId?: string }) => {
   let url = `${backendURI}/worklogs/allworklog`;
   const queryParams = [];
   

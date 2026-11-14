@@ -9,9 +9,21 @@ export const getProjectTimeline = async (projectId: number) => {
   return response.data;
 };
 
-export const fetchProjects = async ({ status, fields }: { status: string; fields?: string }) => {
+export const fetchProjects = async ({
+  status,
+  fields,
+  workingYearId,
+  tab,
+}: {
+  status: string;
+  fields?: string;
+  workingYearId?: string;
+  tab?: string;
+}) => {
   const params = new URLSearchParams({ status: status || 'all' });
   if (fields) params.append('fields', fields);
+  if (workingYearId && workingYearId !== 'all') params.append('workingYearId', workingYearId);
+  if (tab) params.append('tab', tab);
   const response = await axios.get(`${backendURI}/projects?${params.toString()}`);
   return response.data;
 };

@@ -338,6 +338,7 @@ export const ALL_USER_TABLE_COLUMNS: ColumnDefinition[] = [
   { key: "degination", title: "Designation", defaultVisible: true, defaultWidth: 160 },
   { key: "role", title: "Role", defaultVisible: true, defaultWidth: 140 },
   { key: "joinedDate", title: "Joined Date", defaultVisible: true, defaultWidth: 140 },
+  { key: "createdBy", title: "Created By", defaultVisible: false, defaultWidth: 160 },
   { key: "action", title: "Action", defaultVisible: true, required: true, defaultWidth: 100 },
 ];
 

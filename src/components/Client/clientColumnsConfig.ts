@@ -17,6 +17,7 @@ export const ALL_CLIENT_COLUMNS: ColumnDefinition[] = [
   { key: "contact", title: "Contact Info", defaultVisible: true, defaultWidth: 180 },
   { key: "address", title: "Location / District", defaultVisible: false, defaultWidth: 180 },
   { key: "status", title: "Status", defaultVisible: true, defaultWidth: 120 },
+  { key: "createdBy", title: "Created By", defaultVisible: true, defaultWidth: 160 },
   { key: "action", title: "Action", defaultVisible: true, required: true, defaultWidth: 100 },
 ];
 

@@ -8,13 +8,16 @@ export interface ColumnDefinition {
 
 export const ALL_PROJECT_COLUMNS: ColumnDefinition[] = [
   { key: "name", title: "Project Name", defaultVisible: true, required: true, defaultWidth: 200 },
+  { key: "workingYear", title: "Working Year", defaultVisible: true, defaultWidth: 130 },
   { key: "natureOfWork", title: "Nature Of Project", defaultVisible: true, defaultWidth: 160 },
   { key: "client", title: "Client", defaultVisible: true, defaultWidth: 160 },
   { key: "projectManager", title: "Manager", defaultVisible: true, defaultWidth: 150 },
   { key: "projectLead", title: "Lead", defaultVisible: true, defaultWidth: 150 },
   { key: "startingDate", title: "Start Date", defaultVisible: true, defaultWidth: 130 },
   { key: "endingDate", title: "End Date", defaultVisible: true, defaultWidth: 130 },
-  { key: "fiscalYear", title: "Fiscal Year", defaultVisible: true, defaultWidth: 110 },
+  { key: "completedAt", title: "Completed Date", defaultVisible: false, defaultWidth: 130 },
+  { key: "dayCounter", title: "Day Counter", defaultVisible: true, defaultWidth: 125 },
+  { key: "fiscalYear", title: "Fiscal Year", defaultVisible: false, defaultWidth: 110 },
   { key: "completion", title: "Completion", defaultVisible: true, defaultWidth: 160 },
   { key: "users", title: "Team Members", defaultVisible: true, defaultWidth: 150 },
   { key: "activeUsers", title: "Active Members", defaultVisible: true, defaultWidth: 150 },
@@ -22,10 +25,11 @@ export const ALL_PROJECT_COLUMNS: ColumnDefinition[] = [
   { key: "isPaymentDone", title: "Payment Status", defaultVisible: false, defaultWidth: 130 },
   { key: "countsForAvailability", title: "Counts Availability", defaultVisible: false, defaultWidth: 140 },
   { key: "allowSubtaskWorklog", title: "Subtask Worklog", defaultVisible: false, defaultWidth: 130 },
-  { key: "action", title: "Action", defaultVisible: true, required: true, defaultWidth: 90 },
+  { key: "createdBy", title: "Created By", defaultVisible: false, defaultWidth: 160 },
+  { key: "action", title: "Action", defaultVisible: true, required: true, defaultWidth: 100 },
 ];
 
-export const LS_COLUMNS_KEY = "artha_project_table_columns_v3";
+export const LS_COLUMNS_KEY = "artha_project_table_columns_v4";
 export const LS_WIDTHS_KEY = "artha_project_table_column_widths_v1";
 export const LS_PAGINATION_KEY = "artha_project_table_pagination_v1";
 
@@ -42,6 +46,14 @@ export const getSavedVisibleColumns = (): string[] => {
           // Ensure required columns like name and action are present
           if (!filtered.includes("name")) filtered.unshift("name");
           if (!filtered.includes("action")) filtered.push("action");
+          if (!filtered.includes("workingYear")) {
+            const clientIdx = filtered.indexOf("client");
+            if (clientIdx !== -1) {
+              filtered.splice(clientIdx, 0, "workingYear");
+            } else {
+              filtered.splice(1, 0, "workingYear");
+            }
+          }
           return filtered;
         }
       }

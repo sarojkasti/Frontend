@@ -1,3 +1,4 @@
+import { useWorkingYearContext } from "@/context/WorkingYearContext";
 import AllTaskTable from "@/components/Task/AllTaskTable";
 import TaskForm from "@/components/Task/TaskForm";
 import { Button, Modal, Tabs, Select, Input, Space } from "antd";
@@ -17,7 +18,8 @@ const AllTask = () => {
   const userRole = (profile as any)?.role?.name?.toLowerCase?.() || "";
   const userId = (profile as any)?.id;
   const hideAddTask = userRole === "auditsenior" || userRole === "auditjunior";
-  const { data: projects, refetch } = useProject({ status: "active" });
+  const { selectedWorkingYearId } = useWorkingYearContext();
+  const { data: projects, refetch } = useProject({ status: "active", workingYearId: selectedWorkingYearId || undefined });
   const [selectedProjectId, setSelectedProjectId] = useState<string | undefined>(undefined);
   const [editTaskData, setEditTaskData] = useState<any>(undefined);
   const [modalUsers, setModalUsers] = useState<any[]>([]);

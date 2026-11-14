@@ -6,6 +6,7 @@ import Router from "./routes";
 import { useSession } from "./context/SessionContext";
 import { ClientAuthProvider, useClientAuth } from "./context/ClientAuthContext";
 import { SocketProvider } from "./context/SocketContext";
+import { WorkingYearProvider } from "./context/WorkingYearContext";
 import { antTheme } from "./theme";
 import { useTrackUserActivity } from "./utils/userActivityTracker";
 import { isClientPortalDomain, isClientOnlyRoute } from "./utils/subdomainConfig";
@@ -81,9 +82,11 @@ const App: React.FC = () => {
     <ConfigProvider theme={antTheme}>
       <AntdApp>
         <ClientAuthProvider>
-          <SocketProvider>
-            <AppContent />
-          </SocketProvider>
+          <WorkingYearProvider>
+            <SocketProvider>
+              <AppContent />
+            </SocketProvider>
+          </WorkingYearProvider>
         </ClientAuthProvider>
       </AntdApp>
     </ConfigProvider>

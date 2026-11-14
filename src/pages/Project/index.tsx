@@ -21,16 +21,19 @@ import {
   Divider
 } from "antd";
 import React, { useCallback, useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   DownloadOutlined,
   FilterOutlined,
   SettingOutlined,
   SearchOutlined,
   HolderOutlined,
-  PlusOutlined
+  PlusOutlined,
+  RiseOutlined
 } from "@ant-design/icons";
 import { useDeleteProject } from "@/hooks/project/useDeleteProject";
 import { useSession } from "@/context/SessionContext";
+import { useWorkingYearContext } from "@/context/WorkingYearContext";
 import { useProject } from "@/hooks/project/useProject";
 import useIsMobile from "@/hooks/useIsMobile";
 import {
@@ -40,6 +43,7 @@ import {
 } from "@/components/project/projectColumnsConfig";
 
 const ProjectPage: React.FC = () => {
+  const navigate = useNavigate();
   const { isMobile } = useIsMobile();
   const [open, setOpen] = useState(false);
   const [editTaskGroupData, setEditTaskGroupData] = useState<ProjectType | undefined>(undefined);
@@ -63,6 +67,7 @@ const ProjectPage: React.FC = () => {
 
   const deleteProjectMutation = useDeleteProject();
   const { profile, permissions } = useSession();
+  const { selectedWorkingYearId } = useWorkingYearContext();
 
   const userRole = (profile as any)?.role?.name?.toLowerCase();
   const hideCreateDelete = userRole === "auditsenior" || userRole === "auditjunior";
@@ -103,6 +108,7 @@ const ProjectPage: React.FC = () => {
   const { data: allProjects } = useProject({
     status: "all",
     fields: "customer,projectLead,projectManager,natureOfWork,completion",
+    workingYearId: selectedWorkingYearId,
   });
 
   const applyFilters = (values: any) => {
@@ -504,6 +510,12 @@ const ProjectPage: React.FC = () => {
         tabBarExtraContent={
           isMobile ? undefined : (
             <Space size={10}>
+              <Tooltip title="Project Insights & Health Report">
+                <Button
+                  icon={<RiseOutlined style={{ color: "#1677ff" }} />}
+                  onClick={() => navigate("/reports?report=project_insights")}
+                />
+              </Tooltip>
               {/* Edit Columns Button alongside Advanced Filters */}
               <Popover
                 content={columnPopoverContent}
@@ -515,16 +527,16 @@ const ProjectPage: React.FC = () => {
                 <Button icon={<SettingOutlined />}>Edit Columns</Button>
               </Popover>
 
-              <Button
-                icon={<FilterOutlined />}
-                onClick={() => {
-                  if (showFilters) resetFilters();
-                  setShowFilters(!showFilters);
-                }}
-                type={showFilters ? "primary" : "default"}
-              >
-                Advanced Filters
-              </Button>
+              <Tooltip title={showFilters ? "Hide Advanced Filters" : "Show Advanced Filters"}>
+                <Button
+                  icon={<FilterOutlined />}
+                  onClick={() => {
+                    if (showFilters) resetFilters();
+                    setShowFilters(!showFilters);
+                  }}
+                  type={showFilters ? "primary" : "default"}
+                />
+              </Tooltip>
 
               {!hideCreateDelete && (
                 <Button
@@ -538,8 +550,8 @@ const ProjectPage: React.FC = () => {
               )}
               {canExportProject && (
                 <Tooltip title="Download / Export Helper">
-                  <Button onClick={() => setIsExportViewOpen(true)}>
-                    <DownloadOutlined />
+                  <Button icon={<DownloadOutlined />} onClick={() => setIsExportViewOpen(true)}>
+                    Export
                   </Button>
                 </Tooltip>
               )}
@@ -553,12 +565,32 @@ const ProjectPage: React.FC = () => {
         }
         items={[
           {
-            label: `Active`,
+            label: `Open`,
             key: "1",
             children: (
               <ProjectTable
                 showModal={showModal}
                 status="active"
+                tab="open"
+                workingYearId={selectedWorkingYearId}
+                advancedFilters={advancedFilters}
+                selectedProjects={selectedProjects}
+                setSelectedProjects={setSelectedProjects}
+                showFilters={showFilters}
+                visibleColumnKeys={visibleColumnKeys}
+                searchQuery={mobileSearchQuery}
+              />
+            ),
+          },
+          {
+            label: `Active`,
+            key: "2",
+            children: (
+              <ProjectTable
+                showModal={showModal}
+                status="active"
+                tab="active"
+                workingYearId={selectedWorkingYearId}
                 advancedFilters={advancedFilters}
                 selectedProjects={selectedProjects}
                 setSelectedProjects={setSelectedProjects}
@@ -570,11 +602,13 @@ const ProjectPage: React.FC = () => {
           },
           {
             label: `Completed`,
-            key: "2",
+            key: "3",
             children: (
               <ProjectTable
                 showModal={showModal}
                 status="completed"
+                tab="completed"
+                workingYearId={selectedWorkingYearId}
                 advancedFilters={advancedFilters}
                 selectedProjects={selectedProjects}
                 setSelectedProjects={setSelectedProjects}
@@ -586,11 +620,13 @@ const ProjectPage: React.FC = () => {
           },
           {
             label: `Signed Off`,
-            key: "3",
+            key: "4",
             children: (
               <ProjectTable
                 showModal={showModal}
                 status="signed_off"
+                tab="signed_off"
+                workingYearId={selectedWorkingYearId}
                 advancedFilters={advancedFilters}
                 selectedProjects={selectedProjects}
                 setSelectedProjects={setSelectedProjects}
@@ -602,11 +638,13 @@ const ProjectPage: React.FC = () => {
           },
           {
             label: `Suspended`,
-            key: "4",
+            key: "5",
             children: (
               <ProjectTable
                 showModal={showModal}
                 status="suspended"
+                tab="suspended"
+                workingYearId={selectedWorkingYearId}
                 advancedFilters={advancedFilters}
                 selectedProjects={selectedProjects}
                 setSelectedProjects={setSelectedProjects}
@@ -618,11 +656,13 @@ const ProjectPage: React.FC = () => {
           },
           {
             label: `Archived`,
-            key: "5",
+            key: "6",
             children: (
               <ProjectTable
                 showModal={showModal}
                 status="archive"
+                tab="archived"
+                workingYearId={selectedWorkingYearId}
                 advancedFilters={advancedFilters}
                 selectedProjects={selectedProjects}
                 setSelectedProjects={setSelectedProjects}

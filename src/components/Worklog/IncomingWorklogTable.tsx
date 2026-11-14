@@ -1,3 +1,4 @@
+import { useWorkingYearContext } from "@/context/WorkingYearContext";
 import { useEditWorklog } from "@/hooks/worklog/useEditWorklog";
 import { Tooltip, Button, Card, Modal, Input, Popconfirm, Space, Tag, message } from "antd";
 import moment from "moment";
@@ -274,7 +275,8 @@ const IncomingWorklogTable = ({ status, searchQuery, visibleColumnKeys }: Incomi
   const [pageSize, setPageSize] = useState<number>(10);
   const { profile } = useSession();
   const currentUserId = (profile as any)?.id;
-  const { data: worklogs, isPending } = useWorklogbyUser(status);
+  const { selectedWorkingYearId } = useWorkingYearContext();
+  const { data: worklogs, isPending } = useWorklogbyUser(status, selectedWorkingYearId);
   const { mutate: editWorklog, isPending: isEditPending } = useEditWorklog();
   const { mutateAsync: bulkApproveWorklogs, isPending: isBulkApprovePending } = useBulkApproveWorklogs();
   const { mutateAsync: bulkRejectWorklogs, isPending: isBulkRejectPending } = useBulkRejectWorklogs();

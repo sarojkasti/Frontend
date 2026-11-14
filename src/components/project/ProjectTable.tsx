@@ -7,6 +7,7 @@ import { UserType } from "@/types/user";
 import { checkPermissionForComponent } from "@/utils/permission";
 import { DualDateConverter } from "@/utils/dateConverter";
 import { fetchProject } from "@/service/project.service";
+import { useWorkingYearContext } from "@/context/WorkingYearContext";
 import {
   DownloadOutlined,
   EditOutlined,
@@ -17,7 +18,8 @@ import {
   CheckCircleOutlined,
   ClockCircleOutlined,
   DownOutlined,
-  UpOutlined
+  UpOutlined,
+  HistoryOutlined
 } from "@ant-design/icons";
 import {
   Avatar,
@@ -57,6 +59,8 @@ import {
 interface ProjectTableProps {
   showModal: (project?: ProjectType) => void;
   status: string;
+  tab?: string;
+  workingYearId?: string;
   advancedFilters: any;
   selectedProjects: ProjectType[];
   setSelectedProjects: (projects: ProjectType[]) => void;
@@ -68,6 +72,8 @@ interface ProjectTableProps {
 const ProjectTable: React.FC<ProjectTableProps> = ({
   showModal,
   status,
+  tab,
+  workingYearId,
   advancedFilters,
   selectedProjects,
   setSelectedProjects,
@@ -77,6 +83,9 @@ const ProjectTable: React.FC<ProjectTableProps> = ({
 }) => {
   const navigate = useNavigate();
   const { isMobile } = useIsMobile();
+  const { selectedWorkingYearId } = useWorkingYearContext();
+  const effectiveWorkingYearId = workingYearId !== undefined ? workingYearId : selectedWorkingYearId;
+
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(getSavedPageSize());
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>(getSavedColumnWidths());
@@ -92,10 +101,15 @@ const ProjectTable: React.FC<ProjectTableProps> = ({
   const [activeProjectForMemberModal, setActiveProjectForMemberModal] = useState<any>(null);
   const [loadingMemberDetail, setLoadingMemberDetail] = useState(false);
 
-  // Fetch projects with dynamic fields parameter
+  // Fetch projects with dynamic fields parameter and fiscal year context
   const queryStatus = showFilters ? "all" : status;
   const fieldsParam = useMemo(() => visibleColumnKeys.join(","), [visibleColumnKeys]);
-  const { data: project, isPending } = useProject({ status: queryStatus, fields: fieldsParam });
+  const { data: project, isPending } = useProject({
+    status: queryStatus,
+    fields: fieldsParam,
+    workingYearId: effectiveWorkingYearId,
+    tab
+  });
   const { permissions, profile } = useSession();
 
   const [searchText, setSearchText] = useState("");
@@ -558,9 +572,11 @@ const ProjectTable: React.FC<ProjectTableProps> = ({
       sortOrder: sortedInfo.columnKey === "name" && sortedInfo.order,
       ...getColumnSearchProps("name", "Project Name"),
       render: (_: any, record: any) => (
-        <Link to={`/projects/${record.id}`} className="text-blue-600 font-medium">
-          {record.name || "-"}
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link to={`/projects/${record.id}`} className="text-blue-600 font-medium hover:underline">
+            {record.name || "-"}
+          </Link>
+        </div>
       ),
     },
     natureOfWork: {
@@ -740,6 +756,136 @@ const ProjectTable: React.FC<ProjectTableProps> = ({
           }
         }
         return "-";
+      },
+    },
+    completedAt: {
+      title: "Completed Date",
+      dataIndex: "completedAt",
+      key: "completedAt",
+      width: columnWidths["completedAt"] || 135,
+      onHeaderCell: () => ({
+        width: columnWidths["completedAt"] || 135,
+        onResize: handleResize("completedAt"),
+        columnKey: "completedAt",
+      }),
+      sorter: (a: any, b: any) =>
+        new Date(a.completedAt || 0).getTime() - new Date(b.completedAt || 0).getTime(),
+      render: (_: any, record: any) => {
+        if (!record.completedAt) return "-";
+        try {
+          return <span>{dayjs(record.completedAt).format("YYYY-MM-DD")}</span>;
+        } catch {
+          return "-";
+        }
+      },
+    },
+    dayCounter: {
+      title: "Day Counter",
+      dataIndex: "dayCounter",
+      key: "dayCounter",
+      width: columnWidths["dayCounter"] || 130,
+      onHeaderCell: () => ({
+        width: columnWidths["dayCounter"] || 130,
+        onResize: handleResize("dayCounter"),
+        columnKey: "dayCounter",
+      }),
+      sorter: (a: any, b: any) => (a.dayCounter ?? -1) - (b.dayCounter ?? -1),
+      render: (_: any, record: any) => {
+        const isCompleted = record.status === "completed" || record.status === "signed_off";
+        if (record.dayCounter !== null && record.dayCounter !== undefined) {
+          const days = record.dayCounter;
+          if (isCompleted) {
+            const startStr = record.firstWorklogAt
+              ? dayjs(record.firstWorklogAt).format("YYYY-MM-DD")
+              : (record.startingDate ? dayjs(record.startingDate).format("YYYY-MM-DD") : "Start");
+            const endStr = record.completedAt
+              ? dayjs(record.completedAt).format("YYYY-MM-DD")
+              : (record.updatedAt ? dayjs(record.updatedAt).format("YYYY-MM-DD") : "End");
+            return (
+              <Tooltip title={`Project completed. Ran for ${days} ${days === 1 ? "day" : "days"} (${startStr} ~ ${endStr})`}>
+                <Tag color="green" icon={<CheckCircleOutlined />}>
+                  {days} {days === 1 ? "day" : "days"}
+                </Tag>
+              </Tooltip>
+            );
+          }
+          const label = days === 0 ? "Day 1 (Started today)" : `Day ${days + 1} (${days}d elapsed)`;
+          return (
+            <Tooltip title={`Worklog started on: ${record.firstWorklogAt ? dayjs(record.firstWorklogAt).format("YYYY-MM-DD HH:mm") : "N/A"}`}>
+              <Tag color="geekblue" icon={<ClockCircleOutlined />}>
+                {label}
+              </Tag>
+            </Tooltip>
+          );
+        }
+        return (
+          <Tooltip title={isCompleted ? "Completed without recorded worklogs" : "No worklog has been added to this project yet"}>
+            <Tag color="default" style={{ fontStyle: "italic" }}>
+              {isCompleted ? "No worklogs" : "Not started"}
+            </Tag>
+          </Tooltip>
+        );
+      },
+    },
+    workingYear: {
+      title: "Working Year",
+      key: "workingYear",
+      width: columnWidths["workingYear"] || 130,
+      onHeaderCell: () => ({
+        width: columnWidths["workingYear"] || 130,
+        onResize: handleResize("workingYear"),
+        columnKey: "workingYear",
+      }),
+      sorter: (a: any, b: any) => {
+        const aName = a.workingYear?.name || (a.fiscalYear ? String(a.fiscalYear) : "");
+        const bName = b.workingYear?.name || (b.fiscalYear ? String(b.fiscalYear) : "");
+        return aName.localeCompare(bName);
+      },
+      sortOrder: sortedInfo.columnKey === "workingYear" && sortedInfo.order,
+      render: (_: any, record: any) => {
+        const rawName =
+          record.workingYear?.name ||
+          (record.fiscalYear ? `${record.fiscalYear}/${String(record.fiscalYear + 1).slice(-2)}` : null);
+        if (!rawName) return "-";
+        const wyDisplay = rawName.startsWith("FY") ? rawName : `FY ${rawName}`;
+
+        if (record.isCarriedOver) {
+          return (
+            <Tooltip
+              placement="top"
+              title={
+                <div>
+                  <div style={{ fontWeight: 600 }}>Carried Over Project</div>
+                  <div style={{ fontSize: 12 }}>Carried Over (FY {rawName})</div>
+                </div>
+              }
+            >
+              <div style={{ display: "inline-block", cursor: "pointer" }}>
+                <Tag
+                  color="orange"
+                  style={{
+                    margin: 0,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 4,
+                    fontWeight: 500,
+                  }}
+                >
+                  <HistoryOutlined style={{ fontSize: 12 }} />
+                  <span>{wyDisplay}</span>
+                </Tag>
+              </div>
+            </Tooltip>
+          );
+        }
+
+        return (
+          <Tooltip title={`Working Year: ${wyDisplay}`}>
+            <Tag color="blue" style={{ margin: 0, fontWeight: 500 }}>
+              {wyDisplay}
+            </Tag>
+          </Tooltip>
+        );
       },
     },
     fiscalYear: {
@@ -940,32 +1086,81 @@ const ProjectTable: React.FC<ProjectTableProps> = ({
         );
       },
     },
+    createdBy: {
+      title: "Created By",
+      dataIndex: ["creator", "name"],
+      key: "createdBy",
+      width: columnWidths["createdBy"] || 160,
+      onHeaderCell: () => ({
+        width: columnWidths["createdBy"] || 160,
+        onResize: handleResize("createdBy"),
+        columnKey: "createdBy",
+      }),
+      sorter: (a: any, b: any) =>
+        (a.creator?.name || "").localeCompare(b.creator?.name || ""),
+      sortOrder: sortedInfo.columnKey === "createdBy" && sortedInfo.order,
+      ...getColumnSearchProps("creator.name", "Created By"),
+      render: (_: any, record: any) =>
+        record?.creator?.name ? (
+          <Space size={6}>
+            <Avatar
+              size="small"
+              className="bg-indigo-600"
+              src={
+                record?.creator?.avatar
+                  ? `${import.meta.env.VITE_BACKEND_URI}/document/${record?.creator?.avatar}`
+                  : undefined
+              }
+            >
+              {record?.creator?.name?.[0]}
+            </Avatar>
+            <span className="font-medium text-slate-700">{record?.creator?.name}</span>
+          </Space>
+        ) : (
+          <span className="text-gray-400 italic">System</span>
+        ),
+    },
     action: {
       title: "Action",
       key: "action",
       fixed: "right",
-      width: columnWidths["action"] || 90,
+      width: columnWidths["action"] || 100,
       onHeaderCell: () => ({
-        width: columnWidths["action"] || 90,
+        width: columnWidths["action"] || 100,
         onResize: handleResize("action"),
         columnKey: "action",
       }),
-      hidden: checkPermissionForComponent(
-        permissions,
-        "projects",
-        "patch",
-        "/projects/:id"
-      )
-        ? false
-        : true,
-      render: (_: any, record: any) => (
-        <Button
-          type="primary"
-          icon={<EditOutlined />}
-          size="small"
-          onClick={() => showModal(record)}
-        />
-      ),
+      render: (_: any, record: any) => {
+        const canEdit = checkPermissionForComponent(
+          permissions,
+          "projects",
+          "patch",
+          "/projects/:id"
+        );
+        return (
+          <Space size="small">
+            <Tooltip title="View Project Details">
+              <Button
+                type="default"
+                icon={<EyeOutlined style={{ color: "#1677ff" }} />}
+                style={{ borderColor: "#91caff" }}
+                size="small"
+                onClick={() => navigate(`/projects/${record.id}`)}
+              />
+            </Tooltip>
+            {canEdit && (
+              <Tooltip title="Edit Project">
+                <Button
+                  type="primary"
+                  icon={<EditOutlined />}
+                  size="small"
+                  onClick={() => showModal(record)}
+                />
+              </Tooltip>
+            )}
+          </Space>
+        );
+      },
     },
   };
 
@@ -1281,6 +1476,7 @@ const ProjectTable: React.FC<ProjectTableProps> = ({
           enableSearch={false}
           enableColumnCustomizer={false}
           scroll={{ x: "max-content" }}
+          rowClassName={(record) => (record as any)?.isCarriedOver ? "bg-amber-50/40 hover:bg-amber-100/40" : ""}
           renderMobileCard={renderMobileProjectCard}
         />
       </Card>

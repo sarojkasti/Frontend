@@ -1,3 +1,4 @@
+import { useWorkingYearContext } from "@/context/WorkingYearContext";
 import React, { useEffect, useMemo, useState, useRef } from "react";
 import { Button, Col, Divider, Form, Row, Select, Switch, Space, Tag, message } from "antd";
 import TextArea from "antd/es/input/TextArea";
@@ -18,6 +19,8 @@ import {
   NatureOfWorkGroup,
 } from "@/service/natureOfWork.service";
 import { ProjectType, ProjectStatus } from "@/types/project";
+import { useWorkingYears } from "@/hooks/workingYear/useWorkingYear";
+import { useSession } from "@/context/SessionContext";
 import FormInputWrapper from "../FormInputWrapper";
 import NepaliDatePicker, { NepaliDate } from "../NepaliDatePicker";
 import { DualDateConverter } from "@/utils/dateConverter";
@@ -68,6 +71,12 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ editProjectData, handleCancel
   const { mutate, isPending } = useCreateProject();
   const { mutate: mutateEdit, isPending: isPendingEdit } = useEditProject();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const { profile } = useSession();
+  const isSuperUser = (profile as any)?.role?.name?.toLowerCase() === "superuser";
+  const isEdit = Boolean(editProjectData?.id);
+  const { data: workingYears = [] } = useWorkingYears();
+  const { selectedWorkingYearId } = useWorkingYearContext();
 
   const { data: clients } = useClient();
   const { data: billings } = useBilling("active");
@@ -520,6 +529,10 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ editProjectData, handleCancel
         description: editProjectData.description || "",
         status: editProjectData.status || ProjectStatus.ACTIVE,
         fiscalYear: editProjectData.fiscalYear,
+        workingYearId:
+          editProjectData.workingYearId ||
+          editProjectData.workingYear?.id ||
+          workingYears.find((wy) => wy.nepaliStartYear === editProjectData.fiscalYear)?.id,
         users: (() => {
           const leadId =
             editProjectData.projectLead?.id ||
@@ -599,8 +612,13 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ editProjectData, handleCancel
       setNepaliStartDate(todayNepali);
       setNepaliEndDate(endNepali);
 
+      const activeWY = (selectedWorkingYearId && workingYears.find((wy) => wy.id === selectedWorkingYearId)) ||
+        workingYears.find((wy) => wy.isCurrent) ||
+        workingYears[0];
       form.setFieldsValue({
         status: ProjectStatus.ACTIVE,
+        workingYearId: activeWY?.id,
+        fiscalYear: activeWY?.nepaliStartYear,
         startingDateNepali: todayNepali,
         startingDate: todayAD,
         startingDateEnglish: todayAD,
@@ -749,35 +767,61 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ editProjectData, handleCancel
 
         <Col xs={24} sm={12}>
           <Form.Item
-            label="Fiscal Year"
-            name="fiscalYear"
-            rules={[{ required: true, message: "Please select the fiscal year!" }]}
+            label={
+              <Space size={6}>
+                <span>Working Year (Fiscal Year)</span>
+                {isEdit && !isSuperUser && (
+                  <Tag color="default" style={{ fontSize: 10, lineHeight: "16px", padding: "0 4px" }}>
+                    Locked
+                  </Tag>
+                )}
+                {isSuperUser && (
+                  <Tag color="gold" style={{ fontSize: 10, lineHeight: "16px", padding: "0 4px" }}>
+                    Superuser Editable
+                  </Tag>
+                )}
+              </Space>
+            }
+            name="workingYearId"
+            rules={[{ required: true, message: "Please select the working year!" }]}
           >
             <Select
               className="h-[48px] w-full"
-              placeholder="Select fiscal year"
-              onChange={handleFieldChange}
-              disabled={!!isProjectInactive}
+              placeholder="Select working year"
+              disabled={isEdit ? !isSuperUser : !!isProjectInactive}
+              onChange={(val) => {
+                const wy = workingYears.find((w) => w.id === val);
+                if (wy) {
+                  form.setFieldsValue({ fiscalYear: wy.nepaliStartYear });
+                }
+                handleFieldChange();
+              }}
               showSearch
               optionFilterProp="label"
-              filterOption={(input, option) =>
-                option?.label && typeof option.label === "string"
-                  ? option.label.toLowerCase().includes(input.toLowerCase())
-                  : false
+              options={
+                workingYears.length > 0
+                  ? workingYears.map((wy) => ({
+                      value: wy.id,
+                      label: `FY ${wy.name}${wy.isCurrent ? " (Current)" : ""}`,
+                    }))
+                  : (() => {
+                      const todayDual = DualDateConverter.getToday();
+                      const nepaliYear = todayDual.nepali.getYear();
+                      return [...Array(20).keys()].map((_, idx) => {
+                        const startYear = nepaliYear - idx;
+                        const endYear = (startYear + 1).toString().slice(-2);
+                        return {
+                          value: String(startYear),
+                          label: `${startYear}/${endYear}`,
+                        };
+                      });
+                    })()
               }
-              options={(() => {
-                const todayDual = DualDateConverter.getToday();
-                const nepaliYear = todayDual.nepali.getYear();
-                return [...Array(20).keys()].map((_, idx) => {
-                  const startYear = nepaliYear - idx;
-                  const endYear = (startYear + 1).toString().slice(-2);
-                  return {
-                    value: startYear,
-                    label: `${startYear}/${endYear}`,
-                  };
-                });
-              })()}
             />
+          </Form.Item>
+          {/* Hidden fiscalYear field kept in sync */}
+          <Form.Item name="fiscalYear" hidden>
+            <input type="hidden" />
           </Form.Item>
         </Col>
 

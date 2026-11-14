@@ -72,6 +72,13 @@ const SETTING_ITEMS: SettingItem[] = [
     icon: <ProjectOutlined style={{ fontSize: 20, color: "#1677ff" }} />,
   },
   {
+    key: "working-year",
+    title: "Fiscal Year (Working Year)",
+    description: "Configure the fiscal year calendar system (Bhadra 1 start), switch active working years, and manage year boundaries.",
+    path: "/working-year-setting",
+    icon: <CalendarOutlined style={{ fontSize: 20, color: "#1677ff" }} />,
+  },
+  {
     key: "customer",
     title: "Customer Setting",
     description: "Manage customer business sizes, business natures, and legal entity classifications.",

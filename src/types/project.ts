@@ -1,4 +1,5 @@
 import { TaskType } from "./task";
+import { WorkingYearType } from "./workingYear";
 import { UserType } from "./user";
 
 export interface NatureOfWorkType {
@@ -39,6 +40,16 @@ export interface ProjectType {
     natureOfWorkGroup?: NatureOfWorkGroupType | null;
     natureOfWorkGroupId?: string | null;
     fiscalYear: number;
+    workingYear?: WorkingYearType | null;
+    workingYearId?: string | null;
+    firstWorklogAt?: string | null;
+    completedAt?: string | null;
+    completedInWorkingYear?: WorkingYearType | null;
+    completedInWorkingYearId?: string | null;
+    dayCounter?: number | null;
+    isCarriedOver?: boolean;
+    isOpen?: boolean;
+    isWorklogStarted?: boolean;
     startingDate: string;
     endingDate: string;
     startingDateNepali?: string; // YYYY-MM-DD in BS

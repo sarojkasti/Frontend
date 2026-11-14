@@ -24,6 +24,7 @@ import {
 import { ReportGeneratorStudio } from "./components/ReportGeneratorStudio";
 import { FormattedWorklogDescription } from "./components/FormattedWorklogDescription";
 import UserAvailabilityDashboard from "@/pages/Project/availability";
+import ProjectInsightsReport from "./components/ProjectInsightsReport";
 import { ActiveReportKey } from "./types/reportTypes";
 import { stripHtml } from "@/utils/formatUtils";
 import {
@@ -143,6 +144,18 @@ const REPORT_CATALOG: ReportCatalogItem[] = [
     iconColor: "#eb2f96",
     tag: "Absence Log",
     tagColor: "magenta",
+  },
+  {
+    key: "project_insights",
+    title: "Project Insights & Health",
+    description: "Creation recency (today, this week, this month), longest running project leaderboard, carried over summary, and stalled project alerts.",
+    category: "Projects & Financials",
+    icon: <RiseOutlined style={{ fontSize: 20, color: "#1677ff" }} />,
+    iconBg: "bg-blue-50 border border-blue-100",
+    iconColor: "#1677ff",
+    tag: "Executive Insights",
+    tagColor: "blue",
+    badge: "New",
   },
   {
     key: "project",
@@ -1068,6 +1081,15 @@ const ReportsPage: React.FC = () => {
     return (
       <div className="pb-16 sm:pb-0 px-2 sm:px-0">
         <UserAvailabilityDashboard onBack={() => handleSelectReport(null)} />
+      </div>
+    );
+  }
+
+  // 2.5. If project insights is selected, show ProjectInsightsReport with Back button!
+  if (selectedReport === "project_insights") {
+    return (
+      <div className="pb-16 sm:pb-0 px-2 sm:px-0">
+        <ProjectInsightsReport onBack={() => handleSelectReport(null)} />
       </div>
     );
   }

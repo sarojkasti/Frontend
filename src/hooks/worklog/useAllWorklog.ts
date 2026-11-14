@@ -6,6 +6,9 @@ export interface WorklogFilters {
   date?: string;
   userId?: string;
   projectId?: string;
+  startDate?: string;
+  endDate?: string;
+  workingYearId?: string;
 }
 
 export const useAllWorklog = (filters: WorklogFilters = {}) => {

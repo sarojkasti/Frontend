@@ -1,3 +1,4 @@
+import { useWorkingYearContext } from "@/context/WorkingYearContext";
 import { useEditWorklog } from "@/hooks/worklog/useEditWorklog";
 import { useWorklog } from "@/hooks/worklog/useWorklog";
 import { Button, Card, Table, Popconfirm, Input, Space } from "antd";
@@ -248,7 +249,8 @@ const AllWorklogTable = ({ status, searchQuery, visibleColumnKeys }: AllWorklogT
   const [highlightedRowId, setHighlightedRowId] = useState<string | null>(highlightId || null);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(10);
-  const { data: worklogs, isPending } = useWorklog(status);
+  const { selectedWorkingYearId } = useWorkingYearContext();
+  const { data: worklogs, isPending } = useWorklog(status, selectedWorkingYearId);
   const { isPending: isEditPending } = useEditWorklog();
   const { mutate: deleteWorklog } = useDeleteWorklog();
   const [expandedRows, setExpandedRows] = useState<string[]>([]);

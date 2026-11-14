@@ -185,6 +185,34 @@ const UserTable = ({
       },
     },
     {
+      title: "Created By",
+      dataIndex: ["creator", "name"],
+      key: "createdBy",
+      defaultWidth: 160,
+      ...getColumnSearchProps('creator.name', 'Created By'),
+      sorter: (a: any, b: any) => (a.creator?.name || '').localeCompare(b.creator?.name || ''),
+      sortOrder: sortedInfo.columnKey === 'createdBy' && sortedInfo.order,
+      render: (_: any, record: any) =>
+        record?.creator?.name ? (
+          <Space size={6}>
+            <Avatar
+              size="small"
+              className="bg-indigo-600"
+              src={
+                record?.creator?.avatar
+                  ? `${import.meta.env.VITE_BACKEND_URI}/document/${record?.creator?.avatar}`
+                  : undefined
+              }
+            >
+              {record?.creator?.name?.[0]}
+            </Avatar>
+            <span className="font-medium text-slate-700">{record?.creator?.name}</span>
+          </Space>
+        ) : (
+          <span className="text-gray-400 italic">System</span>
+        ),
+    },
+    {
       title: "Action",
       key: "action",
       width: 100,

@@ -208,6 +208,12 @@ const UserDetails = () => {
                     <PhoneOutlined style={{ marginRight: 6, color: "#52c41a" }} />
                     {user.phoneNumber || "No phone registered"}
                   </Text>
+                  {(user as any).creator?.name && (
+                    <Text type="secondary">
+                      <UserOutlined style={{ marginRight: 6, color: "#722ed1" }} />
+                      Created by: <span className="font-medium text-slate-700">{(user as any).creator?.name}</span>
+                    </Text>
+                  )}
                 </Space>
               </div>
             </div>

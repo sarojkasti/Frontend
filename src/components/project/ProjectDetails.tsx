@@ -118,6 +118,11 @@ const ProjectDetails = ({ project }: ProjectDetailsProps) => {
         <Descriptions.Item label="Description" span={isMobile ? 1 : 2}>
           {project.description || 'No description provided.'}
         </Descriptions.Item>
+        {(project as any).creator?.name && (
+          <Descriptions.Item label="Created By">
+            <span className="font-medium text-slate-800">{(project as any).creator?.name}</span>
+          </Descriptions.Item>
+        )}
         <Descriptions.Item label="Created At">
           {moment(project.createdAt).format('MMM D, YYYY h:mm A')}
         </Descriptions.Item>

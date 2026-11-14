@@ -1,3 +1,5 @@
+import { useWorkingYearContext } from "@/context/WorkingYearContext";
+import { useWorkingYears } from "@/hooks/workingYear/useWorkingYear";
 import { useCurrentUserTasks } from "@/hooks/task/useCurrentUserTasks";
 import { useMarkTasksComplete } from "@/hooks/task/useMarkTasksComplete";
 import { useFirstVerifyTasks, useSecondVerifyTasks } from "@/hooks/task/useVerifyTasks";
@@ -88,11 +90,18 @@ const AllTaskTable = ({
   };
 
   // Hooks
+  const { selectedWorkingYearId } = useWorkingYearContext();
+  const { data: workingYears = [] } = useWorkingYears();
   const { data: currentUserData, isPending } = useCurrentUserTasks(true);
   const { mutate: markTasksComplete, isPending: isMarkingComplete } = useMarkTasksComplete();
   const { mutate: firstVerifyTasks, isPending: isFirstVerifying } = useFirstVerifyTasks();
   const { mutate: secondVerifyTasks, isPending: isSecondVerifying } = useSecondVerifyTasks();
   const { profile } = useSession();
+
+  const targetWY = useMemo(() => {
+    if (!selectedWorkingYearId || selectedWorkingYearId === "all") return null;
+    return workingYears.find((wy) => wy.id === selectedWorkingYearId) || null;
+  }, [selectedWorkingYearId, workingYears]);
 
   // 1. Raw deduplication by task ID to prevent duplicate items from API
   const uniqueRawTasks = useMemo(() => {
@@ -100,11 +109,28 @@ const AllTaskTable = ({
     const map = new Map<string, any>();
     currentUserData.forEach((task: any) => {
       if (task && task.id != null) {
+        if (targetWY) {
+          const pWYId = task.project?.workingYearId || task.project?.workingYear?.id;
+          if (pWYId) {
+            const isThisFY = pWYId === targetWY.id;
+            const projWY = workingYears.find((wy) => wy.id === pWYId);
+            const isCarriedOver = Boolean(
+              projWY &&
+              new Date(projWY.startDateAD).getTime() < new Date(targetWY.startDateAD).getTime() &&
+              task.project?.status === "active"
+            );
+
+            // Include tasks created in this FY or carried over from an earlier FY on an active project
+            if (!isThisFY && !isCarriedOver) {
+              return;
+            }
+          }
+        }
         map.set(String(task.id), task);
       }
     });
     return Array.from(map.values());
-  }, [currentUserData]);
+  }, [currentUserData, targetWY, workingYears]);
 
   // 2. Identify all subtask IDs across stories
   const subTaskIdsInStories = useMemo(() => {

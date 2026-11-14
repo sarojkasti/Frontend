@@ -140,11 +140,18 @@ const ClientView: React.FC = () => {
                 </Title>
                 {getStatusTag(client.status)}
               </div>
-              {client.shortName && (
-                <Text type="secondary" style={{ fontSize: 13, fontWeight: 500 }}>
-                  Short Name: <Tag color="blue">{client.shortName}</Tag>
-                </Text>
-              )}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 4, flexWrap: 'wrap' }}>
+                {client.shortName && (
+                  <Text type="secondary" style={{ fontSize: 13, fontWeight: 500 }}>
+                    Short Name: <Tag color="blue">{client.shortName}</Tag>
+                  </Text>
+                )}
+                {client.creator?.name && (
+                  <Text type="secondary" style={{ fontSize: 13, fontWeight: 500 }}>
+                    Created by: <Tag color="geekblue">{client.creator?.name}</Tag>
+                  </Text>
+                )}
+              </div>
             </div>
           </div>
 

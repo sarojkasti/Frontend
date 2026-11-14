@@ -19,6 +19,7 @@ import Setting from "@/pages/Setting";
 import ProjectSetting from "@/pages/Setting/ProjectSetting";
 import CustomerSetting from "@/pages/Setting/CustomerSetting";
 import DepartmentSetting from "@/pages/Setting/DepartmentSetting";
+import WorkingYearSetting from "@/pages/Setting/WorkingYearSetting";
 import MailSettings from "@/pages/Setting/MailSettings";
 import NotificationSetting from "@/pages/Setting/NotificationSetting";
 import NotificationRedirect from "@/pages/Notifications/NotificationRedirect";
@@ -519,6 +520,10 @@ const Router = [
       {
         path: "/department-setting",
         element: <DepartmentSetting />,
+      },
+      {
+        path: "/working-year-setting",
+        element: <WorkingYearSetting />,
       },
       {
         path: "/notification-settings",
