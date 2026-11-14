@@ -16,3 +16,60 @@ export const fetchDashboardWorkingTime = async (date?: string, period?: 'day' | 
   const response = await axios.get(`${backendURI}/dashboard/working-time`, { params });
   return response.data;
 };
+
+export interface SidebarSummaryData {
+  counts: {
+    // Recent in last 30 days (around a month)
+    projects: number;
+    clients: number;
+    users: number;
+    tasks: number;
+    notices: number;
+    // Totals
+    totalProjects?: number;
+    totalClients?: number;
+    totalUsers?: number;
+    totalTasks?: number;
+    totalNotices?: number;
+    newProjectsThisWeek?: number;
+    newClientsThisWeek?: number;
+    pendingTasks?: number;
+  };
+  recentProjects: Array<{
+    id: string;
+    name: string;
+    status: string;
+    createdAt: string;
+    creator?: { id: string; name: string; avatar?: string };
+  }>;
+  recentClients: Array<{
+    id: string;
+    name: string;
+    status: string;
+    createdAt: string;
+    creator?: { id: string; name: string; avatar?: string };
+  }>;
+  recentUsers?: Array<{
+    id: string;
+    name: string;
+    status: string;
+    createdAt: string;
+    creator?: { id: string; name: string; avatar?: string };
+  }>;
+  recentActivity: Array<{
+    id: string;
+    type: 'project' | 'client';
+    title: string;
+    action: string;
+    createdAt: string;
+    creator?: { id: string; name: string; avatar?: string };
+    link: string;
+  }>;
+}
+
+export const fetchSidebarSummary = async (workingYearId?: string): Promise<SidebarSummaryData> => {
+  const params: any = {};
+  if (workingYearId) params.workingYearId = workingYearId;
+  const response = await axios.get(`${backendURI}/dashboard/sidebar-summary`, { params });
+  return response.data;
+};

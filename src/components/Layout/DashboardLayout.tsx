@@ -33,7 +33,7 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
       >
         <Sidebar
           collapsed={collapsed}
-          menuItems={MenuItems()}
+          menuItems={MenuItems(collapsed)}
           mobileOpen={mobileOpen}
           onMobileClose={() => setMobileOpen(false)}
         />

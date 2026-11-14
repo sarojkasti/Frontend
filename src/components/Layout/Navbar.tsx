@@ -104,13 +104,9 @@ const Navbar = ({
         </div>
       </div>
 
-      {/* Clock in / Clock out and time display */}
-      <div className="flex items-center mx-1 sm:mx-4">
-        <Clock />
-      </div>
-
-      {/* Right side: FY Selector and action icons */}
+      {/* Right side: Clock, FY Selector and action icons */}
       <div className="pr-3 sm:pr-4 flex gap-3 sm:gap-4 items-center">
+        <Clock />
         <WorkingYearSelector size={isMobile ? "small" : "middle"} />
         {/* Worklog shortcut icon for desktop only */}
         <FileDoneOutlined
