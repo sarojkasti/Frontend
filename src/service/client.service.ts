@@ -62,3 +62,26 @@ export const deletePortalCredential = async (clientId: string, credentialId: str
   const response = await axios.delete(`${backendURI}/clients/${clientId}/portal-credentials/${credentialId}`);
   return response.data;
 };
+
+// Similarity Check & Duplicate Detection APIs
+export const checkClientSimilarity = async ({
+  name,
+  pan,
+  excludeId
+}: {
+  name?: string;
+  pan?: string;
+  excludeId?: string;
+}) => {
+  const params: any = {};
+  if (name) params.name = name;
+  if (pan) params.pan = pan;
+  if (excludeId) params.excludeId = excludeId;
+  const response = await axios.get(`${backendURI}/clients/similarity-check`, { params });
+  return response.data;
+};
+
+export const fetchDuplicationAuditReport = async () => {
+  const response = await axios.get(`${backendURI}/clients/duplication-audit`);
+  return response.data;
+};

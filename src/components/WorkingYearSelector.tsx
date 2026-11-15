@@ -34,9 +34,8 @@ export const WorkingYearSelector: React.FC<WorkingYearSelectorProps> = ({
           value={value}
           onChange={(val) => setSelectedWorkingYearById(val === "all" ? null : val)}
           style={{ minWidth: 125 }}
-          dropdownMatchSelectWidth={false}
+          popupMatchSelectWidth={false}
           optionLabelProp="label"
-          bordered={true}
           className="rounded-lg shadow-xs"
         >
           {workingYears.map((wy) => {

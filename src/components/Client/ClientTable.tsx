@@ -177,6 +177,50 @@ const ClientTable = ({
         }),
         render: (short: string) => (short ? <Tag color="blue">{short}</Tag> : "-")
       },
+      clientGroup: {
+        title: "Client Group",
+        dataIndex: ["clientGroup", "name"],
+        key: "clientGroup",
+        width: columnWidths["clientGroup"] || 160,
+        onHeaderCell: () => ({
+          width: columnWidths["clientGroup"] || 160,
+          onResize: handleResize("clientGroup"),
+          columnKey: "clientGroup"
+        }),
+        ...getColumnSearchProps("clientGroup.name", "Client Group"),
+        sorter: (a: any, b: any) =>
+          (a.clientGroup?.name || "").localeCompare(b.clientGroup?.name || ""),
+        sortOrder: sortedInfo.columnKey === "clientGroup" && sortedInfo.order,
+        render: (_: any, record: any) => {
+          if (!record.clientGroup) return <span className="text-slate-400 italic text-xs">Standalone</span>;
+          return (
+            <Link to={`/client-groups/${record.clientGroup.id}`}>
+              <Tag color="geekblue" className="font-medium cursor-pointer hover:opacity-80">
+                🏢 {record.clientGroup.name}
+              </Tag>
+            </Link>
+          );
+        }
+      },
+      partnerInCharge: {
+        title: "Partner in Charge",
+        dataIndex: ["partnerInCharge", "name"],
+        key: "partnerInCharge",
+        width: columnWidths["partnerInCharge"] || 160,
+        onHeaderCell: () => ({
+          width: columnWidths["partnerInCharge"] || 160,
+          onResize: handleResize("partnerInCharge"),
+          columnKey: "partnerInCharge"
+        }),
+        render: (_: any, record: any) =>
+          record.partnerInCharge?.name ? (
+            <span className="text-xs font-semibold text-slate-700">
+              {record.partnerInCharge.name}
+            </span>
+          ) : (
+            "-"
+          )
+      },
       panNo: {
         title: "PAN Number",
         dataIndex: "panNo",
@@ -383,6 +427,36 @@ const ClientTable = ({
             </Space>
           ) : (
             <span className="text-gray-400 italic">System</span>
+          )
+      },
+      updatedBy: {
+        title: "Updated By",
+        dataIndex: ["updater", "name"],
+        key: "updatedBy",
+        width: columnWidths["updatedBy"] || 160,
+        onHeaderCell: () => ({
+          width: columnWidths["updatedBy"] || 160,
+          onResize: handleResize("updatedBy"),
+          columnKey: "updatedBy"
+        }),
+        render: (_: any, record: any) =>
+          record?.updater?.name ? (
+            <Space size={6}>
+              <Avatar
+                size="small"
+                className="bg-amber-600"
+                src={
+                  record?.updater?.avatar
+                    ? `${import.meta.env.VITE_BACKEND_URI}/document/${record?.updater?.avatar}`
+                    : undefined
+                }
+              >
+                {record?.updater?.name?.[0]}
+              </Avatar>
+              <span className="font-medium text-slate-700 text-xs">{record?.updater?.name}</span>
+            </Space>
+          ) : (
+            <span className="text-gray-400 italic text-xs">-</span>
           )
       },
       action: {

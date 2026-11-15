@@ -3,7 +3,7 @@ import ClientExportPage from "@/components/Client/ClientExportPage";
 import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Tabs, Button, Popover, Tooltip, Input } from "antd";
-import { PlusOutlined, DownloadOutlined, SettingOutlined, SearchOutlined } from "@ant-design/icons";
+import { PlusOutlined, DownloadOutlined, SettingOutlined, SearchOutlined, ApartmentOutlined, SafetyCertificateOutlined } from "@ant-design/icons";
 import { useClient } from "@/hooks/client/useClient";
 import { useSession } from "@/context/SessionContext";
 import { useIsMobile } from "@/hooks/useIsMobile";
@@ -141,6 +141,22 @@ const ClientPage: React.FC = () => {
         tabBarExtraContent={
           !isMobile ? (
             <div className="flex flex-wrap gap-2">
+              <Button
+                icon={<ApartmentOutlined />}
+                onClick={() => navigate("/client-groups")}
+                className="border-indigo-200 text-indigo-700 hover:bg-indigo-50 font-medium"
+              >
+                Client Groups
+              </Button>
+              <Tooltip title="View duplicate PANs, name similarity matches, and client creation/edit audit trail">
+                <Button
+                  icon={<SafetyCertificateOutlined />}
+                  onClick={() => navigate("/reports?report=client_audit")}
+                  className="border-amber-200 text-amber-700 hover:bg-amber-50"
+                >
+                  Duplication & Audit
+                </Button>
+              </Tooltip>
               <Popover
                 content={columnPopoverContent}
                 trigger="click"

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { Card, Button, Tabs, Spin, Typography, Space, Row, Col, Tag, Avatar, Statistic, Divider, Tooltip, message } from 'antd';
+import { useParams, useNavigate, Link } from 'react-router-dom';
+import { Card, Button, Tabs, Spin, Typography, Space, Row, Col, Tag, Avatar, Table, Divider, Tooltip, message } from 'antd';
 import {
   EditOutlined,
   ArrowLeftOutlined,
@@ -20,7 +20,9 @@ import {
   SafetyCertificateOutlined,
   KeyOutlined,
   ProjectOutlined,
-  UsergroupAddOutlined
+  UsergroupAddOutlined,
+  FileDoneOutlined,
+  UserOutlined
 } from '@ant-design/icons';
 import { useClientById } from '@/hooks/client/useClientById';
 import PortalCredentialsForm from '@/components/Client/portalcredentialsform';
@@ -29,7 +31,6 @@ import ClientUsersTab from '@/components/Client/ClientUsersTab';
 import useIsMobile from '@/hooks/useIsMobile';
 import dayjs from 'dayjs';
 
-const { TabPane } = Tabs;
 const { Title, Text } = Typography;
 
 const ClientView: React.FC = () => {
@@ -102,36 +103,36 @@ const ClientView: React.FC = () => {
     }
   };
 
+  // Group contacts inherited from the corporate group
+  const groupContacts = client.clientGroup?.contacts || [];
+  const boardMembers = client.boardMembers || [];
+  const managementMembers = client.managementTeamMembers || [];
+  const licenses = client.registrationAndLicenses || [];
+
   return (
-    <div style={{ padding: '0 4px', minHeight: '85vh' }}>
-      {/* Hero Header Banner */}
+    <div style={{ padding: isMobile ? '8px' : '16px', maxWidth: 1400, margin: '0 auto' }}>
+      {/* Top Header Card */}
       <Card
         className="shadow-sm border-slate-200"
-        style={{ marginBottom: 20, borderRadius: 12, overflow: 'hidden' }}
-        styles={{ body: { padding: isMobile ? '16px' : '24px 28px' } }}
+        style={{
+          borderRadius: 12,
+          marginBottom: 16,
+          background: 'linear-gradient(to right, #ffffff, #fafafa)',
+        }}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
-          {/* Left: Back button, Avatar & Main Title */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 10 : 16, flexWrap: 'wrap' }}>
-            <Button
-              type="text"
-              shape="circle"
-              icon={<ArrowLeftOutlined style={{ fontSize: isMobile ? 18 : 20 }} />}
-              onClick={() => navigate('/client')}
-              className="flex items-center justify-center -ml-1 text-gray-600 hover:text-blue-600 hover:bg-gray-100 shrink-0"
-              title="Back to Clients"
-            />
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16 }}>
+          {/* Left: Client Branding & Overview */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             <Avatar
-              size={isMobile ? 48 : 64}
+              size={isMobile ? 52 : 64}
               style={{
-                background: 'linear-gradient(135deg, #1677ff 0%, #003eb3 100%)',
-                fontSize: isMobile ? 20 : 26,
+                backgroundColor: '#1677ff',
+                fontSize: isMobile ? 22 : 28,
                 fontWeight: 700,
-                boxShadow: '0 4px 12px rgba(22, 119, 255, 0.3)',
-                flexShrink: 0
+                boxShadow: '0 4px 10px rgba(22, 119, 255, 0.25)',
               }}
             >
-              {typeof client.name === 'string' ? client.name.charAt(0).toUpperCase() : 'C'}
+              {client.name ? client.name.charAt(0).toUpperCase() : 'C'}
             </Avatar>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
@@ -140,15 +141,33 @@ const ClientView: React.FC = () => {
                 </Title>
                 {getStatusTag(client.status)}
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 4, flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4, flexWrap: 'wrap' }}>
                 {client.shortName && (
                   <Text type="secondary" style={{ fontSize: 13, fontWeight: 500 }}>
-                    Short Name: <Tag color="blue">{client.shortName}</Tag>
+                    Code: <Tag color="blue">{client.shortName}</Tag>
+                  </Text>
+                )}
+                {/* Client Group Pill Link */}
+                {client.clientGroup && (
+                  <Link to={`/client-groups/${client.clientGroup.id}`}>
+                    <Tag color="geekblue" className="text-xs font-semibold cursor-pointer hover:opacity-80">
+                      🏢 Part of {client.clientGroup.name}
+                    </Tag>
+                  </Link>
+                )}
+                {client.partnerInCharge && (
+                  <Text type="secondary" style={{ fontSize: 13, fontWeight: 500 }}>
+                    Lead: <Tag color="purple"><UserOutlined className="mr-1" />{client.partnerInCharge.name}</Tag>
                   </Text>
                 )}
                 {client.creator?.name && (
-                  <Text type="secondary" style={{ fontSize: 13, fontWeight: 500 }}>
-                    Created by: <Tag color="geekblue">{client.creator?.name}</Tag>
+                  <Text type="secondary" style={{ fontSize: 12, fontWeight: 500 }}>
+                    Created by: <span className="font-semibold text-slate-700">{client.creator?.name}</span>
+                  </Text>
+                )}
+                {client.updater?.name && (
+                  <Text type="secondary" style={{ fontSize: 12, fontWeight: 500 }}>
+                    Updated by: <span className="font-semibold text-slate-700">{client.updater?.name}</span>
                   </Text>
                 )}
               </div>
@@ -162,7 +181,7 @@ const ClientView: React.FC = () => {
                 Back to Clients
               </Button>
             )}
-            <Button type="primary" icon={<EditOutlined />} onClick={() => navigate(`/client/edit/${id}`)} size={isMobile ? "middle" : "middle"}>
+            <Button type="primary" icon={<EditOutlined />} onClick={() => navigate(`/client/edit/${id}`)} size="middle">
               Edit Client
             </Button>
           </Space>
@@ -289,6 +308,17 @@ const ClientView: React.FC = () => {
                               {client.panNo || '-'}
                             </div>
                           </div>
+
+                          {client.lastEditReason && (
+                            <div className="bg-amber-50 p-2.5 rounded border border-amber-200">
+                              <Text type="secondary" style={{ fontSize: 11, fontWeight: 600, color: '#92400e' }}>
+                                LATEST EDIT LOG REASON:
+                              </Text>
+                              <div style={{ fontSize: 13, color: '#78350f', marginTop: 2 }}>
+                                {client.lastEditReason}
+                              </div>
+                            </div>
+                          )}
                         </Space>
                       </Card>
                     </Col>
@@ -299,7 +329,7 @@ const ClientView: React.FC = () => {
                         title={
                           <Space>
                             <PhoneOutlined style={{ color: '#52c41a' }} />
-                            <span>Contact Details</span>
+                            <span>Official Contact Details</span>
                           </Space>
                         }
                         size="small"
@@ -355,6 +385,41 @@ const ClientView: React.FC = () => {
                       </Card>
                     </Col>
                   </Row>
+
+                  {/* Banking Information Card */}
+                  <Card
+                    title={
+                      <Space>
+                        <BankOutlined style={{ color: '#059669' }} />
+                        <span>Banking & Financial Account</span>
+                      </Space>
+                    }
+                    size="small"
+                    bordered
+                    className="bg-slate-50/50"
+                    style={{ borderRadius: 8 }}
+                  >
+                    <Row gutter={[20, 16]}>
+                      <Col xs={24} sm={8}>
+                        <Text type="secondary" style={{ fontSize: 11 }}>BANK NAME</Text>
+                        <div style={{ fontSize: 14, fontWeight: 600, color: '#1e293b' }}>
+                          {client.bankName || '-'}
+                        </div>
+                      </Col>
+                      <Col xs={24} sm={8}>
+                        <Text type="secondary" style={{ fontSize: 11 }}>ACCOUNT NUMBER</Text>
+                        <div style={{ fontSize: 14, fontWeight: 600, color: '#0f172a', fontFamily: 'monospace' }}>
+                          {client.bankAccountNumber || '-'}
+                        </div>
+                      </Col>
+                      <Col xs={24} sm={8}>
+                        <Text type="secondary" style={{ fontSize: 11 }}>BANK BRANCH</Text>
+                        <div style={{ fontSize: 14, fontWeight: 600, color: '#1e293b' }}>
+                          {client.bankBranch || '-'}
+                        </div>
+                      </Col>
+                    </Row>
+                  </Card>
 
                   {/* Address & Location Card */}
                   <Card
@@ -419,11 +484,179 @@ const ClientView: React.FC = () => {
               )
             },
             {
+              key: 'contacts',
+              label: (
+                <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <TeamOutlined />
+                  Contacts & Governance
+                </span>
+              ),
+              children: (
+                <Space direction="vertical" size={24} style={{ width: '100%', paddingTop: 8 }}>
+                  {/* Central Group Contacts (Inherited from Corporate Group) */}
+                  {client.clientGroup && (
+                    <Card
+                      title={
+                        <div className="flex items-center justify-between">
+                          <Space>
+                            <BankOutlined style={{ color: '#1677ff' }} />
+                            <span>🏢 Central Group Office Contacts (Inherited from {client.clientGroup.name})</span>
+                          </Space>
+                          <Link to={`/client-groups/${client.clientGroup.id}`}>
+                            <Tag color="geekblue" className="cursor-pointer">
+                              View Group Profile
+                            </Tag>
+                          </Link>
+                        </div>
+                      }
+                      size="small"
+                      bordered
+                      className="border-blue-200 bg-blue-50/20"
+                    >
+                      {groupContacts.length === 0 ? (
+                        <div className="text-slate-400 italic text-xs py-3 text-center">
+                          No central group contacts registered under {client.clientGroup.name}.
+                        </div>
+                      ) : (
+                        <Table
+                          dataSource={groupContacts}
+                          rowKey="id"
+                          pagination={false}
+                          size="small"
+                          columns={[
+                            {
+                              title: "Contact Person",
+                              dataIndex: "name",
+                              key: "name",
+                              render: (name, rec: any) => (
+                                <span className="font-bold text-slate-800">
+                                  {name} {rec.isPrimary && <Tag color="gold">Primary Group Contact</Tag>}
+                                </span>
+                              )
+                            },
+                            { title: "Designation", dataIndex: "designation", key: "designation" },
+                            { title: "Department", dataIndex: "department", key: "department" },
+                            {
+                              title: "Mobile / Phone",
+                              key: "phone",
+                              render: (_, rec: any) => rec.mobileNo || rec.telephoneNo || "-"
+                            },
+                            {
+                              title: "Email",
+                              dataIndex: "email",
+                              key: "email",
+                              render: (email) => email ? <a href={`mailto:${email}`}>{email}</a> : "-"
+                            }
+                          ]}
+                        />
+                      )}
+                    </Card>
+                  )}
+
+                  {/* Board Members (Charged with Governance - NSA 260) */}
+                  <Card
+                    title={
+                      <Space>
+                        <SafetyCertificateOutlined style={{ color: '#722ed1' }} />
+                        <span>🏛️ Board of Directors (Charged with Governance — NSA 260)</span>
+                      </Space>
+                    }
+                    size="small"
+                    bordered
+                  >
+                    {boardMembers.length === 0 ? (
+                      <div className="text-slate-400 italic text-xs py-3 text-center">
+                        No board members or directors registered for this entity.
+                      </div>
+                    ) : (
+                      <Table
+                        dataSource={boardMembers}
+                        rowKey="id"
+                        pagination={false}
+                        size="small"
+                        columns={[
+                          { title: "Director Name", dataIndex: "name", key: "name", render: (t) => <span className="font-semibold">{t}</span> },
+                          { title: "Designation", dataIndex: "designation", key: "designation" },
+                          { title: "Mobile", dataIndex: "mobileNo", key: "mobileNo" },
+                          { title: "Email", dataIndex: "email", key: "email", render: (e) => e ? <a href={`mailto:${e}`}>{e}</a> : "-" }
+                        ]}
+                      />
+                    )}
+                  </Card>
+
+                  {/* Management Team (Operational Personnel) */}
+                  <Card
+                    title={
+                      <Space>
+                        <UsergroupAddOutlined style={{ color: '#059669' }} />
+                        <span>👥 Management Team & Key Operational Personnel</span>
+                      </Space>
+                    }
+                    size="small"
+                    bordered
+                  >
+                    {managementMembers.length === 0 ? (
+                      <div className="text-slate-400 italic text-xs py-3 text-center">
+                        No management team members recorded for this entity.
+                      </div>
+                    ) : (
+                      <Table
+                        dataSource={managementMembers}
+                        rowKey="id"
+                        pagination={false}
+                        size="small"
+                        columns={[
+                          { title: "Personnel Name", dataIndex: "name", key: "name", render: (t) => <span className="font-semibold">{t}</span> },
+                          { title: "Designation", dataIndex: "designation", key: "designation" },
+                          { title: "Department", dataIndex: "department", key: "department" },
+                          { title: "Mobile", dataIndex: "mobileNo", key: "mobileNo" },
+                          { title: "Email", dataIndex: "email", key: "email", render: (e) => e ? <a href={`mailto:${e}`}>{e}</a> : "-" }
+                        ]}
+                      />
+                    )}
+                  </Card>
+                </Space>
+              )
+            },
+            {
+              key: 'licenses',
+              label: (
+                <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <FileDoneOutlined />
+                  Registrations & Licenses ({licenses.length})
+                </span>
+              ),
+              children: (
+                <div className="pt-2">
+                  {licenses.length === 0 ? (
+                    <div className="text-slate-400 italic text-xs py-6 text-center">
+                      No statutory registrations or operating licenses added yet.
+                    </div>
+                  ) : (
+                    <Table
+                      dataSource={licenses}
+                      rowKey="id"
+                      pagination={false}
+                      size="middle"
+                      bordered
+                      columns={[
+                        { title: "Licensing Authority", dataIndex: "licensingAuthority", key: "authority", render: (t) => <span className="font-semibold">{t}</span> },
+                        { title: "License / Reg. No.", dataIndex: "registrationOrLicenseNo", key: "regNo", render: (t) => <span className="font-mono">{t}</span> },
+                        { title: "Issue Date", dataIndex: "dateOfIssue", key: "issueDate", render: (d) => d ? dayjs(d).format("MMM DD, YYYY") : "-" },
+                        { title: "Valid / Expiry Date", dataIndex: "validDate", key: "validDate", render: (d) => d ? dayjs(d).format("MMM DD, YYYY") : "-" },
+                        { title: "Renewal Frequency", dataIndex: "frequencyOfRenewal", key: "frequency", render: (f) => f ? <Tag color="blue">{formatText(f)}</Tag> : "-" },
+                      ]}
+                    />
+                  )}
+                </div>
+              )
+            },
+            {
               key: 'users',
               label: (
                 <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <UsergroupAddOutlined />
-                  Client Contact Users
+                  Client Portal Users
                 </span>
               ),
               children: <ClientUsersTab clientId={id!} clientName={client.name} />

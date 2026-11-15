@@ -37,6 +37,7 @@ import AccountDetails from "@/pages/User/AccountDetails";
 import BankDetails from "@/pages/User/BankDetails";
 import UserDetails from "@/pages/User/details";
 import UserEdit from "@/pages/User/edit";
+import ClientGroupPage from "@/pages/ClientGroup";
 import EducationalDetails from "@/pages/User/EducationalDetails";
 import CreateUser from "@/pages/User/new";
 import PersonalDetails from "@/pages/User/PersonalDetails";
@@ -338,6 +339,18 @@ const Router = [
         path: "/client",
         element: (
           <ProtectedRoute method="get" resource="client" component={<Client />} />
+        ),
+      },
+      {
+        path: "/client-groups",
+        element: (
+          <ProtectedRoute method="get" resource="client" component={<ClientGroupPage />} />
+        ),
+      },
+      {
+        path: "/client-groups/:id",
+        element: (
+          <ProtectedRoute method="get" resource="client" component={<ClientGroupPage />} />
         ),
       },
       {

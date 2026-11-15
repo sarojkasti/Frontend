@@ -9,7 +9,9 @@ export interface ColumnDefinition {
 export const ALL_CLIENT_COLUMNS: ColumnDefinition[] = [
   { key: "name", title: "Client Name", defaultVisible: true, required: true, defaultWidth: 200 },
   { key: "shortName", title: "Short Name", defaultVisible: true, defaultWidth: 120 },
+  { key: "clientGroup", title: "Client Group", defaultVisible: true, defaultWidth: 160 },
   { key: "panNo", title: "PAN Number", defaultVisible: true, defaultWidth: 140 },
+  { key: "partnerInCharge", title: "Partner in Charge", defaultVisible: false, defaultWidth: 160 },
   { key: "legalStatus", title: "Legal Status", defaultVisible: true, defaultWidth: 160 },
   { key: "industryNature", title: "Industry Nature", defaultVisible: true, defaultWidth: 180 },
   { key: "businessSize", title: "Business Size", defaultVisible: true, defaultWidth: 140 },
@@ -18,6 +20,7 @@ export const ALL_CLIENT_COLUMNS: ColumnDefinition[] = [
   { key: "address", title: "Location / District", defaultVisible: false, defaultWidth: 180 },
   { key: "status", title: "Status", defaultVisible: true, defaultWidth: 120 },
   { key: "createdBy", title: "Created By", defaultVisible: true, defaultWidth: 160 },
+  { key: "updatedBy", title: "Updated By", defaultVisible: false, defaultWidth: 160 },
   { key: "action", title: "Action", defaultVisible: true, required: true, defaultWidth: 100 },
 ];
 

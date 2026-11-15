@@ -25,6 +25,7 @@ import { ReportGeneratorStudio } from "./components/ReportGeneratorStudio";
 import { FormattedWorklogDescription } from "./components/FormattedWorklogDescription";
 import UserAvailabilityDashboard from "@/pages/Project/availability";
 import ProjectInsightsReport from "./components/ProjectInsightsReport";
+import ClientAuditReport from "./components/ClientAuditReport";
 import { ActiveReportKey } from "./types/reportTypes";
 import { stripHtml } from "@/utils/formatUtils";
 import {
@@ -46,6 +47,7 @@ import {
   AuditOutlined,
   SafetyCertificateOutlined,
   AppstoreOutlined,
+  ApartmentOutlined,
 } from "@ant-design/icons";
 import {
   BarChart,
@@ -179,6 +181,18 @@ const REPORT_CATALOG: ReportCatalogItem[] = [
     tag: "Capacity & Schedule",
     tagColor: "processing",
     badge: "Timeline",
+  },
+  {
+    key: "client_audit",
+    title: "Client Duplication & Audit Report",
+    description: "Fuzzy matching similarity detection, duplicate PAN scanner, 1-click group linking, and client creation/updation audit trail (who created & updated).",
+    category: "Projects & Financials",
+    icon: <ApartmentOutlined style={{ fontSize: 20, color: "#fa8c16" }} />,
+    iconBg: "bg-amber-50 border border-amber-100",
+    iconColor: "#fa8c16",
+    tag: "Fuzzy Matching & Audit",
+    tagColor: "warning",
+    badge: "Smart Scan",
   },
   {
     key: "analytics",
@@ -1090,6 +1104,15 @@ const ReportsPage: React.FC = () => {
     return (
       <div className="pb-16 sm:pb-0 px-2 sm:px-0">
         <ProjectInsightsReport onBack={() => handleSelectReport(null)} />
+      </div>
+    );
+  }
+
+  // 2.6. If client audit is selected, show ClientAuditReport with Back button!
+  if (selectedReport === "client_audit") {
+    return (
+      <div className="pb-16 sm:pb-0 px-2 sm:px-0">
+        <ClientAuditReport onBack={() => handleSelectReport(null)} />
       </div>
     );
   }
