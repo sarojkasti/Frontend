@@ -7,7 +7,13 @@ export type ReportType =
   | "project"
   | "leave";
 
-export type ActiveReportKey = ReportType | "analytics" | "availability" | "project_insights" | "client_audit";
+export type ActiveReportKey =
+  | ReportType
+  | "analytics"
+  | "availability"
+  | "project_insights"
+  | "client_audit"
+  | "recent_changes";
 
 export type DatePreset =
   | "today"

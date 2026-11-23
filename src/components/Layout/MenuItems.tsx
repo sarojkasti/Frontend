@@ -16,7 +16,9 @@ import {
   FieldTimeOutlined,
   CoffeeOutlined,
   BarChartOutlined,
-  UserSwitchOutlined
+  UserSwitchOutlined,
+  FileTextOutlined,
+  HistoryOutlined,
 } from "@ant-design/icons";
 import type { MenuProps } from "antd";
 import _ from "lodash";
@@ -50,12 +52,13 @@ export const MenuItems = (collapsed = false): MenuItem[] => {
     options?: {
       recentCount?: number;
       totalCount?: number;
-      popoverType?: "project" | "client" | "users";
+      popoverType?: "project" | "client" | "users" | "client_report" | "client_user";
       recentItems?: Array<{
         id: string;
         name: string;
         status?: string;
         createdAt: string;
+        clientName?: string;
         creator?: { id: string; name: string; avatar?: string } | null;
       }>;
     }
@@ -116,10 +119,10 @@ export const MenuItems = (collapsed = false): MenuItem[] => {
     {
       key: "/users",
       label: renderNavLabel("Users", {
-        recentCount: sidebarSummary?.counts?.users,
-        totalCount: sidebarSummary?.counts?.totalUsers,
-        popoverType: "users",
-        recentItems: sidebarSummary?.recentUsers,
+        recentCount: isSuperOrAdmin ? sidebarSummary?.counts?.users : 0,
+        totalCount: isSuperOrAdmin ? sidebarSummary?.counts?.totalUsers : 0,
+        popoverType: isSuperOrAdmin ? "users" : undefined,
+        recentItems: isSuperOrAdmin ? sidebarSummary?.recentUsers : [],
       }),
       resource: "user",
       icon: React.createElement(TeamOutlined),
@@ -208,13 +211,23 @@ export const MenuItems = (collapsed = false): MenuItem[] => {
     },
     {
       key: "/client-reports",
-      label: renderNavLabel("Client Reports"),
+      label: renderNavLabel("Client Reports", {
+        recentCount: sidebarSummary?.counts?.clientReports,
+        totalCount: sidebarSummary?.counts?.totalClientReports,
+        popoverType: "client_report",
+        recentItems: sidebarSummary?.recentClientReports,
+      }),
       resource: "client-reports",
-      icon: React.createElement(BarChartOutlined),
+      icon: React.createElement(FileTextOutlined),
     },
     {
       key: "/client-users",
-      label: renderNavLabel("Client Users"),
+      label: renderNavLabel("Client Users", {
+        recentCount: sidebarSummary?.counts?.clientUsers,
+        totalCount: sidebarSummary?.counts?.totalClientUsers,
+        popoverType: "client_user",
+        recentItems: sidebarSummary?.recentClientUsers,
+      }),
       resource: "client-users",
       icon: React.createElement(UserSwitchOutlined),
     },

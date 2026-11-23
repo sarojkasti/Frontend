@@ -33,9 +33,9 @@ import {
   Cell,
   ReferenceLine,
 } from "recharts";
-import { useWorklogbyUser } from "@/hooks/worklog/useWorklogbyUser";
+import { useWorklog } from "@/hooks/worklog/useWorklog";
 import useIsMobile from "@/hooks/useIsMobile";
-import { formatTime12Hour, parseTimeMoment } from "@/utils/formatUtils";
+import { formatTime12Hour } from "@/utils/formatUtils";
 
 const getLogDateStr = (log: any): string => {
   if (log.date) {
@@ -43,12 +43,8 @@ const getLogDateStr = (log: any): string => {
     if (m.isValid()) return m.format("YYYY-MM-DD");
   }
   if (log.startTime) {
-    const parsed = parseTimeMoment(log.startTime, log.date);
-    if (parsed && parsed.isValid()) return parsed.format("YYYY-MM-DD");
-    if (typeof log.startTime === "string" && log.startTime.includes("T")) {
-      const m = moment(log.startTime);
-      if (m.isValid()) return m.format("YYYY-MM-DD");
-    }
+    const m = moment(log.startTime);
+    if (m.isValid()) return m.format("YYYY-MM-DD");
   }
   if (log.createdAt) {
     const m = moment(log.createdAt);
@@ -62,10 +58,9 @@ const getLogDurationMinutes = (log: any): number => {
     return log.durationMinutes;
   }
   if (log.startTime && log.endTime) {
-    const baseDate = log.date || (log.createdAt ? moment(log.createdAt).format("YYYY-MM-DD") : moment().format("YYYY-MM-DD"));
-    const startM = parseTimeMoment(log.startTime, baseDate);
-    const endM = parseTimeMoment(log.endTime, baseDate);
-    if (startM && endM) {
+    const startM = moment(log.startTime);
+    const endM = moment(log.endTime);
+    if (startM.isValid() && endM.isValid()) {
       return Math.max(0, endM.diff(startM, "minutes"));
     }
   }
@@ -77,7 +72,7 @@ const { Text, Title } = Typography;
 export const UserWorklogsWidget: React.FC = () => {
   const navigate = useNavigate();
   const { isMobile } = useIsMobile();
-  const { data: rawWorklogs, isPending: worklogsLoading } = useWorklogbyUser();
+  const { data: rawWorklogs, isPending: worklogsLoading } = useWorklog();
 
   // Normalize worklogs array
   const worklogs = useMemo(() => {

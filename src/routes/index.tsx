@@ -776,6 +776,16 @@ const Router = [
     />
   ),
 },
+{
+  path: "/reports/recent-changes",
+  element: (
+    <ProtectedRoute
+      method="get"
+      resource="reports"
+      component={<ReportsPage defaultReport="recent_changes" />}
+    />
+  ),
+},
       {
         path: "*",
         element: <NotFound />,

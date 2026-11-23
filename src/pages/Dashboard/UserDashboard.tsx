@@ -10,12 +10,11 @@ import { UserHolidaysWidget } from "./components/UserHolidaysWidget";
 import { UserNoticeWidget } from "./components/UserNoticeWidget";
 import LeaveRequestModal from "@/components/Leave/LeaveRequestModal";
 import { useCurrentUserTasks } from "@/hooks/task/useCurrentUserTasks";
-import { useWorklogbyUser } from "@/hooks/worklog/useWorklogbyUser";
+import { useWorklog } from "@/hooks/worklog/useWorklog";
 import { useMyLeaveBalances } from "@/hooks/useLeaveTypes";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSession } from "@/context/SessionContext";
 import { fetchTodoTasksByAssignedUser } from "@/service/todoTask.service";
-import { parseTimeMoment } from "@/utils/formatUtils";
 
 export const UserDashboard: React.FC = () => {
   const queryClient = useQueryClient();
@@ -25,7 +24,7 @@ export const UserDashboard: React.FC = () => {
 
   // Queries for high-level metrics
   const { data: rawTasks } = useCurrentUserTasks(true);
-  const { data: rawWorklogs } = useWorklogbyUser();
+  const { data: rawWorklogs } = useWorklog();
   const { data: rawBalances } = useMyLeaveBalances();
 
   // Query for assigned todo tasks
@@ -38,7 +37,7 @@ export const UserDashboard: React.FC = () => {
     enabled: !!userId,
   });
 
-  // 1. Calculate today's logged hours
+  // 1. Calculate today's logged hours (only for the current user's own worklogs)
   const todayHours = useMemo(() => {
     if (!rawWorklogs || !Array.isArray(rawWorklogs)) return 0;
     const todayStr = moment().format("YYYY-MM-DD");
@@ -47,11 +46,7 @@ export const UserDashboard: React.FC = () => {
       if (log.date) {
         logDateStr = moment(log.date).format("YYYY-MM-DD");
       } else if (log.startTime) {
-        const parsed = parseTimeMoment(log.startTime, log.date);
-        if (parsed) logDateStr = parsed.format("YYYY-MM-DD");
-        else if (typeof log.startTime === "string" && log.startTime.includes("T")) {
-          logDateStr = moment(log.startTime).format("YYYY-MM-DD");
-        }
+        logDateStr = moment(log.startTime).format("YYYY-MM-DD");
       } else if (log.createdAt) {
         logDateStr = moment(log.createdAt).format("YYYY-MM-DD");
       }
@@ -61,9 +56,9 @@ export const UserDashboard: React.FC = () => {
         if (typeof log.durationMinutes === "number" && !isNaN(log.durationMinutes)) {
           durationMins = log.durationMinutes;
         } else if (log.startTime && log.endTime) {
-          const startM = parseTimeMoment(log.startTime, todayStr);
-          const endM = parseTimeMoment(log.endTime, todayStr);
-          if (startM && endM) {
+          const startM = moment(log.startTime);
+          const endM = moment(log.endTime);
+          if (startM.isValid() && endM.isValid()) {
             durationMins = Math.max(0, endM.diff(startM, "minutes"));
           }
         }

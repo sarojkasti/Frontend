@@ -23,12 +23,16 @@ export interface SidebarSummaryData {
     projects: number;
     clients: number;
     users: number;
+    clientReports?: number;
+    clientUsers?: number;
     tasks: number;
     notices: number;
     // Totals
     totalProjects?: number;
     totalClients?: number;
     totalUsers?: number;
+    totalClientReports?: number;
+    totalClientUsers?: number;
     totalTasks?: number;
     totalNotices?: number;
     newProjectsThisWeek?: number;
@@ -56,9 +60,26 @@ export interface SidebarSummaryData {
     createdAt: string;
     creator?: { id: string; name: string; avatar?: string };
   }>;
+  recentClientReports?: Array<{
+    id: string;
+    name: string;
+    clientName?: string;
+    documentType?: string;
+    createdAt: string;
+    creator?: { id: string; name: string; avatar?: string } | null;
+  }>;
+  recentClientUsers?: Array<{
+    id: string;
+    name: string;
+    email?: string;
+    clientName?: string;
+    status?: string;
+    createdAt: string;
+    creator?: { id: string; name: string; avatar?: string } | null;
+  }>;
   recentActivity: Array<{
     id: string;
-    type: 'project' | 'client';
+    type: 'project' | 'client' | 'client_report' | 'client_user';
     title: string;
     action: string;
     createdAt: string;
@@ -71,5 +92,94 @@ export const fetchSidebarSummary = async (workingYearId?: string): Promise<Sideb
   const params: any = {};
   if (workingYearId) params.workingYearId = workingYearId;
   const response = await axios.get(`${backendURI}/dashboard/sidebar-summary`, { params });
+  return response.data;
+};
+
+export interface RecentChangesFilterParams {
+  type?: string;
+  days?: number | string;
+  startDate?: string;
+  endDate?: string;
+  action?: 'all' | 'created' | 'updated';
+  search?: string;
+  limit?: number | string;
+}
+
+export interface RecentChangeItem {
+  id: string;
+  name?: string;
+  title?: string;
+  status?: string;
+  workingYear?: string;
+  clientName?: string;
+  clientId?: string;
+  managerName?: string;
+  leadName?: string;
+  panNo?: string;
+  groupName?: string;
+  state?: string;
+  district?: string;
+  email?: string;
+  username?: string;
+  role?: string;
+  avatar?: string;
+  documentType?: string;
+  fileName?: string;
+  fileSize?: number;
+  accessStatus?: string;
+  phoneNumber?: string;
+  clientNames?: string;
+  lastLoginAt?: string;
+  action: 'created' | 'updated';
+  isUpdated: boolean;
+  createdAt: string;
+  updatedAt: string;
+  primaryDate: string;
+  creator?: { id: string; name: string; email?: string; avatar?: string } | null;
+  updater?: { id: string; name: string; email?: string; avatar?: string } | null;
+}
+
+export interface TimelineFeedItem {
+  id: string;
+  entityType: 'project' | 'client' | 'user' | 'client_report' | 'client_user';
+  entityLabel: string;
+  title: string;
+  subtitle: string;
+  status?: string;
+  action: 'created' | 'updated';
+  primaryDate: string;
+  createdAt: string;
+  updatedAt: string;
+  actor?: { id: string; name: string; email?: string; avatar?: string } | null;
+  link: string;
+  badgeColor: string;
+}
+
+export interface RecentChangesData {
+  summary: {
+    totalRecords: number;
+    todayCount: number;
+    weekCount: number;
+    monthCount: number;
+    counts: {
+      projects: number;
+      clients: number;
+      users: number;
+      clientReports: number;
+      clientUsers: number;
+    };
+  };
+  projects: RecentChangeItem[];
+  clients: RecentChangeItem[];
+  users: RecentChangeItem[];
+  clientReports: RecentChangeItem[];
+  clientUsers: RecentChangeItem[];
+  allTimeline: TimelineFeedItem[];
+}
+
+export const fetchRecentChanges = async (
+  params: RecentChangesFilterParams = {}
+): Promise<RecentChangesData> => {
+  const response = await axios.get(`${backendURI}/dashboard/recent-changes`, { params });
   return response.data;
 };

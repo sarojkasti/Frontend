@@ -1,13 +1,14 @@
-import React from "react";
+import React, { useState } from "react";
 import { Popover, Tag, Avatar, Space, Divider } from "antd";
 import {
   ProjectOutlined,
   BankOutlined,
   TeamOutlined,
   ArrowRightOutlined,
-  PlusOutlined,
+  FileTextOutlined,
+  UserSwitchOutlined,
 } from "@ant-design/icons";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import dayjs from "dayjs";
 
 export interface RecentItem {
@@ -15,6 +16,9 @@ export interface RecentItem {
   name: string;
   status?: string;
   createdAt: string;
+  clientName?: string;
+  email?: string;
+  documentType?: string;
   creator?: {
     id: string;
     name: string;
@@ -23,7 +27,7 @@ export interface RecentItem {
 }
 
 interface NavQuickPeekPopoverProps {
-  type: "project" | "client" | "users";
+  type: "project" | "client" | "users" | "client_report" | "client_user";
   totalCount?: number;
   recentCount?: number;
   recentItems: RecentItem[];
@@ -38,34 +42,43 @@ export const NavQuickPeekPopover: React.FC<NavQuickPeekPopoverProps> = ({
   children,
 }) => {
   const navigate = useNavigate();
+  const [open, setOpen] = useState<boolean>(false);
 
   const titleConfig = {
     project: {
       title: "Projects",
       icon: <ProjectOutlined style={{ color: "#1677ff" }} />,
-      viewAllLink: "/projects",
-      createLink: "/projects/new",
-      createLabel: "New Project",
+      reportTab: "projects",
       emptyText: "No projects added in the last month",
       badgeColor: "blue",
     },
     client: {
       title: "Clients",
       icon: <BankOutlined style={{ color: "#52c41a" }} />,
-      viewAllLink: "/client",
-      createLink: "/client/new",
-      createLabel: "New Client",
+      reportTab: "clients",
       emptyText: "No clients added in the last month",
       badgeColor: "green",
     },
     users: {
       title: "Team Members",
       icon: <TeamOutlined style={{ color: "#722ed1" }} />,
-      viewAllLink: "/users",
-      createLink: "/user/new",
-      createLabel: "New User",
+      reportTab: "users",
       emptyText: "No team members added in the last month",
       badgeColor: "purple",
+    },
+    client_report: {
+      title: "Client Reports",
+      icon: <FileTextOutlined style={{ color: "#0891b2" }} />,
+      reportTab: "client_reports",
+      emptyText: "No client reports uploaded in the last month",
+      badgeColor: "cyan",
+    },
+    client_user: {
+      title: "Client Users",
+      icon: <UserSwitchOutlined style={{ color: "#c026d3" }} />,
+      reportTab: "client_users",
+      emptyText: "No client users added in the last month",
+      badgeColor: "magenta",
     },
   }[type];
 
@@ -83,8 +96,15 @@ export const NavQuickPeekPopover: React.FC<NavQuickPeekPopoverProps> = ({
     return d.format("MMM D");
   };
 
+  const handleViewReport = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setOpen(false);
+    navigate(`/reports?report=recent_changes&tab=${titleConfig.reportTab}`);
+  };
+
   const popoverContent = (
-    <div style={{ width: 280, padding: "2px 0" }}>
+    <div style={{ width: 290, padding: "2px 0" }}>
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
         <Space size={6}>
@@ -119,7 +139,17 @@ export const NavQuickPeekPopover: React.FC<NavQuickPeekPopoverProps> = ({
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {recentItems.map((item) => {
-              const detailUrl = type === "project" ? `/projects/${item.id}` : type === "client" ? `/client/view/${item.id}` : `/user/${item.id}`;
+              const detailUrl =
+                type === "project"
+                  ? `/projects/${item.id}`
+                  : type === "client"
+                  ? `/client/view/${item.id}`
+                  : type === "users"
+                  ? `/user/${item.id}`
+                  : type === "client_report"
+                  ? `/client-reports`
+                  : `/client-users`;
+
               const timeAgo = formatTimeAgo(item.createdAt);
 
               return (
@@ -127,6 +157,7 @@ export const NavQuickPeekPopover: React.FC<NavQuickPeekPopoverProps> = ({
                   key={item.id}
                   onClick={(e) => {
                     e.stopPropagation();
+                    setOpen(false);
                     navigate(detailUrl);
                   }}
                   style={{
@@ -160,6 +191,12 @@ export const NavQuickPeekPopover: React.FC<NavQuickPeekPopoverProps> = ({
                     )}
                   </div>
 
+                  {item.clientName && (
+                    <div style={{ fontSize: 10.5, color: "#0284c7", fontWeight: 500, marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {type === "client_report" ? `Report for: ${item.clientName}` : `Client: ${item.clientName}`}
+                    </div>
+                  )}
+
                   <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 3 }}>
                     <Avatar
                       size={16}
@@ -183,32 +220,42 @@ export const NavQuickPeekPopover: React.FC<NavQuickPeekPopoverProps> = ({
         )}
       </div>
 
-      <Divider style={{ margin: "10px 0 8px 0" }} />
+      <Divider style={{ margin: "8px 0" }} />
 
-      {/* Footer Navigation */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <Link
-          to={titleConfig.viewAllLink}
-          style={{ fontSize: 12, fontWeight: 500, color: "#1677ff", display: "inline-flex", alignItems: "center", gap: 4 }}
+      {/* Footer: View Report */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end" }}>
+        <button
+          type="button"
+          onClick={handleViewReport}
+          style={{
+            background: "none",
+            border: "none",
+            padding: "4px 6px",
+            fontSize: 12,
+            fontWeight: 600,
+            color: "#1677ff",
+            cursor: "pointer",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 4,
+            borderRadius: 4,
+          }}
+          className="hover:bg-blue-50 hover:text-blue-700"
         >
-          View all {titleConfig.title.toLowerCase()} <ArrowRightOutlined style={{ fontSize: 10 }} />
-        </Link>
-        <Link
-          to={titleConfig.createLink}
-          style={{ fontSize: 12, fontWeight: 500, color: "#059669", display: "inline-flex", alignItems: "center", gap: 2 }}
-        >
-          <PlusOutlined style={{ fontSize: 10 }} /> {titleConfig.createLabel}
-        </Link>
+          View Report <ArrowRightOutlined style={{ fontSize: 10 }} />
+        </button>
       </div>
     </div>
   );
 
   return (
     <Popover
+      open={open}
+      onOpenChange={setOpen}
       content={popoverContent}
       placement="rightTop"
       trigger="hover"
-      mouseEnterDelay={0.2}
+      mouseEnterDelay={0.15}
       overlayStyle={{ zIndex: 1050 }}
     >
       <div style={{ width: "100%" }}>{children}</div>

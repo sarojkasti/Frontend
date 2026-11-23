@@ -331,9 +331,16 @@ const ProjectDetailComponent = ({ project, loading }: ProjectDetailProps) => {
                 className="flex items-center justify-center -ml-1 text-gray-600 hover:text-blue-600 hover:bg-gray-100"
                 title="Back to Projects"
               />
-              <span className="text-base sm:text-lg font-semibold truncate block max-w-[240px] sm:max-w-none">
-                {name ?? ''}
-              </span>
+              <div className="flex flex-col min-w-0">
+                <span className="text-base sm:text-lg font-semibold truncate block max-w-[240px] sm:max-w-none">
+                  {name ?? ''}
+                </span>
+                {(project as any)?.creator?.name && (
+                  <span className="text-xs text-slate-500 font-normal">
+                    Created by <strong className="text-slate-700">{(project as any).creator.name}</strong>
+                  </span>
+                )}
+              </div>
             </div>
           }
           bodyStyle={{ padding: isMobile ? '12px 8px' : '20px 24px' }}

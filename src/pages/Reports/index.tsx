@@ -26,6 +26,7 @@ import { FormattedWorklogDescription } from "./components/FormattedWorklogDescri
 import UserAvailabilityDashboard from "@/pages/Project/availability";
 import ProjectInsightsReport from "./components/ProjectInsightsReport";
 import ClientAuditReport from "./components/ClientAuditReport";
+import RecentChangesReport from "./components/RecentChangesReport";
 import { ActiveReportKey } from "./types/reportTypes";
 import { stripHtml } from "@/utils/formatUtils";
 import {
@@ -48,6 +49,7 @@ import {
   SafetyCertificateOutlined,
   AppstoreOutlined,
   ApartmentOutlined,
+  HistoryOutlined,
 } from "@ant-design/icons";
 import {
   BarChart,
@@ -206,12 +208,28 @@ const REPORT_CATALOG: ReportCatalogItem[] = [
     tagColor: "cyan",
     badge: "Live Metrics",
   },
+  {
+    key: "recent_changes",
+    title: "Recent Changes & Activity Audit",
+    description: "Real-time unified audit feed and recency tracker for Projects, Clients, Team Users, Client Reports, and Client Users with actor history and direct links.",
+    category: "Analytics & Dashboards",
+    icon: <HistoryOutlined style={{ fontSize: 20, color: "#4f46e5" }} />,
+    iconBg: "bg-indigo-50 border border-indigo-100",
+    iconColor: "#4f46e5",
+    tag: "Recent Activity Audit",
+    tagColor: "geekblue",
+    badge: "Live Feed",
+  },
 ];
 
-const ReportsPage: React.FC = () => {
+interface ReportsPageProps {
+  defaultReport?: ActiveReportKey;
+}
+
+const ReportsPage: React.FC<ReportsPageProps> = ({ defaultReport }) => {
   const { isMobile } = useIsMobile();
   const [searchParams, setSearchParams] = useSearchParams();
-  const reportParam = searchParams.get("report") as ActiveReportKey | null;
+  const reportParam = (searchParams.get("report") as ActiveReportKey | null) || defaultReport || null;
   const [selectedReport, setSelectedReport] = useState<ActiveReportKey | null>(reportParam);
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -1113,6 +1131,15 @@ const ReportsPage: React.FC = () => {
     return (
       <div className="pb-16 sm:pb-0 px-2 sm:px-0">
         <ClientAuditReport onBack={() => handleSelectReport(null)} />
+      </div>
+    );
+  }
+
+  // 2.7. If recent changes audit is selected, show RecentChangesReport with Back button!
+  if (selectedReport === "recent_changes") {
+    return (
+      <div className="pb-16 sm:pb-0 px-2 sm:px-0">
+        <RecentChangesReport onBack={() => handleSelectReport(null)} />
       </div>
     );
   }

@@ -64,6 +64,20 @@ export interface ProjectType {
     projectManager?: UserType;
     users?: UserType[];
     tasks?: TaskType[];
+    createdBy?: string;
+    updatedBy?: string;
+    creator?: {
+        id: string;
+        name: string;
+        email?: string;
+        avatar?: string;
+    } | null;
+    updater?: {
+        id: string;
+        name: string;
+        email?: string;
+        avatar?: string;
+    } | null;
     createdAt?: string;
     updatedAt?: string;
 }

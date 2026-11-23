@@ -1,6 +1,6 @@
 import { ProjectType } from '@/types/project';
-import { Card, Descriptions, Tag, Switch, message, Divider, Space, Typography } from 'antd';
-import { DollarOutlined, UnlockOutlined } from '@ant-design/icons';
+import { Card, Descriptions, Tag, Switch, message, Divider, Space, Typography, Avatar } from 'antd';
+import { DollarOutlined, UnlockOutlined, UserOutlined } from '@ant-design/icons';
 import moment from 'moment';
 import { DualDateConverter } from '@/utils/dateConverter';
 import dayjs from 'dayjs';
@@ -118,13 +118,56 @@ const ProjectDetails = ({ project }: ProjectDetailsProps) => {
         <Descriptions.Item label="Description" span={isMobile ? 1 : 2}>
           {project.description || 'No description provided.'}
         </Descriptions.Item>
-        {(project as any).creator?.name && (
-          <Descriptions.Item label="Created By">
-            <span className="font-medium text-slate-800">{(project as any).creator?.name}</span>
-          </Descriptions.Item>
-        )}
+        <Descriptions.Item label="Created By">
+          <div className="flex items-center gap-2">
+            <Avatar
+              size={24}
+              className="bg-blue-600 text-white font-medium text-xs shrink-0"
+              icon={!(project as any).creator?.name ? <UserOutlined /> : undefined}
+              src={
+                (project as any).creator?.avatar
+                  ? `${import.meta.env.VITE_BACKEND_URI}/document/${(project as any).creator.avatar}`
+                  : undefined
+              }
+            >
+              {(project as any).creator?.name?.[0] || 'U'}
+            </Avatar>
+            <div className="flex flex-col">
+              <span className="font-semibold text-slate-800 text-sm">
+                {(project as any).creator?.name || 'System / Auto-initialized'}
+              </span>
+              {(project as any).creator?.email && (
+                <span className="text-xs text-slate-400">{(project as any).creator.email}</span>
+              )}
+            </div>
+          </div>
+        </Descriptions.Item>
         <Descriptions.Item label="Created At">
           {moment(project.createdAt).format('MMM D, YYYY h:mm A')}
+        </Descriptions.Item>
+        <Descriptions.Item label="Last Updated By">
+          <div className="flex items-center gap-2">
+            <Avatar
+              size={24}
+              className="bg-indigo-600 text-white font-medium text-xs shrink-0"
+              icon={!(project as any).updater?.name ? <UserOutlined /> : undefined}
+              src={
+                (project as any).updater?.avatar
+                  ? `${import.meta.env.VITE_BACKEND_URI}/document/${(project as any).updater.avatar}`
+                  : undefined
+              }
+            >
+              {(project as any).updater?.name?.[0] || 'U'}
+            </Avatar>
+            <div className="flex flex-col">
+              <span className="font-semibold text-slate-800 text-sm">
+                {(project as any).updater?.name || (project as any).creator?.name || 'System'}
+              </span>
+              {(project as any).updater?.email && (
+                <span className="text-xs text-slate-400">{(project as any).updater.email}</span>
+              )}
+            </div>
+          </div>
         </Descriptions.Item>
         <Descriptions.Item label="Updated At">
           {moment(project.updatedAt).format('MMM D, YYYY h:mm A')}
