@@ -7,6 +7,7 @@ import { Modal, Tabs, Button, Input, Tooltip, Popover } from "antd";
 import { PlusOutlined, SearchOutlined, DownloadOutlined, SettingOutlined } from "@ant-design/icons";
 import React, { useCallback, useState, useMemo, useEffect } from "react";
 import { useIsMobile } from "@/hooks/useIsMobile";
+import { useSession } from "@/context/SessionContext";
 import { useUser, useExportUsers } from "@/hooks/user/useUser";
 import {
   ALL_USER_TABLE_COLUMNS,
@@ -16,6 +17,14 @@ import {
 import { SortableColumnCustomizer } from "@/components/Table/SortableColumnCustomizer";
 
 const User: React.FC = () => {
+  const { permissionChecker } = useSession();
+  const canCreateUser =
+    permissionChecker.isSuperAdmin() ||
+    permissionChecker.hasPermission("post", "/users");
+  const canExportUsers =
+    permissionChecker.isSuperAdmin() ||
+    permissionChecker.hasPermission("get", "/users/export");
+
   const [open, setOpen] = useState(false);
   const [editUserData, setEditUserData] = useState<any | undefined>(undefined);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
@@ -120,17 +129,21 @@ const User: React.FC = () => {
               >
                 <Button icon={<SettingOutlined />}>Edit Columns</Button>
               </Popover>
-              <Tooltip title="Download / Export Users Helper">
-                <Button
-                  icon={<DownloadOutlined />}
-                  onClick={() => setIsExportViewOpen(true)}
-                >
-                  Export Users
+              {canExportUsers && (
+                <Tooltip title="Download / Export Users Helper">
+                  <Button
+                    icon={<DownloadOutlined />}
+                    onClick={() => setIsExportViewOpen(true)}
+                  >
+                    Export Users
+                  </Button>
+                </Tooltip>
+              )}
+              {canCreateUser && (
+                <Button type="primary" icon={<PlusOutlined />} onClick={() => showModal()}>
+                  Create User
                 </Button>
-              </Tooltip>
-              <Button type="primary" icon={<PlusOutlined />} onClick={() => showModal()}>
-                Create User
-              </Button>
+              )}
             </div>
           ) : null
         }

@@ -16,6 +16,7 @@ import {
   BellOutlined,
   SettingOutlined,
   ControlOutlined,
+  PhoneOutlined,
 } from "@ant-design/icons";
 
 const { Title, Paragraph } = Typography;
@@ -119,6 +120,13 @@ const SETTING_ITEMS: SettingItem[] = [
     description: "Test push & in-app alerts, target specific users & devices, and inspect active web push subscriptions.",
     path: "/notification-settings",
     icon: <BellOutlined style={{ fontSize: 20, color: "#1677ff" }} />,
+  },
+  {
+    key: "phonebook-categories",
+    title: "Phonebook Categories",
+    description: "Add and organize categories for shared and personal phonebook numbers.",
+    path: "/phonebook-categories",
+    icon: <PhoneOutlined style={{ fontSize: 20, color: "#1677ff" }} />,
   },
   {
     key: "general",

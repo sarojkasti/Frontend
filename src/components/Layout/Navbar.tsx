@@ -18,6 +18,7 @@ import Notification from "../Notification/Notification";
 import SearchBarWithPopover from "../SearchBarPopover";
 import Clock from "../Clock/Clock";
 import WorkingYearSelector from "../WorkingYearSelector";
+import { isAdminOrSuperRole } from "@/routes/AdminRoute";
 
 const Navbar = ({
   collapsed,
@@ -26,7 +27,8 @@ const Navbar = ({
   collapsed: boolean;
   setCollapsed: (collapsed: boolean) => void;
 }) => {
-  const { profile } = useSession();
+  const { profile, permissionChecker } = useSession();
+  const canAccessSettings = isAdminOrSuperRole(profile, permissionChecker);
   const navigate = useNavigate();
   const location = useLocation();
   const [open, setOpen] = useState(false);
@@ -133,16 +135,18 @@ const Navbar = ({
             </span>
           </Badge>
         </div>
-        {/* Setting icon - visible on mobile and desktop */}
-        <span
-          className="flex items-center justify-center w-8 h-8 rounded-full hover:bg-gray-100 transition-colors cursor-pointer text-gray-600 hover:text-blue-600"
-          onClick={() => {
-            navigate("/settings");
-          }}
-          aria-label="Settings"
-        >
-          <SettingOutlined style={{ fontSize: "20px" }} />
-        </span>
+        {/* Setting icon - visible only to Admin and Super User */}
+        {canAccessSettings && (
+          <span
+            className="flex items-center justify-center w-8 h-8 rounded-full hover:bg-gray-100 transition-colors cursor-pointer text-gray-600 hover:text-blue-600"
+            onClick={() => {
+              navigate("/settings");
+            }}
+            aria-label="Settings"
+          >
+            <SettingOutlined style={{ fontSize: "20px" }} />
+          </span>
+        )}
 
         <Drawer
           placement="right"

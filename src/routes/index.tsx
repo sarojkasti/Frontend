@@ -62,6 +62,7 @@ import Task from "../pages/Task";
 import User from "../pages/User";
 import PrivateRoute from "./PrivateRoute";
 import ProtectedRoute from "./ProtectedRoute";
+import AdminRoute from "./AdminRoute";
 import ClientPrivateRoute from "./ClientPrivateRoute";
 import EditWorklog from "@/pages/Worklog/edit";
 import Perimssion from "@/pages/Permission";
@@ -94,6 +95,8 @@ import ClientPortalLayout from "@/components/Layout/ClientPortalLayout";
 import ClientReportsAdmin from "@/pages/ClientReportsAdmin";
 import ClientUsersAdmin from "@/pages/ClientUsersAdmin";
 import ReportsPage from "@/pages/Reports";
+import PhonebookPage from "@/pages/Phonebook";
+import PhonebookCategorySetting from "@/pages/Setting/PhonebookCategorySetting";
 import NotFound from "@/pages/NotFound";
 
 const Router = [
@@ -520,27 +523,27 @@ const Router = [
       },
       {
         path: "/settings",
-        element: <Setting />,
+        element: <AdminRoute component={<Setting />} />,
       },
       {
         path: "/project-setting",
-        element: <ProjectSetting />,
+        element: <AdminRoute component={<ProjectSetting />} />,
       },
       {
         path: "/customer-setting",
-        element: <CustomerSetting />,
+        element: <AdminRoute component={<CustomerSetting />} />,
       },
       {
         path: "/department-setting",
-        element: <DepartmentSetting />,
+        element: <AdminRoute component={<DepartmentSetting />} />,
       },
       {
         path: "/working-year-setting",
-        element: <WorkingYearSetting />,
+        element: <AdminRoute component={<WorkingYearSetting />} />,
       },
       {
         path: "/notification-settings",
-        element: <NotificationSetting />,
+        element: <AdminRoute component={<NotificationSetting />} />,
       },
       {
         path: "/notifications",
@@ -785,6 +788,14 @@ const Router = [
       component={<ReportsPage defaultReport="recent_changes" />}
     />
   ),
+},
+{
+  path: "/phonebook",
+  element: <PhonebookPage />,
+},
+{
+  path: "/phonebook-categories",
+  element: <AdminRoute component={<PhonebookCategorySetting />} />,
 },
       {
         path: "*",

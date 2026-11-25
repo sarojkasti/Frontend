@@ -15,7 +15,8 @@ import {
   Popconfirm,
   Typography,
   Avatar,
-  Tooltip
+  Tooltip,
+  Popover
 } from "antd";
 import {
   PlusOutlined,
@@ -155,18 +156,57 @@ const ClientUsersAdmin: React.FC = () => {
       minWidth: 160,
       searchable: false,
       sortable: false,
-      render: (customers: any[]) => 
-        customers?.length > 0 ? (
-          <Space wrap size={[4, 4]} className="max-w-full">
-            {customers.map((c: any) => (
+      render: (customers: any[]) => {
+        if (!customers || customers.length === 0) return "-";
+        const visible = customers.slice(0, 2);
+        const remaining = customers.slice(2);
+
+        return (
+          <div className="flex flex-wrap items-center gap-1 max-w-full">
+            {visible.map((c: any) => (
               <Tooltip key={c.id} title={c.name}>
-                <Tag color="blue" className="max-w-full truncate inline-block cursor-default m-0">
+                <Tag
+                  color="blue"
+                  className="max-w-[210px] truncate inline-block cursor-default m-0"
+                >
                   {c.name}
                 </Tag>
               </Tooltip>
             ))}
-          </Space>
-        ) : "-"
+            {remaining.length > 0 && (
+              <Popover
+                trigger="hover"
+                placement="bottomLeft"
+                title={
+                  <span className="text-xs font-semibold text-gray-700">
+                    Other Assigned Clients ({remaining.length})
+                  </span>
+                }
+                content={
+                  <div className="max-w-[560px] flex flex-wrap gap-1.5 py-1">
+                    {remaining.map((c: any) => (
+                      <Tag
+                        key={c.id}
+                        color="blue"
+                        className="m-0 text-xs whitespace-normal break-words"
+                      >
+                        {c.name}
+                      </Tag>
+                    ))}
+                  </div>
+                }
+              >
+                <Tag
+                  color="geekblue"
+                  className="cursor-pointer font-medium m-0 shrink-0"
+                >
+                  +{remaining.length}
+                </Tag>
+              </Popover>
+            )}
+          </div>
+        );
+      }
     },
     {
       title: "Phone",

@@ -19,6 +19,7 @@ import {
   UserSwitchOutlined,
   FileTextOutlined,
   HistoryOutlined,
+  PhoneOutlined,
 } from "@ant-design/icons";
 import type { MenuProps } from "antd";
 import _ from "lodash";
@@ -125,6 +126,10 @@ export const MenuItems = (collapsed = false): MenuItem[] => {
         recentItems: isSuperOrAdmin ? sidebarSummary?.recentUsers : [],
       }),
       resource: "user",
+      visible:
+        isSuperOrAdmin ||
+        permissionChecker.hasPermission("post", "/users") ||
+        permissionChecker.hasPermission("patch", "/users/:id"),
       icon: React.createElement(TeamOutlined),
     },
     {
@@ -237,6 +242,12 @@ export const MenuItems = (collapsed = false): MenuItem[] => {
       resource: "reports",
       visible: hasReportsPermission,
       icon: React.createElement(BarChartOutlined),
+    },
+    {
+      key: "/phonebook",
+      label: renderNavLabel("Phonebook"),
+      resource: "default",
+      icon: React.createElement(PhoneOutlined),
     },
   ];
 

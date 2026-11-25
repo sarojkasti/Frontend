@@ -16,6 +16,7 @@ import { PowerTable, PowerTableColumn, useTableSearch } from "@/components/Table
 import ResponsiveTable from "@/components/ui/MobileCardList";
 import { Tag } from "antd";
 import { useIsMobile } from "@/hooks/useIsMobile";
+import { useSession } from "@/context/SessionContext";
 import dayjs from "dayjs";
 
 const UserTable = ({
@@ -35,6 +36,13 @@ const UserTable = ({
 }) => {
   const navigate = useNavigate();
   const { isMobile } = useIsMobile();
+  const { permissionChecker } = useSession();
+  const canViewUser =
+    permissionChecker.isSuperAdmin() ||
+    permissionChecker.hasPermission("get", "/users/:id");
+  const canEditUser =
+    permissionChecker.isSuperAdmin() ||
+    permissionChecker.hasPermission("patch", "/users/:id");
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const { data: user, isPending } = useUser({
@@ -221,21 +229,25 @@ const UserTable = ({
       fixed: "right",
       render: (_: any, record: UserType) => (
         <Space size="small">
-          <Tooltip title="View User Details">
-            <Link to={`/user/${record.id}`}>
-              <Button 
-                icon={<EyeOutlined style={{ color: '#1677ff' }} />} 
-                style={{ borderColor: '#91caff' }}
-              />
-            </Link>
-          </Tooltip>
-          <Tooltip title="Edit User">
-            <Button type="primary" icon={<EditOutlined />} onClick={() => showModal(record)} />
-          </Tooltip>
+          {canViewUser && (
+            <Tooltip title="View User Details">
+              <Link to={`/user/${record.id}`}>
+                <Button 
+                  icon={<EyeOutlined style={{ color: '#1677ff' }} />} 
+                  style={{ borderColor: '#91caff' }}
+                />
+              </Link>
+            </Tooltip>
+          )}
+          {canEditUser && (
+            <Tooltip title="Edit User">
+              <Button type="primary" icon={<EditOutlined />} onClick={() => showModal(record)} />
+            </Tooltip>
+          )}
         </Space>
       ),
     },
-  ], [getColumnSearchProps, sortedInfo, showModal]);
+  ], [getColumnSearchProps, sortedInfo, showModal, canViewUser, canEditUser]);
   const rowSelection: TableProps<UserType>["rowSelection"] = {
     selectedRowKeys: selectedUsers?.map((u: any) => u.id),
     onChange: (_selectedRowKeys: React.Key[], selectedRows: UserType[]) => {
@@ -287,30 +299,34 @@ const UserTable = ({
 
           {/* Action Icons: View Details, Edit, Dropdown Toggle */}
           <div className="flex items-center gap-1 shrink-0">
-            <Button
-              type="text"
-              size="small"
-              icon={<EyeOutlined style={{ fontSize: "16px", color: "#0c66e4" }} />}
-              onClick={(e) => {
-                e.stopPropagation();
-                navigate(`/user/${record.id}`);
-              }}
-              className="flex items-center justify-center h-8 w-8 rounded-full hover:bg-blue-50 text-blue-600"
-              title="View Details"
-              aria-label="View Details"
-            />
-            <Button
-              type="text"
-              size="small"
-              icon={<EditOutlined style={{ fontSize: "16px", color: "#0c66e4" }} />}
-              onClick={(e) => {
-                e.stopPropagation();
-                showModal(record);
-              }}
-              className="flex items-center justify-center h-8 w-8 rounded-full hover:bg-blue-50 text-blue-600"
-              title="Edit User"
-              aria-label="Edit User"
-            />
+            {canViewUser && (
+              <Button
+                type="text"
+                size="small"
+                icon={<EyeOutlined style={{ fontSize: "16px", color: "#0c66e4" }} />}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate(`/user/${record.id}`);
+                }}
+                className="flex items-center justify-center h-8 w-8 rounded-full hover:bg-blue-50 text-blue-600"
+                title="View Details"
+                aria-label="View Details"
+              />
+            )}
+            {canEditUser && (
+              <Button
+                type="text"
+                size="small"
+                icon={<EditOutlined style={{ fontSize: "16px", color: "#0c66e4" }} />}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  showModal(record);
+                }}
+                className="flex items-center justify-center h-8 w-8 rounded-full hover:bg-blue-50 text-blue-600"
+                title="Edit User"
+                aria-label="Edit User"
+              />
+            )}
             <Button
               type="text"
               size="small"
