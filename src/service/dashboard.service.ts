@@ -27,6 +27,16 @@ export interface SidebarSummaryData {
     clientUsers?: number;
     tasks: number;
     notices: number;
+    phonebook?: number;
+    // Weekly counts (last 7 days)
+    weeklyProjects?: number;
+    weeklyClients?: number;
+    weeklyUsers?: number;
+    weeklyClientReports?: number;
+    weeklyClientUsers?: number;
+    weeklyTasks?: number;
+    weeklyNotices?: number;
+    weeklyPhonebook?: number;
     // Totals
     totalProjects?: number;
     totalClients?: number;
@@ -35,6 +45,7 @@ export interface SidebarSummaryData {
     totalClientUsers?: number;
     totalTasks?: number;
     totalNotices?: number;
+    totalPhonebook?: number;
     newProjectsThisWeek?: number;
     newClientsThisWeek?: number;
     pendingTasks?: number;
@@ -77,6 +88,33 @@ export interface SidebarSummaryData {
     createdAt: string;
     creator?: { id: string; name: string; avatar?: string } | null;
   }>;
+  recentTasks?: Array<{
+    id: string;
+    name: string;
+    status?: string;
+    createdAt: string;
+    creator?: { id: string; name: string; avatar?: string } | null;
+  }>;
+  recentNotices?: Array<{
+    id: string;
+    name: string;
+    createdAt: string;
+    creator?: { id: string; name: string; avatar?: string } | null;
+  }>;
+  recentPhonebook?: Array<{
+    id: string;
+    name: string;
+    createdAt: string;
+    creator?: { id: string; name: string; avatar?: string } | null;
+  }>;
+  recentUpdatedProjects?: SidebarSummaryData['recentProjects'];
+  recentUpdatedClients?: SidebarSummaryData['recentClients'];
+  recentUpdatedUsers?: SidebarSummaryData['recentUsers'];
+  recentUpdatedClientReports?: SidebarSummaryData['recentClientReports'];
+  recentUpdatedClientUsers?: SidebarSummaryData['recentClientUsers'];
+  recentUpdatedTasks?: SidebarSummaryData['recentTasks'];
+  recentUpdatedNotices?: SidebarSummaryData['recentNotices'];
+  recentUpdatedPhonebook?: SidebarSummaryData['recentPhonebook'];
   recentActivity: Array<{
     id: string;
     type: 'project' | 'client' | 'client_report' | 'client_user';

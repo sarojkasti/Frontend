@@ -51,10 +51,19 @@ export const MenuItems = (collapsed = false): MenuItem[] => {
   const renderNavLabel = (
     title: string,
     options?: {
-      recentCount?: number;
+      weeklyCount?: number;
+      monthlyCount?: number;
       totalCount?: number;
-      popoverType?: "project" | "client" | "users" | "client_report" | "client_user";
+      popoverType?: "project" | "client" | "users" | "client_report" | "client_user" | "tasks" | "notices" | "phonebook";
       recentItems?: Array<{
+        id: string;
+        name: string;
+        status?: string;
+        createdAt: string;
+        clientName?: string;
+        creator?: { id: string; name: string; avatar?: string } | null;
+      }>;
+      recentUpdatedItems?: Array<{
         id: string;
         name: string;
         status?: string;
@@ -68,27 +77,24 @@ export const MenuItems = (collapsed = false): MenuItem[] => {
       return title;
     }
 
-    const count = options?.recentCount;
+    const weekly = options?.weeklyCount;
+    const monthly = options?.monthlyCount;
     const total = options?.totalCount;
-    const hasRecent = typeof count === "number" && count > 0;
+    const hasWeeklyChanges = typeof weekly === "number" && weekly > 0;
 
     const labelNode = (
       <div className="flex items-center justify-between w-full overflow-hidden select-none pr-1">
         <span className="truncate text-[13.5px] font-medium">{title}</span>
-        {typeof count === "number" && (
+        {hasWeeklyChanges && (
           <span
-            className={`inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-semibold rounded-full min-w-[20px] h-[18px] ml-1.5 shrink-0 transition-colors ${
-              hasRecent
-                ? "bg-blue-100 text-blue-700 font-bold border border-blue-200"
-                : "bg-slate-100 text-slate-400 font-normal"
-            }`}
+            className="inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-bold rounded-full min-w-[20px] h-[18px] ml-1.5 shrink-0 transition-colors bg-blue-100 text-blue-700 border border-blue-200"
             title={
               total !== undefined
-                ? `${count} added in the last month (${total} total)`
-                : `${count} added in the last month`
+                ? `${weekly} changes this week (${monthly || 0} this month, ${total} total)`
+                : `${weekly} changes this week`
             }
           >
-            {count}
+            {weekly}
           </span>
         )}
       </div>
@@ -99,8 +105,10 @@ export const MenuItems = (collapsed = false): MenuItem[] => {
         <NavQuickPeekPopover
           type={options.popoverType}
           totalCount={total || 0}
-          recentCount={count || 0}
+          weeklyCount={weekly || 0}
+          recentCount={monthly || 0}
           recentItems={options.recentItems || []}
+          recentUpdatedItems={options.recentUpdatedItems || []}
         >
           {labelNode}
         </NavQuickPeekPopover>
@@ -120,10 +128,12 @@ export const MenuItems = (collapsed = false): MenuItem[] => {
     {
       key: "/users",
       label: renderNavLabel("Users", {
-        recentCount: isSuperOrAdmin ? sidebarSummary?.counts?.users : 0,
+        weeklyCount: isSuperOrAdmin ? sidebarSummary?.counts?.weeklyUsers : 0,
+        monthlyCount: isSuperOrAdmin ? sidebarSummary?.counts?.users : 0,
         totalCount: isSuperOrAdmin ? sidebarSummary?.counts?.totalUsers : 0,
         popoverType: isSuperOrAdmin ? "users" : undefined,
         recentItems: isSuperOrAdmin ? sidebarSummary?.recentUsers : [],
+        recentUpdatedItems: isSuperOrAdmin ? sidebarSummary?.recentUpdatedUsers : [],
       }),
       resource: "user",
       visible:
@@ -135,10 +145,12 @@ export const MenuItems = (collapsed = false): MenuItem[] => {
     {
       key: "/projects",
       label: renderNavLabel("Project", {
-        recentCount: sidebarSummary?.counts?.projects,
+        weeklyCount: sidebarSummary?.counts?.weeklyProjects,
+        monthlyCount: sidebarSummary?.counts?.projects,
         totalCount: sidebarSummary?.counts?.totalProjects,
         popoverType: "project",
         recentItems: sidebarSummary?.recentProjects,
+        recentUpdatedItems: sidebarSummary?.recentUpdatedProjects,
       }),
       resource: "default",
       icon: React.createElement(ProjectOutlined),
@@ -158,8 +170,12 @@ export const MenuItems = (collapsed = false): MenuItem[] => {
     {
       key: "/tasks",
       label: renderNavLabel("Tasks", {
-        recentCount: sidebarSummary?.counts?.tasks,
+        weeklyCount: sidebarSummary?.counts?.weeklyTasks,
+        monthlyCount: sidebarSummary?.counts?.tasks,
         totalCount: sidebarSummary?.counts?.totalTasks,
+        popoverType: "tasks",
+        recentItems: sidebarSummary?.recentTasks,
+        recentUpdatedItems: sidebarSummary?.recentUpdatedTasks,
       }),
       resource: "default",
       icon: React.createElement(ProfileOutlined),
@@ -167,10 +183,12 @@ export const MenuItems = (collapsed = false): MenuItem[] => {
     {
       key: "/client",
       label: renderNavLabel("Client", {
-        recentCount: sidebarSummary?.counts?.clients,
+        weeklyCount: sidebarSummary?.counts?.weeklyClients,
+        monthlyCount: sidebarSummary?.counts?.clients,
         totalCount: sidebarSummary?.counts?.totalClients,
         popoverType: "client",
         recentItems: sidebarSummary?.recentClients,
+        recentUpdatedItems: sidebarSummary?.recentUpdatedClients,
       }),
       resource: "client",
       icon: React.createElement(BankOutlined),
@@ -202,8 +220,12 @@ export const MenuItems = (collapsed = false): MenuItem[] => {
     {
       key: "/notice-board",
       label: renderNavLabel("Notice Board", {
-        recentCount: sidebarSummary?.counts?.notices,
+        weeklyCount: sidebarSummary?.counts?.weeklyNotices,
+        monthlyCount: sidebarSummary?.counts?.notices,
         totalCount: sidebarSummary?.counts?.totalNotices,
+        popoverType: "notices",
+        recentItems: sidebarSummary?.recentNotices,
+        recentUpdatedItems: sidebarSummary?.recentUpdatedNotices,
       }),
       resource: "default",
       icon: React.createElement(NotificationOutlined),
@@ -217,10 +239,12 @@ export const MenuItems = (collapsed = false): MenuItem[] => {
     {
       key: "/client-reports",
       label: renderNavLabel("Client Reports", {
-        recentCount: sidebarSummary?.counts?.clientReports,
+        weeklyCount: sidebarSummary?.counts?.weeklyClientReports,
+        monthlyCount: sidebarSummary?.counts?.clientReports,
         totalCount: sidebarSummary?.counts?.totalClientReports,
         popoverType: "client_report",
         recentItems: sidebarSummary?.recentClientReports,
+        recentUpdatedItems: sidebarSummary?.recentUpdatedClientReports,
       }),
       resource: "client-reports",
       icon: React.createElement(FileTextOutlined),
@@ -228,10 +252,12 @@ export const MenuItems = (collapsed = false): MenuItem[] => {
     {
       key: "/client-users",
       label: renderNavLabel("Client Users", {
-        recentCount: sidebarSummary?.counts?.clientUsers,
+        weeklyCount: sidebarSummary?.counts?.weeklyClientUsers,
+        monthlyCount: sidebarSummary?.counts?.clientUsers,
         totalCount: sidebarSummary?.counts?.totalClientUsers,
         popoverType: "client_user",
         recentItems: sidebarSummary?.recentClientUsers,
+        recentUpdatedItems: sidebarSummary?.recentUpdatedClientUsers,
       }),
       resource: "client-users",
       icon: React.createElement(UserSwitchOutlined),
@@ -245,7 +271,14 @@ export const MenuItems = (collapsed = false): MenuItem[] => {
     },
     {
       key: "/phonebook",
-      label: renderNavLabel("Phonebook"),
+      label: renderNavLabel("Phonebook", {
+        weeklyCount: sidebarSummary?.counts?.weeklyPhonebook,
+        monthlyCount: sidebarSummary?.counts?.phonebook,
+        totalCount: sidebarSummary?.counts?.totalPhonebook,
+        popoverType: "phonebook",
+        recentItems: sidebarSummary?.recentPhonebook,
+        recentUpdatedItems: sidebarSummary?.recentUpdatedPhonebook,
+      }),
       resource: "default",
       icon: React.createElement(PhoneOutlined),
     },

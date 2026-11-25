@@ -95,6 +95,7 @@ import ClientPortalLayout from "@/components/Layout/ClientPortalLayout";
 import ClientReportsAdmin from "@/pages/ClientReportsAdmin";
 import ClientUsersAdmin from "@/pages/ClientUsersAdmin";
 import ReportsPage from "@/pages/Reports";
+import RecentChangesReport from "@/pages/Reports/components/RecentChangesReport";
 import PhonebookPage from "@/pages/Phonebook";
 import PhonebookCategorySetting from "@/pages/Setting/PhonebookCategorySetting";
 import NotFound from "@/pages/NotFound";
@@ -782,11 +783,9 @@ const Router = [
 {
   path: "/reports/recent-changes",
   element: (
-    <ProtectedRoute
-      method="get"
-      resource="reports"
-      component={<ReportsPage defaultReport="recent_changes" />}
-    />
+    <div className="p-2 sm:p-4">
+      <RecentChangesReport />
+    </div>
   ),
 },
 {

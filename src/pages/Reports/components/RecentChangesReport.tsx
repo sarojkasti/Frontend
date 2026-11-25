@@ -82,7 +82,10 @@ export const RecentChangesReport: React.FC<RecentChangesReportProps> = ({
   // Filter states
   const [daysFilter, setDaysFilter] = useState<string>("30");
   const [dateRange, setDateRange] = useState<[dayjs.Dayjs | null, dayjs.Dayjs | null] | null>(null);
-  const [actionFilter, setActionFilter] = useState<"all" | "created" | "updated">("all");
+  const actionParam = searchParams.get("action") as "all" | "created" | "updated" | null;
+  const [actionFilter, setActionFilter] = useState<"all" | "created" | "updated">(
+    actionParam && ["all", "created", "updated"].includes(actionParam) ? actionParam : "all"
+  );
   const [searchKeyword, setSearchKeyword] = useState<string>("");
 
   // Query Backend

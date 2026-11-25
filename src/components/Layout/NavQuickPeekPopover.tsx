@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Popover, Tag, Avatar, Space, Divider } from "antd";
+import { Popover, Tag, Avatar, Space, Divider, Segmented } from "antd";
 import {
   ProjectOutlined,
   BankOutlined,
@@ -7,6 +7,9 @@ import {
   ArrowRightOutlined,
   FileTextOutlined,
   UserSwitchOutlined,
+  ProfileOutlined,
+  NotificationOutlined,
+  PhoneOutlined,
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import dayjs from "dayjs";
@@ -27,10 +30,12 @@ export interface RecentItem {
 }
 
 interface NavQuickPeekPopoverProps {
-  type: "project" | "client" | "users" | "client_report" | "client_user";
+  type: "project" | "client" | "users" | "client_report" | "client_user" | "tasks" | "notices" | "phonebook";
   totalCount?: number;
   recentCount?: number;
+  weeklyCount?: number;
   recentItems: RecentItem[];
+  recentUpdatedItems?: RecentItem[];
   children: React.ReactNode;
 }
 
@@ -38,11 +43,14 @@ export const NavQuickPeekPopover: React.FC<NavQuickPeekPopoverProps> = ({
   type,
   totalCount = 0,
   recentCount = 0,
+  weeklyCount = 0,
   recentItems = [],
+  recentUpdatedItems = [],
   children,
 }) => {
   const navigate = useNavigate();
   const [open, setOpen] = useState<boolean>(false);
+  const [mode, setMode] = useState<"created" | "updated">("created");
 
   const titleConfig = {
     project: {
@@ -80,6 +88,27 @@ export const NavQuickPeekPopover: React.FC<NavQuickPeekPopoverProps> = ({
       emptyText: "No client users added in the last month",
       badgeColor: "magenta",
     },
+    tasks: {
+      title: "Tasks",
+      icon: <ProfileOutlined style={{ color: "#2563eb" }} />,
+      reportTab: "projects",
+      emptyText: "No task changes in the last month",
+      badgeColor: "blue",
+    },
+    notices: {
+      title: "Notice Board",
+      icon: <NotificationOutlined style={{ color: "#d97706" }} />,
+      reportTab: "all",
+      emptyText: "No notices added in the last month",
+      badgeColor: "orange",
+    },
+    phonebook: {
+      title: "Phonebook",
+      icon: <PhoneOutlined style={{ color: "#059669" }} />,
+      reportTab: "all",
+      emptyText: "No phonebook changes in the last month",
+      badgeColor: "green",
+    },
   }[type];
 
   const formatTimeAgo = (dateStr: string) => {
@@ -100,45 +129,64 @@ export const NavQuickPeekPopover: React.FC<NavQuickPeekPopoverProps> = ({
     e.stopPropagation();
     e.preventDefault();
     setOpen(false);
-    navigate(`/reports?report=recent_changes&tab=${titleConfig.reportTab}`);
+    navigate(`/reports/recent-changes?tab=${titleConfig.reportTab}&action=${mode}`);
   };
 
+  const activeItems = mode === "created" ? recentItems : recentUpdatedItems;
+
   const popoverContent = (
-    <div style={{ width: 290, padding: "2px 0" }}>
+    <div style={{ width: 330, padding: "2px 0" }}>
       {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-        <Space size={6}>
-          {titleConfig.icon}
-          <span style={{ fontWeight: 600, fontSize: 13, color: "#1e293b" }}>{titleConfig.title}</span>
-        </Space>
-        <Space size={4}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 8 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+          <Space size={6}>
+            {titleConfig.icon}
+            <span style={{ fontWeight: 600, fontSize: 13, color: "#1e293b" }}>{titleConfig.title}</span>
+          </Space>
           <Tag color={titleConfig.badgeColor} style={{ margin: 0, fontWeight: 600, borderRadius: 10, fontSize: 11 }}>
             {totalCount} Total
           </Tag>
-          <Tag
-            color={recentCount > 0 ? "cyan" : "default"}
-            style={{ margin: 0, fontWeight: 500, borderRadius: 10, fontSize: 10 }}
-          >
-            {recentCount > 0 ? `+${recentCount} this month` : "0 this month"}
-          </Tag>
-        </Space>
+        </div>
+        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
+          <Segmented
+            size="small"
+            value={mode}
+            onChange={(val) => setMode(val as "created" | "updated")}
+            options={[
+              { label: `Created (${recentItems.length})`, value: "created" },
+              { label: `Updated (${recentUpdatedItems.length})`, value: "updated" },
+            ]}
+          />
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+            {weeklyCount > 0 && (
+              <Tag color="blue" style={{ margin: 0, fontWeight: 600, borderRadius: 10, fontSize: 10 }}>
+                +{weeklyCount} week
+              </Tag>
+            )}
+            {recentCount > 0 && (
+              <Tag color="cyan" style={{ margin: 0, fontWeight: 500, borderRadius: 10, fontSize: 10 }}>
+                +{recentCount} month
+              </Tag>
+            )}
+          </div>
+        </div>
       </div>
 
-      <Divider style={{ margin: "8px 0" }} />
+      <Divider style={{ margin: "6px 0" }} />
 
       {/* Recent Activity List */}
       <div style={{ maxHeight: 240, overflowY: "auto" }}>
         <div style={{ fontSize: 11, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>
-          Recent Additions (Last 30 Days)
+          {mode === "created" ? "Recent Additions (Last 30 Days)" : "Recent Updates (Last 30 Days)"}
         </div>
 
-        {recentItems.length === 0 ? (
+        {activeItems.length === 0 ? (
           <div style={{ fontSize: 12, color: "#94a3b8", fontStyle: "italic", padding: "10px 0", textAlign: "center" }}>
-            {titleConfig.emptyText}
+            {mode === "created" ? titleConfig.emptyText : `No ${titleConfig.title.toLowerCase()} updated in the last month`}
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            {recentItems.map((item) => {
+            {activeItems.map((item) => {
               const detailUrl =
                 type === "project"
                   ? `/projects/${item.id}`
@@ -148,7 +196,13 @@ export const NavQuickPeekPopover: React.FC<NavQuickPeekPopoverProps> = ({
                   ? `/user/${item.id}`
                   : type === "client_report"
                   ? `/client-reports`
-                  : `/client-users`;
+                  : type === "client_user"
+                  ? `/client-users`
+                  : type === "tasks"
+                  ? `/tasks`
+                  : type === "notices"
+                  ? `/notice-board`
+                  : `/phonebook`;
 
               const timeAgo = formatTimeAgo(item.createdAt);
 
