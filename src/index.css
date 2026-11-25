@@ -346,6 +346,7 @@ body {
 
 .ant-modal:not(.mobile-fullscreen) .ant-modal-body {
   overflow-y: auto !important;
+  overflow-x: hidden !important;
   flex: 1 1 auto !important;
   max-height: calc(100vh - 170px) !important;
 }

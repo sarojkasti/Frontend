@@ -1,6 +1,6 @@
 import React from "react";
-import { Alert, Tag, Space, Button, Typography } from "antd";
-import { WarningOutlined, CloseCircleOutlined, LinkOutlined, EyeOutlined, PlusOutlined } from "@ant-design/icons";
+import { Alert, Tag, Button } from "antd";
+import { LinkOutlined, EyeOutlined, PlusOutlined } from "@ant-design/icons";
 
 interface SimilarClient {
   id: string;
@@ -26,139 +26,150 @@ export const ClientSimilarityAlert: React.FC<ClientSimilarityAlertProps> = ({
   onSelectGroup,
   onCreateGroupWithBrand,
 }) => {
-  if (!panMatch && (!similarClients || similarClients.length === 0)) {
+  // Never duplicate the exact PAN match inside the similar clients list
+  const filteredSimilar = (similarClients || []).filter(
+    (c) => !panMatch || c.id !== panMatch.id
+  );
+
+  if (!panMatch && filteredSimilar.length === 0) {
     return null;
   }
 
   return (
-    <div className="mb-4 transition-all">
+    <div className="mb-4 space-y-2">
       {/* Exact PAN Match Alert */}
       {panMatch && (
         <Alert
           type="error"
           showIcon
-          icon={<CloseCircleOutlined style={{ color: "#ff4d4f" }} />}
-          className="mb-2 border-red-300 bg-red-50/70"
           message={
-            <div className="flex flex-col gap-1">
-              <div className="font-bold text-red-800 text-sm flex items-center justify-between">
-                <span>⚠️ Exact PAN Collision: PAN {panMatch.panNo} is already registered!</span>
-                <Tag color="red">Existing Entity</Tag>
-              </div>
-              <div className="text-xs text-red-700">
-                This PAN is already registered to <strong>{panMatch.name}</strong> ({panMatch.status?.toUpperCase()}).
-                {panMatch.clientGroup ? (
-                  <span> Belongs to <strong>{panMatch.clientGroup.name}</strong>.</span>
-                ) : (
-                  <span> Not currently grouped.</span>
-                )}
-              </div>
-              <div className="flex items-center gap-2 mt-1">
-                <Button
-                  size="small"
-                  type="link"
-                  icon={<EyeOutlined />}
-                  onClick={() => window.open(`/client/view/${panMatch.id}`, "_blank")}
-                  className="p-0 text-red-700 underline text-xs"
-                >
-                  View Existing Client
-                </Button>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="font-semibold text-gray-900">
+                PAN {panMatch.panNo} is already registered to {panMatch.name}
+              </span>
+              <div className="flex items-center gap-2">
                 {panMatch.clientGroup && onSelectGroup && (
                   <Button
                     size="small"
-                    type="primary"
-                    ghost
                     icon={<LinkOutlined />}
-                    onClick={() => onSelectGroup(panMatch.clientGroup!.id, panMatch.clientGroup!.name)}
-                    className="text-xs h-6"
+                    onClick={() =>
+                      onSelectGroup(
+                        panMatch.clientGroup!.id,
+                        panMatch.clientGroup!.name
+                      )
+                    }
                   >
                     Assign to {panMatch.clientGroup.name}
                   </Button>
                 )}
+                <Button
+                  size="small"
+                  type="link"
+                  icon={<EyeOutlined />}
+                  onClick={() =>
+                    window.open(`/client/view/${panMatch.id}`, "_blank")
+                  }
+                  className="px-1"
+                >
+                  View Client
+                </Button>
               </div>
             </div>
+          }
+          description={
+            <span className="text-xs text-gray-600">
+              Status: {panMatch.status?.toUpperCase() || "ACTIVE"}
+              {panMatch.clientGroup
+                ? ` • Group: ${panMatch.clientGroup.name}`
+                : " • Not assigned to a group"}
+            </span>
           }
         />
       )}
 
-      {/* Fuzzy Similar Names Warning */}
-      {similarClients.length > 0 && (
+      {/* Similar Names Warning */}
+      {filteredSimilar.length > 0 && (
         <Alert
           type="warning"
           showIcon
-          icon={<WarningOutlined style={{ color: "#fa8c16" }} />}
-          className="border-amber-300 bg-amber-50/80"
           message={
-            <div className="flex flex-col gap-2">
-              <div className="font-bold text-amber-900 text-xs uppercase tracking-wide">
-                Similar Client(s) Detected ({similarClients.length}) — Potential Sibling / Duplicate / Group Member:
-              </div>
-              <div className="flex flex-col gap-1.5 max-h-48 overflow-y-auto pr-1">
-                {similarClients.map((client) => {
-                  const scoreColor = (client.score || 0) >= 80 ? "red" : "orange";
-                  return (
-                    <div
-                      key={client.id}
-                      className="bg-white/90 p-2 rounded border border-amber-200 flex items-center justify-between gap-2 shadow-xs"
+            <span className="font-semibold text-gray-900 text-xs">
+              Similar existing client{filteredSimilar.length > 1 ? "s" : ""} found ({filteredSimilar.length})
+            </span>
+          }
+          description={
+            <div className="flex flex-col gap-1.5 mt-1 max-h-40 overflow-y-auto">
+              {filteredSimilar.map((client) => (
+                <div
+                  key={client.id}
+                  className="bg-white px-2.5 py-1.5 rounded border border-gray-200 flex items-center justify-between gap-2"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Tag color="orange" className="m-0 text-[11px] shrink-0">
+                      {client.score}% match
+                    </Tag>
+                    <span
+                      className="font-medium text-gray-800 text-xs truncate"
+                      title={client.name}
                     >
-                      <div className="flex items-center gap-2 truncate">
-                        <Tag color={scoreColor} className="m-0 font-bold text-[10px]">
-                          {client.score}% Match
-                        </Tag>
-                        <span className="font-semibold text-slate-800 text-xs truncate" title={client.name}>
-                          {client.name}
-                        </span>
-                        {client.panNo && (
-                          <span className="text-[11px] text-slate-500 font-mono shrink-0">
-                            (PAN: {client.panNo})
-                          </span>
-                        )}
-                        {client.clientGroup && (
-                          <Tag color="blue" className="text-[10px] m-0 shrink-0">
-                            Group: {client.clientGroup.name}
-                          </Tag>
-                        )}
-                      </div>
+                      {client.name}
+                    </span>
+                    {client.panNo && (
+                      <span className="text-[11px] text-gray-500 font-mono shrink-0">
+                        PAN: {client.panNo}
+                      </span>
+                    )}
+                    {client.clientGroup && (
+                      <Tag color="blue" className="text-[10px] m-0 shrink-0">
+                        {client.clientGroup.name}
+                      </Tag>
+                    )}
+                  </div>
 
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        {client.clientGroup && onSelectGroup ? (
-                          <Button
-                            size="small"
-                            type="dashed"
-                            icon={<LinkOutlined />}
-                            onClick={() => onSelectGroup(client.clientGroup!.id, client.clientGroup!.name)}
-                            className="text-[11px] h-6 text-blue-600 border-blue-300 hover:text-blue-700"
-                          >
-                            Link to {client.clientGroup.name}
-                          </Button>
-                        ) : onCreateGroupWithBrand ? (
-                          <Button
-                            size="small"
-                            type="dashed"
-                            icon={<PlusOutlined />}
-                            onClick={() => {
-                              const brandGuess = client.name.split(/[- ]/)[0] || client.name;
-                              onCreateGroupWithBrand(`${brandGuess} Group`);
-                            }}
-                            className="text-[11px] h-6"
-                          >
-                            Create Group
-                          </Button>
-                        ) : null}
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {client.clientGroup && onSelectGroup ? (
+                      <Button
+                        size="small"
+                        type="link"
+                        icon={<LinkOutlined />}
+                        onClick={() =>
+                          onSelectGroup(
+                            client.clientGroup!.id,
+                            client.clientGroup!.name
+                          )
+                        }
+                        className="text-xs px-1"
+                      >
+                        Link Group
+                      </Button>
+                    ) : onCreateGroupWithBrand ? (
+                      <Button
+                        size="small"
+                        type="link"
+                        icon={<PlusOutlined />}
+                        onClick={() => {
+                          const brandGuess =
+                            client.name.split(/[- ]/)[0] || client.name;
+                          onCreateGroupWithBrand(`${brandGuess} Group`);
+                        }}
+                        className="text-xs px-1"
+                      >
+                        Create Group
+                      </Button>
+                    ) : null}
 
-                        <Button
-                          size="small"
-                          type="text"
-                          icon={<EyeOutlined />}
-                          onClick={() => window.open(`/client/view/${client.id}`, "_blank")}
-                          className="text-[11px] h-6 px-1.5 text-slate-500"
-                          title="Open in new tab"
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    <Button
+                      size="small"
+                      type="text"
+                      icon={<EyeOutlined />}
+                      onClick={() =>
+                        window.open(`/client/view/${client.id}`, "_blank")
+                      }
+                      title="Open existing client"
+                    />
+                  </div>
+                </div>
+              ))}
             </div>
           }
         />

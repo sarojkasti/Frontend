@@ -14,7 +14,8 @@ import {
   Avatar,
   Tooltip,
   Card,
-  Spin
+  Spin,
+  Empty
 } from "antd";
 import {
   PlusOutlined,
@@ -120,29 +121,36 @@ const ClientUsersTab: React.FC<ClientUsersTabProps> = ({ clientId, clientName })
   const getStatusTag = (status: ClientUserStatus) => {
     switch (status) {
       case ClientUserStatus.ACTIVE:
-        return <Tag color="success">Active</Tag>;
+        return <Tag color="success" className="rounded-full text-[11px]">Active</Tag>;
       case ClientUserStatus.INACTIVE:
-        return <Tag color="default">Inactive</Tag>;
+        return <Tag color="default" className="rounded-full text-[11px]">Inactive</Tag>;
       case ClientUserStatus.BLOCKED:
-        return <Tag color="error">Blocked</Tag>;
+        return <Tag color="error" className="rounded-full text-[11px]">Blocked</Tag>;
       default:
-        return <Tag>{status}</Tag>;
+        return <Tag className="rounded-full text-[11px]">{status}</Tag>;
     }
   };
 
   const columns = [
     {
-      title: "User Name",
+      title: "User Name & Email",
       key: "user",
-      width: 220,
+      width: 240,
       render: (_: any, record: ClientUserType) => (
         <div className="flex items-center gap-3 min-w-0">
           <Avatar icon={<UserOutlined />} style={{ backgroundColor: "#1677ff" }} className="shrink-0" />
           <div className="min-w-0 flex-1">
-            <div className="font-semibold text-slate-800 truncate" title={record.name}>{record.name}</div>
-            <span className="text-xs text-slate-500 flex items-center gap-1 truncate" title={record.email}>
-              <MailOutlined className="shrink-0" /> <span className="truncate">{record.email}</span>
-            </span>
+            <div className="font-semibold text-slate-800 truncate text-xs sm:text-sm" title={record.name}>
+              {record.name}
+            </div>
+            <a
+              href={`mailto:${record.email}`}
+              className="text-xs text-slate-500 hover:text-blue-600 flex items-center gap-1 truncate"
+              title={record.email}
+            >
+              <MailOutlined className="shrink-0 text-[11px]" />
+              <span className="truncate">{record.email}</span>
+            </a>
           </div>
         </div>
       )
@@ -154,28 +162,31 @@ const ClientUsersTab: React.FC<ClientUsersTabProps> = ({ clientId, clientName })
       width: 150,
       render: (phone: string) =>
         phone ? (
-          <span className="flex items-center gap-1 text-slate-700 whitespace-nowrap">
-            <PhoneOutlined className="shrink-0" /> {phone}
-          </span>
+          <a href={`tel:${phone}`} className="flex items-center gap-1 text-slate-700 hover:text-blue-600 text-xs whitespace-nowrap">
+            <PhoneOutlined className="shrink-0 text-[11px] text-slate-400" />
+            <span>{phone}</span>
+          </a>
         ) : (
-          "-"
+          <span className="text-slate-400 text-xs">-</span>
         )
     },
     {
       title: "Status",
       dataIndex: "status",
       key: "status",
-      width: 120,
+      width: 110,
       render: (status: ClientUserStatus) => getStatusTag(status)
     },
     {
       title: "Download Access",
       dataIndex: "isDownloadDisabled",
       key: "isDownloadDisabled",
+      width: 140,
       render: (disabled: boolean, record: ClientUserType) => (
         <Tooltip title={disabled ? "Downloads disabled" : "Downloads enabled"}>
           <Switch
             checked={!disabled}
+            size="small"
             checkedChildren={<DownloadOutlined />}
             unCheckedChildren={<StopOutlined />}
             onChange={(checked) => {
@@ -200,12 +211,14 @@ const ClientUsersTab: React.FC<ClientUsersTabProps> = ({ clientId, clientName })
     {
       title: "Actions",
       key: "actions",
+      width: 100,
+      align: "right" as const,
       render: (_: any, record: ClientUserType) => (
-        <Space size="middle">
+        <Space size="small">
           <Tooltip title="Edit User">
             <Button
-              type="default"
-              icon={<EditOutlined />}
+              type="text"
+              icon={<EditOutlined className="text-slate-500 hover:text-blue-600" />}
               size="small"
               onClick={() => handleOpenEditModal(record)}
             />
@@ -224,7 +237,7 @@ const ClientUsersTab: React.FC<ClientUsersTabProps> = ({ clientId, clientName })
             okButtonProps={{ danger: true }}
           >
             <Tooltip title="Delete">
-              <Button type="primary" danger icon={<DeleteOutlined />} size="small" />
+              <Button type="text" danger icon={<DeleteOutlined className="text-red-500 hover:text-red-700" />} size="small" />
             </Tooltip>
           </Popconfirm>
         </Space>
@@ -232,30 +245,62 @@ const ClientUsersTab: React.FC<ClientUsersTabProps> = ({ clientId, clientName })
     }
   ];
 
+  const userList = Array.isArray(users) ? users : [];
+
   return (
-    <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+    <Card size="small" className="border-slate-200 rounded-lg">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
         <div>
-          <h3 style={{ margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
-            <UsergroupAddOutlined style={{ color: "#1677ff" }} />
-            Client Contact & Portal Users ({users?.length || 0})
-          </h3>
-          <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>
-            Staff representatives & users for <strong>{clientName}</strong> who can access reports on client portal
+          <div className="flex items-center gap-2">
+            <UsergroupAddOutlined className="text-blue-600 text-sm" />
+            <span className="font-semibold text-slate-800 text-xs sm:text-sm">
+              Client Portal Users & Report Access ({userList.length})
+            </span>
+          </div>
+          <p className="text-xs text-slate-400 m-0 mt-0.5">
+            Authorized staff and client representatives from <strong>{clientName}</strong> who can log in to the client portal to view deliverables and download reports.
           </p>
         </div>
-        <Button type="primary" icon={<PlusOutlined />} onClick={handleOpenAddModal}>
+        <Button
+          type="primary"
+          icon={<PlusOutlined />}
+          onClick={handleOpenAddModal}
+          size="small"
+          className="self-start sm:self-center"
+        >
           Add Client User
         </Button>
       </div>
 
-      <Table
-        loading={isLoading}
-        dataSource={users || []}
-        columns={columns}
-        rowKey="id"
-        pagination={{ pageSize: 10, hideOnSinglePage: true }}
-      />
+      {userList.length === 0 ? (
+        <Empty
+          image={Empty.PRESENTED_IMAGE_SIMPLE}
+          description={
+            <div className="space-y-1.5 py-1">
+              <div className="text-slate-700 font-medium text-xs">
+                No client portal users added for {clientName} yet
+              </div>
+              <div className="text-slate-400 text-xs max-w-md mx-auto">
+                Invite representatives from this client to grant them secure self-service access to view published audit reports, tax documents, and compliance statuses.
+              </div>
+            </div>
+          }
+        >
+          <Button type="primary" icon={<PlusOutlined />} size="small" onClick={handleOpenAddModal} className="mt-1">
+            Add First Client User
+          </Button>
+        </Empty>
+      ) : (
+        <Table
+          loading={isLoading}
+          dataSource={userList}
+          columns={columns}
+          rowKey="id"
+          pagination={{ pageSize: 8, hideOnSinglePage: true }}
+          size="small"
+          className="mt-2"
+        />
+      )}
 
       {/* Add Client User Modal */}
       <Modal
@@ -270,7 +315,7 @@ const ClientUsersTab: React.FC<ClientUsersTabProps> = ({ clientId, clientName })
         footer={null}
         destroyOnClose
       >
-        <Form form={form} layout="vertical" onFinish={handleCreateUser}>
+        <Form form={form} layout="vertical" onFinish={handleCreateUser} className="mt-3">
           {/* LOCKED Client Name Field */}
           <Form.Item label="Assigned Client" required>
             <Input
@@ -342,7 +387,7 @@ const ClientUsersTab: React.FC<ClientUsersTabProps> = ({ clientId, clientName })
         footer={null}
         destroyOnClose
       >
-        <Form form={editForm} layout="vertical" onFinish={handleUpdateUser}>
+        <Form form={editForm} layout="vertical" onFinish={handleUpdateUser} className="mt-3">
           <Form.Item
             name="name"
             label="Full Name"
@@ -389,7 +434,7 @@ const ClientUsersTab: React.FC<ClientUsersTabProps> = ({ clientId, clientName })
           </div>
         </Form>
       </Modal>
-    </div>
+    </Card>
   );
 };
 

@@ -1,5 +1,6 @@
 import ClientTable from "@/components/Client/ClientTable";
 import ClientExportPage from "@/components/Client/ClientExportPage";
+import QuickCreateClientModal from "@/components/Client/QuickCreateClientModal";
 import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Tabs, Button, Popover, Tooltip, Input } from "antd";
@@ -21,6 +22,7 @@ const ClientPage: React.FC = () => {
   const [activeKey, setActiveKey] = useState("active");
   const [selectedClients, setSelectedClients] = useState<any[]>([]);
   const [isExportViewOpen, setIsExportViewOpen] = useState(false);
+  const [quickCreateOpen, setQuickCreateOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -77,7 +79,7 @@ const ClientPage: React.FC = () => {
   };
 
   const handleCreate = () => {
-    navigate("/client/new");
+    setQuickCreateOpen(true);
   };
 
   const columnPopoverContent = (
@@ -282,6 +284,11 @@ const ClientPage: React.FC = () => {
           </Button>
         </div>
       )}
+
+      <QuickCreateClientModal
+        open={quickCreateOpen}
+        onClose={() => setQuickCreateOpen(false)}
+      />
     </div>
   );
 };

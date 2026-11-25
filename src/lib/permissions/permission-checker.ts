@@ -19,6 +19,8 @@ export class PermissionChecker {
     return (
       this.roleName === 'superuser' ||
       this.roleName === 'super_user' ||
+      this.roleName === 'superadmin' ||
+      this.roleName === 'super admin' ||
       this.roleName === 'administrator' ||
       this.roleName === 'admin' ||
       this.permissions.some((p) => p.resource === 'admin')
