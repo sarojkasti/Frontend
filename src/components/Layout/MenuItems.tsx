@@ -88,11 +88,6 @@ export const MenuItems = (collapsed = false): MenuItem[] => {
         {hasWeeklyChanges && (
           <span
             className="inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-bold rounded-full min-w-[20px] h-[18px] ml-1.5 shrink-0 transition-colors bg-blue-100 text-blue-700 border border-blue-200"
-            title={
-              total !== undefined
-                ? `${weekly} changes this week (${monthly || 0} this month, ${total} total)`
-                : `${weekly} changes this week`
-            }
           >
             {weekly}
           </span>
