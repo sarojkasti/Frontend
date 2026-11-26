@@ -98,6 +98,9 @@ import ReportsPage from "@/pages/Reports";
 import RecentChangesReport from "@/pages/Reports/components/RecentChangesReport";
 import PhonebookPage from "@/pages/Phonebook";
 import PhonebookCategorySetting from "@/pages/Setting/PhonebookCategorySetting";
+import TrainingCategorySetting from "@/pages/Setting/TrainingCategorySetting";
+import TrainingPage from "@/pages/Training";
+import CoursePlayerPage from "@/pages/Training/CoursePlayer";
 import NotFound from "@/pages/NotFound";
 
 const Router = [
@@ -795,6 +798,18 @@ const Router = [
 {
   path: "/phonebook-categories",
   element: <AdminRoute component={<PhonebookCategorySetting />} />,
+},
+{
+  path: "/training-categories",
+  element: <AdminRoute component={<TrainingCategorySetting />} />,
+},
+{
+  path: "/training",
+  element: <TrainingPage />,
+},
+{
+  path: "/training/learn/:courseId",
+  element: <CoursePlayerPage />,
 },
       {
         path: "*",

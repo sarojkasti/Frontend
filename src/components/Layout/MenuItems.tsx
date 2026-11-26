@@ -20,6 +20,7 @@ import {
   FileTextOutlined,
   HistoryOutlined,
   PhoneOutlined,
+  ReadOutlined,
 } from "@ant-design/icons";
 import type { MenuProps } from "antd";
 import _ from "lodash";
@@ -276,6 +277,12 @@ export const MenuItems = (collapsed = false): MenuItem[] => {
       }),
       resource: "default",
       icon: React.createElement(PhoneOutlined),
+    },
+    {
+      key: "/training",
+      label: renderNavLabel("Training & LMS"),
+      resource: "default",
+      icon: React.createElement(ReadOutlined),
     },
   ];
 

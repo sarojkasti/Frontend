@@ -17,6 +17,7 @@ import {
   SettingOutlined,
   ControlOutlined,
   PhoneOutlined,
+  ReadOutlined,
 } from "@ant-design/icons";
 
 const { Title, Paragraph } = Typography;
@@ -127,6 +128,13 @@ const SETTING_ITEMS: SettingItem[] = [
     description: "Add and organize categories for shared and personal phonebook numbers.",
     path: "/phonebook-categories",
     icon: <PhoneOutlined style={{ fontSize: 20, color: "#1677ff" }} />,
+  },
+  {
+    key: "training-categories",
+    title: "LMS Course Categories",
+    description: "Add and manage categories for self-paced LMS training courses.",
+    path: "/training-categories",
+    icon: <ReadOutlined style={{ fontSize: 20, color: "#1677ff" }} />,
   },
   {
     key: "general",
